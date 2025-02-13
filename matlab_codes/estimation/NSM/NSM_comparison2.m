@@ -67,7 +67,7 @@ r0 = R * [r;0;0];           % [ACI]
 v0 = R * [0;0;sqrt(GM/r)];  % [ACI]
 
 % position error
-Ar = 0.8*[1;1;1].*1;            % [ACI]
+Ar = 2e-2*[1;1;1].*1;            % [ACI]
 
 % time vector
 n = sqrt(GM / r^3);    % Mean motion         [rad/s]
@@ -83,7 +83,7 @@ noise0 = zeros(9, Nt);
 % % sigma2  = 0.6  * 1E-9 * sqrt(f); % Vyz, Vyx
 % % sigma3  = 0.02 * 1E-9 * sqrt(f); % Vxz, Vzz
 
-sigma1 = 1E-12;
+sigma1 = 1E-15;
 sigma2 = sigma1; sigma3 = sigma1;
 
 means    = zeros(1, 9);
@@ -308,13 +308,13 @@ tt1 = 'Estimation error. Cnm coefficients';
 tt2 = 'Estimation error. Snm coefficients';
 lgn =  {'truth','LS', 'NSM', '3\sigma LS', '3\sigma NSM'};
 c1 = 'g'; c2 = 'b';
-plot_error(X.*NaN, X(2:end) - SH_LS, X(2:end) - SH_N, 3.*sigma_LS, 3.*sigma_N, n_max, tt1, tt2, mk, lgn, c1, c2);
+plot_error(X, X(2:end) - SH_LS, X(2:end) - SH_N, 3.*sigma_LS, 3.*sigma_N, n_max, tt1, tt2, mk, lgn, c1, c2);
 
 tt1 = 'Estimation error. Cnm coefficients';
 tt2 = 'Estimation error. Snm coefficients';
 lgn =  {'truth','NSM + AP', 'NSM', '3\sigma NSM + AP', '3\sigma NSM'};
 c1 = "#57BDFF"; c2 = 'b';
-plot_error(X.*NaN, X(2:end) - SH_N_AP, X(2:end) - SH_N, 3.*sigma_N_AP, 3.*sigma_N, n_max, tt1, tt2, mk, lgn, c1, c2);
+plot_error(X, X(2:end) - SH_N_AP, X(2:end) - SH_N, 3.*sigma_N_AP, 3.*sigma_N, n_max, tt1, tt2, mk, lgn, c1, c2);
 
 % % % plot correlation NSM
 % % R_NSM = corrcov(P_N);
