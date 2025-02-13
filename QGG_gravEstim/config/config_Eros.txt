@@ -1,0 +1,59 @@
+EROS PROXIMITY OPERATION
+-------------------------------------------------------------------------------------------------------------------------------------------------
+HEADER
+	Author: Sergio Coll
+	Date: 09/19/2023
+-------------------------------------------------------------------------------------------------------------------------------------------------
+SIMULATION
+	tMin = 0;		        % Start simulation time [s]
+	tMax = 915840;		        % End simulation time [s]
+	N = 91584;		        % Number of orbit points
+	sigmaN_ii = 6.32E-13;		% STD device diagonal components [1/s^2]
+	sigmaN_ij = 6.32E-13;		% STD device out diagonal components [1/s^2]
+	savedData = 0;		        % Use saved data yes = 1 / no = 0
+	filter = 1;			% filter type: batch_apriori = 1 / CKF = 2 / SRIF = 3 / SNC = 4
+    	noise = 2;                 	% noise model: ideal = 1 / flicker = 2
+-------------------------------------------------------------------------------------------------------------------------------------------------
+ORBITAL
+	mu = 4.5960443E5;		% gravitational parameter [m^3 s^-2]
+	e = 0.066;	         	% Orbit eccentricity
+	a = 32E3;		        % Semi - major axis [m]
+	i = 100.8;	                % Inclination [deg]
+	omega = 0;	        	% Argument of periapsis [deg]
+	Omega = 0;	        	% RAAN [deg]
+	f = 0;			        % True anomaly [deg] 
+	body = 3;		        % Body name [Earth = 1, Bennu = 2, Eros = 3]
+	Cn = 10;			% Max perturbed potential order. From 0 to inf
+	R = 16000;		        % Planet Radius [m]
+	SRP = 0;		        % SRP module [on = 1, off = 0]
+	3BP = 0;		        % 3BP module [on = 1, off = 0]
+
+-------------------------------------------------------------------------------------------------------------------------------------------------
+ATTITUDE
+	Rot1C1 = 0;		        % Rotation 1 independent term constant [deg]
+	Rot1C2 = 0;	            	% Rotation 1 slope term constant [deg / s]
+	Rot1C3 = 0;		        % Rotation 1 amplitude term constant [deg]
+	Rot1C4 = 0;		        % Rotation 1 frequency term [deg / s]
+	Rot1C5 = 0;		        % Rotation 1 phase term constant [deg]
+	Rot2C1 = 0;		        % Rotation 2 independent term constant [deg]
+	Rot2C2 = 0;		        % Rotation 2 slope term constant	[deg / s]
+	Rot2C3 = 0;		        % Rotation 2 amplitude term constant [deg]
+	Rot2C4 = 1E-3;	        	% Rotation 2 frequency term [deg / s]
+	Rot2C5 = 0;		        % Rotation 2 phase term constant [deg]
+	Rot3C1 = 0;		        % Rotation 3 independent term constant [deg]
+	Rot3C2 = 0;		        % Rotation 3 slope term constant	[deg / s]
+	Rot3C3 = 0;		        % Rotation 3 amplitude term constant [deg]
+	Rot3C4 = 1E-3;	        	% Rotation 3 frequency term [deg / s]
+	Rot3C5 = 0;		        % Rotation 3 phase term constant [deg]
+
+				        % Omega = C1 + C2t + C3cos(C4t + C5)
+-------------------------------------------------------------------------------------------------------------------------------------------------
+ESTIMATION
+	estimation = 0;		     	% estimation module yes = 1 / no = 0
+	n = 6;			            % max harmonic estimation
+	sigma_n_ii = 6.32E-12;   	% sensor weights STD diagonal [1/s^2]
+	sigma_n_ij = 2.52E-10;   	% sensor weights STD out diagonal [1/s^2]
+    	epsilon = 1E-40;             % convergence error criteria
+    	maxIter = 5;               	% maximum iterations number
+	sigma_GM =  1E-8;	    	    % STD GM [n.d]
+    	GM_0 = 5.2;              	% GM apriori [n.d]

@@ -1,0 +1,122 @@
+CONFIG TEST
+-------------------------------------------------------------------------------------------------------------------------------------------------
+HEADER
+	Author: Sergio Coll
+	Date: 10/26/2022
+-------------------------------------------------------------------------------------------------------------------------------------------------
+SIMULATION
+	tMin = 0;		        % Start simulation time [s]
+	tMax = 777600;		        % End simulation time [s]
+	N = 77760;		        % Number of orbit points
+	sigmaN_ii = 2.5E-12;		% STD device diagonal components [1/s^2]
+	sigmaN_ij = 1E-10;		% STD device out diagonal components [1/s^2]
+	savedData = 0;		        % Use saved data yes = 1 / no = 0
+	filter = 1;			% filter type: batch = 1 / batch_apriori = 2
+-------------------------------------------------------------------------------------------------------------------------------------------------
+ORBITAL
+	mu = 5.2;		        % gravitational parameter [m^3 s^-2]
+	e = 0;	         	        % Orbit eccentricity
+	a = 1000;		        % Semi - major axis [m]
+	i = 94.561;	                % Inclination [deg]
+	omega = 93.9547;	        % Argument of periapsis [deg]
+	Omega = 43.0196;	        % RAAN [deg]
+	f = 0;			        % True anomaly [deg] 
+	body = 2;		        % Body name [Earth = 1, Bennu = 2]
+	Cn = 16;			        % Max perturbed potential order. From 0 to inf
+	R = 246;		        % Planet Radius [m]
+	SRP = 1;		        % SRP module [on = 1, off = 0]
+	3BP = 0;		        % 3BP module [on = 1, off = 0]
+	Nor = 0;			% Normalized coefficient values [on = 1, off = 0]
+
+-------------------------------------------------------------------------------------------------------------------------------------------------
+ATTITUDE
+	Rot1C1 = 0;		        % Rotation 1 independent term constant [deg]
+	Rot1C2 = 0;	            	% Rotation 1 slope term constant [deg / s]
+	Rot1C3 = 0;		        % Rotation 1 amplitude term constant [deg]
+	Rot1C4 = 0;		        % Rotation 1 frequency term [deg / s]
+	Rot1C5 = 0;		        % Rotation 1 phase term constant [deg]
+	Rot2C1 = 0;		        % Rotation 2 independent term constant [deg]
+	Rot2C2 = 0;		        % Rotation 2 slope term constant	[deg / s]
+	Rot2C3 = 0;		        % Rotation 2 amplitude term constant [deg]
+	Rot2C4 = 1E-3;	        	% Rotation 2 frequency term [deg / s]
+	Rot2C5 = 0;		        % Rotation 2 phase term constant [deg]
+	Rot3C1 = 0;		        % Rotation 3 independent term constant [deg]
+	Rot3C2 = 0;		        % Rotation 3 slope term constant	[deg / s]
+	Rot3C3 = 0;		        % Rotation 3 amplitude term constant [deg]
+	Rot3C4 = 1E-3;	        	% Rotation 3 frequency term [deg / s]
+	Rot3C5 = 0;		        % Rotation 3 phase term constant [deg]
+
+				        % Omega = C1 + C2t + C3cos(C4t + C5)
+-------------------------------------------------------------------------------------------------------------------------------------------------
+ESTIMATION
+	estimation = 0;		     	% estimation module yes = 1 / no = 0
+	n = 6;			        % max harmonic estimation
+	sigma_n_ii = 2.5E-12;   	% sensor weights STD diagonal [1/s^2]
+	sigma_n_ij = 1E-10;   	% sensor weights STD out diagonal [1/s^2]
+    	epsilon = 1E-5;             	% convergence error criteria
+    	maxIter = 1;               	% maximum iterations number
+	sigma_GM =  2.913E-5;	    	% variance GM [n.d]
+	sigmaC_z_n2 = 1;    	% variance C zonal n=2 [n.d]
+    	sigmaC_s_n2 = 1;    	% variance C sectorial n=2 [n.d]
+	sigmaC_z_n3 = 1;    	% variance C zonal n=3 [n.d]
+    	sigmaC_s_n3 = 1;    	% variance C sectorial n=3 [ratio]
+	sigmaC_z_n4 = 1;    	% variance C zonal n=4 [ratio]
+    	sigmaC_s_n4 = 1;	% variance C sectorial n=4 [ratio]
+	sigmaC_z_n5 = 1;	% variance C zonal n=5 [ratio]
+    	sigmaC_s_n5 = 1;	% variance C sectorial n=5 [ratio]
+	sigmaC_z_n6 = 1;	% variance C zonal n=6 [ratio]
+    	sigmaC_s_n6 = 1;	% variance C sectorial n=6 [ratio]
+    	sigmaS_n2 = 1;		% variance S n=2 [ratio]
+	sigmaS_n3 = 1;		% variance S n=3 [ratio]
+	sigmaS_n4 = 1;		% variance S n=4 [ratio]
+	sigmaS_n5 = 1;		% variance S n=5 [ratio]
+	sigmaS_n6 = 1;		% variance S n=6 [ratio]
+    	GM_0 = 5.2;              	% GM apriori [n.d]
+    	C20_0 = -1;     	% C20 apriori [n.d]
+    	C21_0 = 1;     	        	% C21 apriori [n.d] 
+    	C22_0 = 1;        		% C22 apriori [n.d] 
+    	C30_0 = 1;    	% C30 apriori [n.d]
+    	C31_0 = 1;        		% C31 apriori [n.d] 
+    	C32_0 = 1;        		% C32 apriori [n.d]
+    	C33_0 = 1;        		% C33 apriori [n.d]
+    	C40_0 = 1;     	% C40 apriori [n.d]
+    	C41_0 = 1;        		% C41 apriori [n.d] 
+    	C42_0 = 1;            		% C42 apriori [n.d]
+    	C43_0 = 1;              	% C43 apriori [n.d]
+    	C44_0 = 1;        		% C44 apriori [n.d] 
+    	C50_0 = -1;        % C50 apriori [n.d]
+    	C51_0 = 1;        		% C51 apriori [n.d] 
+    	C52_0 = 1;        		% C52 apriori [n.d]
+    	C53_0 = 1;        		% C53 apriori [n.d]
+    	C54_0 = 1;        		% C54 apriori [n.d] 
+    	C55_0 = 1;        		% C55 apriori [n.d]
+    	C60_0 = -1;        % C60 apriori [n.d]
+    	C61_0 = 1;        		% C61 apriori [n.d] 
+    	C62_0 = 1;        		% C62 apriori [n.d]
+    	C63_0 = 1;        		% C63 apriori [n.d]
+    	C64_0 = 1;        		% C64 apriori [n.d] 
+    	C65_0 = 1;        		% C65 apriori [n.d]
+    	C66_0 = 1;          		% C66 apriori [n.d]
+    	S21_0 = 0;     			% S21 apriori [n.d] 
+    	S22_0 = 0;              	% S22 apriori [n.d] 
+    	S31_0 = 0;        		% S31 apriori [n.d] 
+    	S32_0 = 0;        		% S32 apriori [n.d]
+    	S33_0 = 0;        		% S33 apriori [n.d]
+    	S41_0 = 0;        		% S41 apriori [n.d] 
+    	S42_0 = 0;        		% S42 apriori [n.d]
+   	S43_0 = 0;        		% S43 apriori [n.d]
+   	S44_0 = 0;        		% S44 apriori [n.d] 
+    	S51_0 = 0;        		% S51 apriori [n.d] 
+    	S52_0 = 0;        		% S52 apriori [n.d]
+    	S53_0 = 0;        		% S53 apriori [n.d]
+    	S54_0 = 0;        		% S54 apriori [n.d] 
+    	S55_0 = 0;        		% S55 apriori [n.d]
+    	S61_0 = 0;        		% S61 apriori [n.d] 
+    	S62_0 = 0;        		% S62 apriori [n.d]
+    	S63_0 = 0;        		% S63 apriori [n.d]
+    	S64_0 = 0;        		% S64 apriori [n.d] 
+    	S65_0 = 0;        		% S65 apriori [n.d]
+    	S65_0 = 0;        		% S66 apriori [n.d]
+  
+
+
