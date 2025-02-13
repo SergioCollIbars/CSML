@@ -1,0 +1,49 @@
+CONFIG TEST
+-------------------------------------------------------------------------------------------------------------------------------------------------
+HEADER
+	Author: Sergio Coll
+	Date: 10/26/2022
+-------------------------------------------------------------------------------------------------------------------------------------------------
+SIMULATION
+	tMin = 0;		% Start simulation time [s]
+	tMax = 777600;		% End simulation time [s]
+	N = 1000;		% Number of orbit points
+	sigmaN = 0;		% STD device [E]
+	accDist = 1;		% Distance between accelerometers [m]
+	savedData = 0;		% Use saved data yes = 1 / no = 0
+-------------------------------------------------------------------------------------------------------------------------------------------------
+ORBITAL
+	mu = 5.2;		% gravitational parameter [m^3 s^-2]
+	e = 0;		        % Orbit eccentricity
+	a = 1000;		% Semi - major axis [m]
+	i = 90;			% Inclination [deg]
+	omega = 300;		% Argument of periapsis [deg]
+	Omega = -90;		% RAAN [deg]
+	f = 0;			% True anomaly [deg] 
+	body = 2;		% Body name [Earth = 1, Bennu = 2]
+	Cn = 6;			% Max perturbed potential order. From 0 to inf
+	R = 246;		% Planet Radius [m]
+-------------------------------------------------------------------------------------------------------------------------------------------------
+ATTITUDE
+	Rot1C1 = 0;		% Rotation 1 independent term constant [deg]
+	Rot1C2 = 0.008333086977;	% Rotation 1 slope term constant [deg / s]
+	Rot1C3 = 0;		% Rotation 1 amplitude term constant [deg]
+	Rot1C4 = 0;		% Rotation 1 frequency term [deg / s]
+	Rot1C5 = 0;		% Rotation 1 phase term constant [deg]
+	Rot2C1 = 0;		% Rotation 2 independent term constant [deg]
+	Rot2C2 = 0;		% Rotation 2 slope term constant	[deg / s]
+	Rot2C3 = 0;		% Rotation 2 amplitude term constant [deg]
+	Rot2C4 = 1E-3;		% Rotation 2 frequency term [deg / s]
+	Rot2C5 = 0;		% Rotation 2 phase term constant [deg]
+	Rot3C1 = 0;		% Rotation 3 independent term constant [deg]
+	Rot3C2 = 0;		% Rotation 3 slope term constant	[deg / s]
+	Rot3C3 = 0;		% Rotation 3 amplitude term constant [deg]
+	Rot3C4 = 1E-3;		% Rotation 3 frequency term [deg / s]
+	Rot3C5 = 0;		% Rotation 3 phase term constant [deg]
+
+				% Omega = C1 + C2t + C3cos(C4t + C5)
+-------------------------------------------------------------------------------------------------------------------------------------------------
+ESTIMATION
+	estimation = 0;		% estimation module yes = 1 / no = 0
+	n = 1;			% max harmonic estimation
+	sigma_n = 1;		% sensor weights STD [E]
