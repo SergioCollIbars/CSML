@@ -46,14 +46,9 @@ for h = 1:n/N
     DOM(h) = TIME(val);
 end
 
-% load initial conditions
-<<<<<<< HEAD
-% % X0_true = load_initCond(system, planetParams, TIME);
-X0_true = load('initState_truth_SRP.mat').s;
-=======
+
 % % X0 = load_initCond(system, planetParams, TIME);
 X0 = load('initState_truth_SRP.mat').s;
->>>>>>> e12bb3a6b89fc140530fa18d13ab934e4bcc0074
 STM0 = reshape(eye(6,6), [36, 1]);
 if(augmented_st), X0_true = [X0_true; planetParams(10)]; STM0 = reshape(eye(7,7), [49, 1]);  end
 
@@ -83,11 +78,7 @@ if(plotResults), plot_measurements(TIME, T, planetParams, augmented_st, system);
 [~, ~, R0, Q0, Bw, c, Pc, Pxc, Cmat_estim, Smat_estim] = ...
     initialize_filter(planetParams, Cmat_true, Smat_true, ...
     consider_cov, process_noise, augmented_st);
-<<<<<<< HEAD
 % % X0 = X0_true + Xnot;
-=======
-% % X0 = X0 + Xnot;
->>>>>>> e12bb3a6b89fc140530fa18d13ab934e4bcc0074
 
 if(process_noise == "DMC")
     Xnot  = zeros(9, 1); X0 = [X0; zeros(3, 1)]; Ns = 9;
