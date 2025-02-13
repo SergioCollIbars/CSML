@@ -20,12 +20,8 @@ cspice_furnsh('/Users/sergiocollibars/Documents/MATLAB/kernels/kernels.tm')
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 Nmc  = 25;
-<<<<<<< HEAD
 Nstate = 7;
 Mc_error = ones(Nstate * Nmc, 1E7) * NaN;
-=======
-Mc_error = ones(6 * Nmc, 1E7) * NaN;
->>>>>>> e12bb3a6b89fc140530fa18d13ab934e4bcc0074
 err_NEST = ones(Nmc, 1E7) * NaN;
 
 % load initial covariance and generate inital errors
@@ -70,13 +66,8 @@ end
 % plot results
 lw1 = 1.5;
 lw2 = 2;
-<<<<<<< HEAD
 color1 = [204, 0, 204]./256;     % violet
 % % color1 = [0 0 1];
-=======
-% % color1 = [204, 0, 204]./256;     % violet
-color1 = [0 0 1];
->>>>>>> e12bb3a6b89fc140530fa18d13ab934e4bcc0074
 color2 = "#FF0000";              % red
 color3 = "k";                    % black
 set(0,'defaultAxesFontSize',16);
@@ -100,10 +91,7 @@ else
 end
 
 % plot state error components
-<<<<<<< HEAD
 figure()
-=======
->>>>>>> e12bb3a6b89fc140530fa18d13ab934e4bcc0074
 index = [1, 3, 5];
 scale = planetParams(2)./1000;
 for j = 1:3
@@ -162,7 +150,6 @@ figure()
 subplot(1, 2, 1)
 d = sqrt(sum(cov2(1:3, :), 1));
 scale = planetParams(2)./1000;
-<<<<<<< HEAD
 semilogy(time, 3.*d.* scale, 'LineWidth', lw2, 'Color', color3);
 hold on;
 for k = 1:Nmc
@@ -174,18 +161,6 @@ for k = 1:Nmc
         color1)
     hold on;
 end
-=======
-for k = 1:Nmc
-    maxVal = 6 * k;
-    minVal = maxVal - 5;
-    err = Mc_error(minVal:maxVal, 1:length(TIME));
-
-    semilogy(time, vecnorm(err(1:3, :)).* scale, 'LineWidth', lw, 'Color',...
-        color1)
-    hold all;
-end
-semilogy(time, 3.*d.* scale, 'LineWidth', lw, 'Color', 'k')
->>>>>>> e12bb3a6b89fc140530fa18d13ab934e4bcc0074
 grid on;
 ylabel('[Km]')
 title('Position norm')
@@ -193,7 +168,6 @@ title('Position norm')
 subplot(1, 2, 2)
 d = sqrt(sum(cov2(4:6, :), 1));
 scale = planetParams(3) * planetParams(2);
-<<<<<<< HEAD
 semilogy(time, 3.*d.* scale, 'LineWidth', lw2, 'Color', color3);
 hold on;
 for k = 1:Nmc
@@ -230,24 +204,6 @@ if(Nstate == 7)
     title('SRP \eta error and 3\sigma bound')
     legend('\eta error', '3\sigma')
 end
-=======
-for k = 1:Nmc
-    maxVal = 6 * k;
-    minVal = maxVal - 5;
-    err = Mc_error(minVal:maxVal, 1:length(TIME));
-
-    semilogy(time, vecnorm(err(4:6, :)).* scale, 'LineWidth', lw, 'Color',...
-        color1)
-    hold all;
-end
-semilogy(time, 3.*d.* scale, 'LineWidth', lw, 'Color', 'k')
-grid on;
-ylabel('[m/s]')
-title('Velocity norm')
-legend('error', '3 \sigma')
-sgtitle('State error vector norm and 3 \sigma bound')
-
->>>>>>> e12bb3a6b89fc140530fa18d13ab934e4bcc0074
 % save data
 % % save('MC_state_err2.mat', 'Mc_error');
 % % save('MC_state_cov2.mat', 'cov');

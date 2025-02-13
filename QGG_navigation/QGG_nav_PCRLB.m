@@ -26,11 +26,7 @@ clc;
 tmin = 0;                                            % Phi = 0  [-]
 % % tmin = 0.75449775462963;                         % Phi = 180[-]
 % % tmin =  0.615368240740741;                       % Phi = 30 [-]
-<<<<<<< HEAD
 tmax = 3*1.4968 + tmin;                              % [-]
-=======
-tmax = 1*1.4968 / 2 + tmin;                              % [-]
->>>>>>> e12bb3a6b89fc140530fa18d13ab934e4bcc0074
 frec = 1/10;
 augmented_st = 0;
 
@@ -53,11 +49,7 @@ R0 = diag([sigmaMeas(1), sigmaMeas(2), sigmaMeas(2), sigmaMeas(1), ...
 sigmaMeas(2), sigmaMeas(1), sAcc, sAcc, sAcc].^2);    % [-]
 
 %  state process noise
-<<<<<<< HEAD
 sigmaQ_s = 5E-8/ (planetParams(2)*planetParams(3)^2) ;% [-]
-=======
-sigmaQ_s = 7E-9/ (planetParams(2)*planetParams(3)^2) ;% [-]
->>>>>>> e12bb3a6b89fc140530fa18d13ab934e4bcc0074
 qs = diag([sigmaQ_s, sigmaQ_s, sigmaQ_s].^2).*1;
 I = eye(3, 3);
 Nq = 6;
@@ -87,16 +79,11 @@ X0 = load_initCond(system, planetParams);
     initialize_filter(planetParams, C_mat, S_mat, ...
     0, "0", augmented_st);
 if(augmented_st), X0 = [X0; planetParams(10)]; end
-<<<<<<< HEAD
 if(Nx == 12)
     sx = diag(P0); sb = 1E-14/(planetParams(3)^3);
     sb = 1E-8 / (planetParams(3)^2);
     P0 = diag([sx; [sb;sb;sb;sb;sb;sb].^2]); 
 end
-=======
-if(Nx == 12), sx = diag(P0); sb = 1E-14/(planetParams(3)^3); ...
-        P0 = diag([sx; [sb;sb;sb;sb;sb;sb].^2]); end
->>>>>>> e12bb3a6b89fc140530fa18d13ab934e4bcc0074
 
 % compute measurement time
 f_time = 1/10;
@@ -142,13 +129,8 @@ for k = 2:Nt
      Aiprev_plus = reshape(PCRB(k-1, :), [Nx,Nx]);
      if(Nx == 12) % include bias noise
          F = [PHI, zeros(6,6);zeros(6,6), eye(6,6)];
-<<<<<<< HEAD
 % %          Qy= [Gamma * qs * Gamma', zeros(6,6);zeros(6,6), qb.*At];
          Qy= [Gamma * qs * Gamma', zeros(6,6);zeros(6,6), zeros(6,6)];
-=======
-         Qy= [Gamma * qs * Gamma', zeros(6,6);zeros(6,6), qb.*At];
-% %          Qy= [Gamma * qs * Gamma', zeros(6,6);zeros(6,6), zeros(6,6)];
->>>>>>> e12bb3a6b89fc140530fa18d13ab934e4bcc0074
          P_min = F * (Aiprev_plus \ F') + Qy;
          Ai_min = inv(P_min);
          h = [Ht, eye(6,6)];

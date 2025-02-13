@@ -209,11 +209,8 @@ plot_sensitivityContour(X, Y, log10(IF_QGG), ttitle, ...
 
 ttitle = "PCRLB upper bound around Moon. Gradiometer measurement";
 plot_sensitivityContour(X, Y, log10(BD_QGG), ttitle, ...
-<<<<<<< HEAD
     planetParams(1), scale, lg);
-=======
-    planetParams(1), trajectory*scale.*NaN, scale, lg);
->>>>>>> e12bb3a6b89fc140530fa18d13ab934e4bcc0074
+
 
 % clear kernels
 cspice_kclear
