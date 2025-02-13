@@ -66,9 +66,6 @@ R = [sin(theta)*cos(lambda), cos(theta)*cos(lambda), -sin(lambda);...
 r0 = R * [r;0;0];           % [ACI]
 v0 = R * [0;0;sqrt(GM/r)];  % [ACI]
 
-% position error
-Ar = 2e-2*[1;1;1].*1;            % [ACI]
-
 % time vector
 n = sqrt(GM / r^3);    % Mean motion         [rad/s]
 T = (2 * pi / n);
@@ -76,6 +73,12 @@ rev = 3;
 f = 1/60;
 t = linspace(0, rev*T, rev*T * f);
 Nt = length(t);
+
+% position error
+Ar = 2*[1;1;1].*1;            % [ACI]
+Ar_gaussian = [normrnd(0, Ar(1), 1, Nt); 
+               normrnd(0, Ar(2), 1, Nt); 
+               normrnd(0, Ar(3), 1, Nt)];
 
 % noise values from GOCE mission
 noise0 = zeros(9, Nt);
@@ -100,7 +103,8 @@ STM0 = reshape(eye(6,6), [36, 1]);
 [~, state_t] = ode113(@(t, x) EoM(t, x, Cnm, Snm, n_max, GM, Re, normalized, ...
     W0, W, RA, DEC), t, [r0;v0;STM0], options);
 % % rn = state_t(:, 1:3)' + ones(3, Nt).*Ar;                                % constant position error
-rn = state_t(:, 1:3)' + [sin(1E-4.*t);sin(1E-3.*t);sin(5E-4.*t)].*Ar;       % sinusoidal position error
+% % rn = state_t(:, 1:3)' + [sin(1E-4.*t);sin(1E-3.*t);sin(5E-4.*t)].*Ar;   % sinusoidal position error
+rn = state_t(:, 1:3)' + Ar_gaussian;                                        % random Gaussian error                          
 vn = state_t(:, 4:6)';
 
 % generate measurements
