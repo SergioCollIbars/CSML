@@ -20,7 +20,7 @@ D    = 384399E3;                    % [m]
 n    = sqrt((GM_E + GM_M) / D^3);   % [1/s]
 
 % load initial condition and trajectory
-data = load('EM_Vertical_L3_Family.mat');
+data = load('EM_Lyap_L1_Family.mat');
 % % data = load('EM_DRO_Family.mat');
 Nd =length(data.trajFam);
 index = 1:40:Nd;
@@ -32,7 +32,7 @@ for i = 1:length(index)
     % Filling with NaN data 
     dataOrbit(i).traj = ones(3, 1E4)*NaN;
     dataOrbit(i).time = ones(1, 1E4)*NaN;
-    dataOrbit(i).JC   = data.trajFam{i, 1}.CJ; 
+    dataOrbit(i).JC   = data.trajFam{} 
     dataTB(i).value   = ones(1, 1E4) * NaN;
 end
 dataUB = dataTB;
@@ -72,7 +72,7 @@ for j = 1:length(index)
     sRR   = 1E-3/(D*n);                           % [-]
     R_DSN = diag([sR, sRR].^2);                   % [-]
     
-    sP = 1E8/D;                                   % [-]
+    sP = 1E6/D;                                   % [-]
     sV = 10/(D*n);                                % [-]
     P0 = diag([sP, sP, sP, sV, sV, sV].^2);       % [-]
     
@@ -101,7 +101,7 @@ plot(-mu, 0, "o",'MarkerFaceColor',"#7E2F8E", 'MarkerEdgeColor', "#7E2F8E")
 plot((1-mu),0, "o",'MarkerFaceColor',"#77AC30", 'MarkerEdgeColor', "#77AC30")
 colorbar; % Show color scale
 % % caxis([log10(min(minVal)) log10(max(maxVal))]); % Adjust color range to scalar values
-caxis([-3, 6])
+caxis([-5, 7])
 title('Dynamic + Meas covariance bound')
 
 figure()
@@ -121,16 +121,16 @@ plot(-mu, 0, "o",'MarkerFaceColor',"#7E2F8E", 'MarkerEdgeColor', "#7E2F8E")
 plot((1-mu),0, "o",'MarkerFaceColor',"#77AC30", 'MarkerEdgeColor', "#77AC30")
 colorbar; % Show color scale
 % % caxis([log10(min(minVal)) log10(max(maxVal))]); % Adjust color range to scalar values
-caxis([-3, 6])
+caxis([-5, 7])
 title('Measurement covariance bound')
 
-% PLOT
-figure()
-time = t/n/86400;                   % [days]
-scale = D^1;                        % [m^3]
-semilogy(time, TB.*scale , time, UB.*scale, 'LineWidth', 2)
-title('Max uncertianty along orbit')
-legend('truth', 'Upper bound')
+% % % PLOT
+% % figure()
+% % time = t/n/86400;                   % [days]
+% % scale = D^1;                        % [m^3]
+% % semilogy(time, TB.*scale , time, UB.*scale, 'LineWidth', 2)
+% % title('Max uncertianty along orbit')
+% % legend('truth', 'Upper bound')
 
 % FUNCTIONS
 function [h] = computePartials_DSN(posRel, velRel)

@@ -14,7 +14,7 @@ function [r_I, v_I] = rotate2inertial(r_B, v_B, M, n)
 
         % rotate to inertial
         r_I(:, j) = NB * r_B(:, j);
-        v_I(:, j) = NB * v_B(:, j) + cross(W, r_I(:, j));
+        v_I(:, j) = NB * v_B(:, j) + cross(W, r_B(:, j));
     end
 end
 

@@ -124,9 +124,9 @@ for k = 1:Nt
 % %     B(k) = (1/(det(g)^(1/3) + det(f)^(1/3)))^(1/2);
 % %     A(k) = (1/det(Ai_plus))^(1/6);           
     
-    g = g + det(f)^(1/n);
-    A(k) = (1/(det(Ai_plus)^(1/n)))^(n/2);  % [m^3]
-    B(k) = (1/(det(g0)^(1/n) + g)^(n/2));   % [m^3]
+% %     g = g + det(f)^(1/n);
+% %     A(k) = (1/(det(Ai_plus)^(1/n)))^(n/2);  % [m^3]
+% %     B(k) = (1/(det(g0)^(1/n) + g)^(n/2));   % [m^3]
     
     % store new value
     PCRB(k, :) = reshape(Ai_plus, [1, Ns*Ns]);
