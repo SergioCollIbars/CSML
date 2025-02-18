@@ -20,14 +20,14 @@ D    = 384399E3;                    % [m]
 n    = sqrt((GM_E + GM_M) / D^3);   % [1/s]
 
 % load initial condition and trajectory
-data = load('EM_Vertical_L3_Family.mat');
+data = load('EM_Lyap_L3_Family.mat');
 % % data = load('EM_DRO_Family.mat');
 Nd =length(data.trajFam);
 index = 1:40:Nd;
 
 % trajectories struct
 dataOrbit = struct('traj', nan(3, 1E4), 'time', nan(1, 1E4), 'JC', []);
-dataTB = struct('value', nan(1, 1E4));
+dataTB    = struct('value', nan(1, 1E4));
 for i = 1:length(index)
     % Filling with NaN data 
     dataOrbit(i).traj = ones(3, 1E4)*NaN;
@@ -35,7 +35,7 @@ for i = 1:length(index)
     dataOrbit(i).JC   = data.trajFam{i, 1}.CJ; 
     dataTB(i).value   = ones(1, 1E4) * NaN;
 end
-dataUB = dataTB;
+dataUBI = dataTB; dataUBR = dataTB;
 
 for j = 1:length(index)
     x0   = data.trajFam{index(j),1}.iState;
@@ -78,9 +78,10 @@ for j = 1:length(index)
     
     % compute Upper bounds
     scale = D/1E3;
-    [TB, UBR, UB] = compute_upperBounds(state, posM, posE, t, P0, R_QGG, Ns, mu, meas);
-    dataTB(j).value = TB.*scale;    % [km]
-    dataUB(j).value = UB.*scale;    % [km]
+    [TB, UBR, UBI] = compute_upperBounds(state, posM, posE, t, P0, R_QGG, Ns, mu, meas);
+    dataTB(j).value = TB.*scale;      % [km]
+    dataUBI(j).value = UBI.*scale;    % [km]
+    dataUBR(j).value = UBR.*scale;    % [km]
 end
 
 % plot trajectory
@@ -101,7 +102,7 @@ plot(-mu, 0, "o",'MarkerFaceColor',"#7E2F8E", 'MarkerEdgeColor', "#7E2F8E")
 plot((1-mu),0, "o",'MarkerFaceColor',"#77AC30", 'MarkerEdgeColor', "#77AC30")
 colorbar; % Show color scale
 % % caxis([log10(min(minVal)) log10(max(maxVal))]); % Adjust color range to scalar values
-caxis([-3, 6])
+% % caxis([-3, 6])
 title('Dynamic + Meas covariance bound')
 
 figure()
@@ -110,7 +111,7 @@ maxVal = ones(1, length(index)) * NaN;
 minVal = maxVal;
 for j = 1:length(index)
 [rB] = rotate2BodyFrame(dataOrbit(j).time,  dataOrbit(j).traj');
-scalarValues = dataUB(j).value;
+scalarValues = dataUBI(j).value;
 maxVal(j) = max(scalarValues);
 minVal(j) = min(scalarValues);
 scatter3(rB(1, :), rB(2, :), rB(3, :), 20, log10(scalarValues), 'filled');
@@ -121,14 +122,35 @@ plot(-mu, 0, "o",'MarkerFaceColor',"#7E2F8E", 'MarkerEdgeColor', "#7E2F8E")
 plot((1-mu),0, "o",'MarkerFaceColor',"#77AC30", 'MarkerEdgeColor', "#77AC30")
 colorbar; % Show color scale
 % % caxis([log10(min(minVal)) log10(max(maxVal))]); % Adjust color range to scalar values
-caxis([-3, 6])
-title('Measurement covariance bound')
+% % caxis([-3, 6])
+title('Instant measurement covariance bound')
+
+figure()
+colormap("jet");
+maxVal = ones(1, length(index)) * NaN;
+minVal = maxVal;
+for j = 1:length(index)
+[rB] = rotate2BodyFrame(dataOrbit(j).time,  dataOrbit(j).traj');
+scalarValues = dataUBR(j).value;
+maxVal(j) = max(scalarValues);
+minVal(j) = min(scalarValues);
+scatter3(rB(1, :), rB(2, :), rB(3, :), 20, log10(scalarValues), 'filled');
+axis equal;
+hold on;
+end
+plot(-mu, 0, "o",'MarkerFaceColor',"#7E2F8E", 'MarkerEdgeColor', "#7E2F8E")
+plot((1-mu),0, "o",'MarkerFaceColor',"#77AC30", 'MarkerEdgeColor', "#77AC30")
+colorbar; % Show color scale
+% % caxis([log10(min(minVal)) log10(max(maxVal))]); % Adjust color range to scalar values
+% % caxis([-3, 6])
+title('Recursive measurement covariance bound')
+
 
 % PLOT
 figure()
 time = t/n/86400;                   % [days]
 scale = D^1;                        % [m^3]
-semilogy(time, TB.*scale , time, UB.*scale, 'LineWidth', 2)
+semilogy(time, TB.*scale , time, UBR.*scale, 'LineWidth', 2)
 title('Max uncertianty along orbit')
 legend('truth', 'Upper bound')
 
@@ -177,7 +199,7 @@ end
 function [CB, UBR, UBI] = compute_upperBounds(state, posM, posE, t, P0, R0, Ns, mu, meas)
     % compute PCRLB and upper bound to compare
     P0 = P0(1:Ns, 1:Ns);
-    g0 = inv(P0); g = 0;
+    g0 = inv(P0); g = 0; c= 0;
     
     Nt  = length(t);
     STM = state(:, 7:end);
@@ -221,13 +243,13 @@ function [CB, UBR, UBI] = compute_upperBounds(state, posM, posE, t, P0, R0, Ns, 
         % get upper bopund and cov bound
         B = h' * (R0 \ h);
         g = g + det(B)^(1/Ns);
+        c = c + min(eig(B));
 % %         CB(k) = (1/(det(Ai_plus)^(1/Ns)))^(Ns/2);  % Cramer Rao                 [m^3]
-% %         UBR(k) = (1/(det(g0)^(1/Ns) + g)^(Ns/2));  % Upper Bound Recursive      [m^3]
-% %         UBI(k) = (g)^(Ns/2);                       % Upper Bound Instantaneus   [m^3]
+% %         UBI(k) = (1/(det(g0)^(1/Ns) + g)^(Ns/2));  % Upper Bound Recursive      [m^3]
         
         UBI(k) = ((1/min(eig(B))))^(1/2);
+        UBR(k) = (1/c)^(1/2);
         CB(k) = max(eig(inv(Ai_plus)))^(1/2);      % max direction constraint    [m]
-    
     
         % update information matrix
         PCRLB(k, :)=  reshape(Ai_plus, [Ns*Ns, 1]);
