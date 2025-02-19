@@ -6,11 +6,10 @@ addpath("functions/")
 set(0,'defaultAxesFontSize',16);
 
 %%                        PCRLB UPPER BOUND
-% Description: Test the sequential PCRLB in different set of trajectories
-% download from JPL website and compare with the real PCRLB for different
-% measurement types.
+% Description: Test the sequential CRLB in different set of trajectories
+% download from JPL website.
 % Author: Sergio Coll Ibars
-% Date: 11/13/224
+% Date: 02/17/2025
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % Normalization units
@@ -20,7 +19,7 @@ D    = 384399E3;                    % [m]
 n    = sqrt((GM_E + GM_M) / D^3);   % [1/s]
 
 % load initial condition and trajectory
-data = load('EM_NHalo_L2_Family.mat');
+data = load('EM_Lyap_L1_Family.mat');
 % % data = load('EM_DRO_Family.mat');
 % % data = load('EM_LoPO_Family.mat');
 % % data = load('EM_31_Res_Family.mat');
@@ -29,15 +28,15 @@ index = 1:40:Nd;
 
 % trajectories struct
 dataOrbit = struct('traj', nan(3, 1E4), 'time', nan(1, 1E4), 'JC', []);
-dataTB    = struct('value', nan(1, 1E4));
+dataCRB_pos    = struct('value', nan(1, 1E4));
 for i = 1:length(index)
     % Filling with NaN data 
     dataOrbit(i).traj = ones(3, 1E4)*NaN;
     dataOrbit(i).time = ones(1, 1E4)*NaN;
     dataOrbit(i).JC   = data.trajFam{i, 1}.CJ; 
-    dataTB(i).value   = ones(1, 1E4) * NaN;
+    dataCRB_pos(i).value   = ones(1, 1E4) * NaN;
 end
-dataUBI = dataTB; dataUBR = dataTB;
+dataCRB_vel = dataCRB_pos;
 
 for j = 1:length(index)
     x0   = data.trajFam{index(j),1}.iState;
@@ -51,6 +50,8 @@ for j = 1:length(index)
     % Simulation parameters
     tmin = 0;           % [-]
     tmax = 1*P;         % [-]
+    frec = 1/30;        % [Hz]
+    TIME = linspace(tmin, tmax, round(tmax*frec/n));
     meas = "QGG";       % QGG / DSN
     
     % integrate trajectory
@@ -59,7 +60,7 @@ for j = 1:length(index)
     Cmat = 0; Smat = 0; system = "CR3BP_inertial";
     STM0 = reshape(eye(6,6), [36, 1]);
     [t, state] = ode113(@(t, x) EOM_3BP(t, x, planetParams, ...
-        poleParams, Cmat, Smat, system), [tmin, tmax], [X0; STM0], options);
+        poleParams, Cmat, Smat, system), TIME, [X0; STM0], options);
     dataOrbit(j).traj = state(:, 1:3)';
     dataOrbit(j).time = t';
     
@@ -67,24 +68,20 @@ for j = 1:length(index)
     [posE, posM] = compute_EM_position(t, mu);
     
     % initial uncetainty and meas weight
-    sG    = 1E-12 / (n^2);                        % [-]
-    R_QGG = diag([sG, sG, sG, sG, sG, sG].^2);    % [-]
-    
-    sR    = 1/D;                                  % [-]
-    sRR   = 1E-3/(D*n);                           % [-]
-    R_DSN = diag([sR, sRR].^2);                   % [-]
+    sG    = 1E-12 / (n^2);                         % [-]
+    R_QGG = diag([sG, sG, sG, sG, sG, sG].^2);     % [-]
     
     sP = 1E20/D;                                   % [-]
-    sV = 10/(D*n);                                % [-]
-    P0 = diag([sP, sP, sP, sV, sV, sV].^2);       % [-]
+    sV = 1E-3/(D*n);                                % [-]
+    P0 = diag([sP, sP, sP, sV, sV, sV].^2);        % [-]
     
     % compute Upper bounds
-    scale = D;
-    % scale = D^3;
-    [TB, UBR, UBI] = compute_upperBounds(state, posM, posE, t, P0, R_QGG, Ns, mu, meas);
-    dataTB(j).value = TB.*scale;      % [m]
-    dataUBI(j).value = UBI.*scale;    % [m]
-    dataUBR(j).value = UBR.*D^3;      % [m]
+    scaleP = D;     % [m]
+    scaleV = D*n;   % [m/s]
+    [CRB_pos, CRB_vel] = compute_CRB(state, posM, posE, t, P0, R_QGG, Ns,...
+        mu, meas);
+    dataCRB_pos(j).value = CRB_pos.*scaleP;    % [m]
+    dataCRB_vel(j).value = CRB_vel.*scaleV;    % [m/s]
 end
 
 % plot trajectory
@@ -94,10 +91,7 @@ maxVal = ones(1, length(index)) * NaN;
 minVal = maxVal;
 for j = 1:length(index)
 [rB] = rotate2BodyFrame(dataOrbit(j).time,  dataOrbit(j).traj');
-% % scalarValues = dataUBR(j).value - dataTB(j).value;
-% % disp(sum(scalarValues < 0));
-
-scalarValues = dataTB(j).value;
+scalarValues = dataCRB_pos(j).value;
 maxVal(j) = max(scalarValues);
 minVal(j) = min(scalarValues);
 scatter3(rB(1, :), rB(2, :), rB(3, :), 20, log10(scalarValues), 'filled');
@@ -109,15 +103,16 @@ plot((1-mu),0, "o",'MarkerFaceColor',"#77AC30", 'MarkerEdgeColor', "#77AC30")
 colorbar; % Show color scale
 % % caxis([log10(min(minVal)) log10(max(maxVal))]); % Adjust color range to scalar values
 % % caxis([-3, 6])
-title('Maximum value from covariance')
+title('Maximum position value from covariance [m]')
 
+% plot trajectory
 figure()
 colormap("jet");
 maxVal = ones(1, length(index)) * NaN;
 minVal = maxVal;
 for j = 1:length(index)
 [rB] = rotate2BodyFrame(dataOrbit(j).time,  dataOrbit(j).traj');
-scalarValues = dataUBI(j).value;
+scalarValues = dataCRB_vel(j).value;
 maxVal(j) = max(scalarValues);
 minVal(j) = min(scalarValues);
 scatter3(rB(1, :), rB(2, :), rB(3, :), 20, log10(scalarValues), 'filled');
@@ -129,35 +124,7 @@ plot((1-mu),0, "o",'MarkerFaceColor',"#77AC30", 'MarkerEdgeColor', "#77AC30")
 colorbar; % Show color scale
 % % caxis([log10(min(minVal)) log10(max(maxVal))]); % Adjust color range to scalar values
 % % caxis([-3, 6])
-title('Instant measurement covariance bound')
-
-% % figure()
-% % colormap("jet");
-% % maxVal = ones(1, length(index)) * NaN;
-% % minVal = maxVal;
-% % for j = 1:length(index)
-% % [rB] = rotate2BodyFrame(dataOrbit(j).time,  dataOrbit(j).traj');
-% % scalarValues = dataUBR(j).value;
-% % maxVal(j) = max(scalarValues);
-% % minVal(j) = min(scalarValues);
-% % scatter3(rB(1, :), rB(2, :), rB(3, :), 20, log10(scalarValues), 'filled');
-% % axis equal;
-% % hold on;
-% % end
-% % plot(-mu, 0, "o",'MarkerFaceColor',"#7E2F8E", 'MarkerEdgeColor', "#7E2F8E")
-% % plot((1-mu),0, "o",'MarkerFaceColor',"#77AC30", 'MarkerEdgeColor', "#77AC30")
-% % colorbar; % Show color scale
-% % % % caxis([log10(min(minVal)) log10(max(maxVal))]); % Adjust color range to scalar values
-% % % % caxis([-3, 6])
-% % title('Recursive measurement covariance bound')
-
-
-% PLOT
-figure()
-time = t/n/86400;                   % [days]
-semilogy(time, TB , time, UBI, 'LineWidth', 2)
-title('Max uncertianty along orbit [m]')
-legend('truth', 'Upper bound')
+title('Maximum velocity value from covariance [m/s]')
 
 % FUNCTIONS
 function [h] = computePartials_DSN(posRel, velRel)
@@ -201,17 +168,16 @@ function [posE, posM] = compute_EM_position(t, mu)
     end
 end
 
-function [CB, UBR, UBI] = compute_upperBounds(state, posM, posE, t, P0, R0, Ns, mu, meas)
+function [CRB_pos, CRB_vel] = compute_CRB(state, posM, posE, t, P0, R0, Ns, mu, meas)
     % compute PCRLB and upper bound to compare
     P0 = P0(1:Ns, 1:Ns);
-    g0 = inv(P0); g = 0; c = 0;
 
     Nt  = length(t);
     STM = state(:, 7:end);
     pos = state(:, 1:3)';
     vel = state(:, 4:6)';
     PCRLB = zeros(Nt, Ns*Ns); PCRLB(1, :) = reshape(inv(P0), [Ns*Ns, 1]);
-    UBR    = zeros(Nt, 1); CB = UBR; UBI = UBR;
+    CRB_pos    = zeros(Nt, 1); CRB_vel = CRB_pos;
     for k = 1:Nt
          if(k == 1)
             PHI_1 = eye(6,6);
@@ -232,8 +198,7 @@ function [CB, UBR, UBI] = compute_upperBounds(state, posM, posE, t, P0, R0, Ns, 
     
             posRel = pos(:, k) - posM(:, k); % relative position to Moon
             h2 = compute_grad_posPartials(mu, posRel(1), posRel(2), posRel(3));
-    
-            h = h1 + h2;
+            if(Ns == 6), h = [h1 + h2, zeros(6, 3)]; else, h = h1+h2; end
         elseif(meas == "DSN")
             posRel = pos(:, k) - [-mu;0;0];
             velRel = vel(:, k);
@@ -245,15 +210,14 @@ function [CB, UBR, UBI] = compute_upperBounds(state, posM, posE, t, P0, R0, Ns, 
         Ai_min = PHI_inv' * Aiprev_plus * PHI_inv;
         Ai_plus = Ai_min + h' * (R0 \ h);
     
-        % get upper bopund and cov bound
-        B = h' * (R0 \ h);
-        c = c + B; 
-        g = g + det(B)^(1/Ns);
-        CB(k)  = (1/(det(Ai_plus)))^(1/2);            % Cramer Rao                 [m^3]
-        UBR(k) = (1/(det(g0)^(1/Ns) + g)^(Ns/2));    % Upper Bound Recursive      [m^3]
-        
-        UBI(k) = ((1/min(eig(B))))^(1/2);
-        CB(k)  = max(eig(inv(Ai_plus)))^(1/2);        % max direction constraint   [m]
+        p = diag(inv(Ai_plus));
+
+        CRB_pos(k)  = max(p(1:3))^(1/2);       % max direction constraint   [m]
+        if(Ns == 6)
+            CRB_vel(k)  = max(p(4:6))^(1/2);   % max direction constraint   [m/s]
+        else
+             CRB_vel(k)  = 1;                  % max direction constraint   [m/s]
+        end
     
         % update information matrix
         PCRLB(k, :)=  reshape(Ai_plus, [Ns*Ns, 1]);
