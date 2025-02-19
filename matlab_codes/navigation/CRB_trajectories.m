@@ -19,7 +19,7 @@ D    = 384399E3;                    % [m]
 n    = sqrt((GM_E + GM_M) / D^3);   % [1/s]
 
 % load initial condition and trajectory
-data = load('EM_Lyap_L1_Family.mat');
+data = load('EM_Lyap_L2_Family.mat');
 % % data = load('EM_DRO_Family.mat');
 % % data = load('EM_LoPO_Family.mat');
 % % data = load('EM_31_Res_Family.mat');
@@ -72,7 +72,7 @@ for j = 1:length(index)
     R_QGG = diag([sG, sG, sG, sG, sG, sG].^2);     % [-]
     
     sP = 1E20/D;                                   % [-]
-    sV = 1E-3/(D*n);                                % [-]
+    sV = 100/(D*n);                                % [-]
     P0 = diag([sP, sP, sP, sV, sV, sV].^2);        % [-]
     
     % compute Upper bounds
@@ -126,18 +126,14 @@ colorbar; % Show color scale
 % % caxis([-3, 6])
 title('Maximum velocity value from covariance [m/s]')
 
-% FUNCTIONS
-function [h] = computePartials_DSN(posRel, velRel)
-    Ns = length(posRel);
-    rho_par    = [(posRel./vecnorm(posRel))', zeros(1, Ns)];
-    
-    a = 1/vecnorm(posRel) * velRel' * (eye(Ns,Ns) -...
-        (posRel*posRel')./(vecnorm(posRel)^2));
-    b = (posRel./vecnorm(posRel))';
-    rhoDot_par = [a, b];
-    
-    h = [rho_par;rhoDot_par];
+figure()
+for j =1:length(index)
+    semilogy(dataOrbit(j).time, dataCRB_pos(j).value, 'LineWidth', 2)
+    ylabel('[m]')
+    hold on;
 end
+
+% FUNCTIONS
 function [rB] = rotate2BodyFrame(t, state)
     Nt = length(t);
     rB = ones(3, Nt) * NaN;

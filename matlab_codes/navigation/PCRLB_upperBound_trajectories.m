@@ -20,7 +20,7 @@ D    = 384399E3;                    % [m]
 n    = sqrt((GM_E + GM_M) / D^3);   % [1/s]
 
 % load initial condition and trajectory
-data = load('EM_NHalo_L2_Family.mat');
+data = load('EM_Lyap_L2_Family.mat');
 % % data = load('EM_DRO_Family.mat');
 % % data = load('EM_LoPO_Family.mat');
 % % data = load('EM_31_Res_Family.mat');
@@ -130,27 +130,6 @@ colorbar; % Show color scale
 % % caxis([log10(min(minVal)) log10(max(maxVal))]); % Adjust color range to scalar values
 % % caxis([-3, 6])
 title('Instant measurement covariance bound')
-
-% % figure()
-% % colormap("jet");
-% % maxVal = ones(1, length(index)) * NaN;
-% % minVal = maxVal;
-% % for j = 1:length(index)
-% % [rB] = rotate2BodyFrame(dataOrbit(j).time,  dataOrbit(j).traj');
-% % scalarValues = dataUBR(j).value;
-% % maxVal(j) = max(scalarValues);
-% % minVal(j) = min(scalarValues);
-% % scatter3(rB(1, :), rB(2, :), rB(3, :), 20, log10(scalarValues), 'filled');
-% % axis equal;
-% % hold on;
-% % end
-% % plot(-mu, 0, "o",'MarkerFaceColor',"#7E2F8E", 'MarkerEdgeColor', "#7E2F8E")
-% % plot((1-mu),0, "o",'MarkerFaceColor',"#77AC30", 'MarkerEdgeColor', "#77AC30")
-% % colorbar; % Show color scale
-% % % % caxis([log10(min(minVal)) log10(max(maxVal))]); % Adjust color range to scalar values
-% % % % caxis([-3, 6])
-% % title('Recursive measurement covariance bound')
-
 
 % PLOT
 figure()

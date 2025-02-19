@@ -8,10 +8,8 @@ function [Xnot, P0, R0, Q0, Bw, c, Pc, Pxc, Cmat_estim, Smat_estim] = ...
     
     % apriori covariance
     sigmaState = [1E7, 1E7, 1E7, 10, 10, 10, 1];        % [m], [m/s] and [-]
-<<<<<<< HEAD
     % % sigmaState = [1E3, 1E3, 1E3, 0.1, 0.1, 0.1, 1];        % [m], [m/s] and [-]
-=======
->>>>>>> e12bb3a6b89fc140530fa18d13ab934e4bcc0074
+
 
     % apriori measurement error matrix
     sigmaMeas = [1, 1/sqrt(2)] * 1E-12;                 % [1/s^2]
@@ -24,11 +22,8 @@ function [Xnot, P0, R0, Q0, Bw, c, Pc, Pxc, Cmat_estim, Smat_estim] = ...
     sigmaQ_DMC  = [1E-5, 1E-5, 1E-5];                   % [m/s^2]            for Jupiter
 
     % inital deviation
-<<<<<<< HEAD
     XNOT = [1E6; 1E6; 1E6; 5; 5; 5; 0.5];               % [m], [m/s] and [-]
-=======
-    XNOT = [1E6; 1E6; 1E6; 5; 5; 5; 0.5];            % [m], [m/s] and [-]
->>>>>>> e12bb3a6b89fc140530fa18d13ab934e4bcc0074
+
 
     % consider parameters & consider uncertainty
     path_sc1 = "SIGMACOEFS_EARTH_1.txt";
