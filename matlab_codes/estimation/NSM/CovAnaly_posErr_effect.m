@@ -49,7 +49,7 @@ asterParams = [GM, Re, n_max, normalized];
 [X] = mat2list(Cnm, Snm, Nc, Ns);
 
 % Initial conditions
-r      = 0.5E3;         % [m]
+r      = 0.6E3;         % [m]
 % % r      = Re + 300E3;    % [m] 
 phi    = pi/2;
 lambda = 0;
@@ -63,7 +63,7 @@ v0 = R * [0;0;sqrt(GM/r)];  % [ACI]
 % time vector
 n = sqrt(GM / r^3);    % Mean motion         [rad/s]
 T = (2 * pi / n);
-rev = 40;
+rev = 50;
 f = 1/60;
 t = linspace(0, rev*T, rev*T * f);
 Nt = length(t);
@@ -105,6 +105,12 @@ ylabel('Latitude (°)');
 title('2D Plot of Latitude and Longitude');
 grid on;
 hold on;
+
+figure()
+plot(t./86400, vecnorm(state_t(:, 1:3)'), 'LineWidth', 2)
+xlabel('Time [days]')
+ylabel('[m]')
+title('S/C orbital radius')
 
 % perturb nominal coefficient
 sigma_n = 1E-2 * ones(1, n_max);
@@ -205,6 +211,39 @@ C_Perr(1, :) = C_Perr(1, :).*NaN; C_Perr(2, :) = C_Perr(2, :).*NaN;
 S_Perr(:, 1) = S_Perr(:, 1).*NaN; S_Perr(1:2, :) = S_Perr(1:2, :).*NaN;
 
 % Plot the contour
+[zonal, sectoral] = get_ZonalSectoral(n_max, C_Perr, S_Perr);
+
+figure()
+plot(2:n_max, zonal, 'Marker','square', 'LineStyle','--', "MarkerFaceColor", 'auto', ...
+    'MarkerEdgeColor','auto', 'MarkerSize', 10, 'LineWidth', 2, 'Color', 'r')
+grid on;
+xticks(2:n_max);
+xticklabels(string(2:n_max));
+xlabel('Degree')
+ylabel('[m]')
+title('Zonal coefficients')
+
+figure()
+subplot(1, 2, 1)
+plot(2:n_max, sectoral(1, :), 'Marker','square', 'LineStyle','--', "MarkerFaceColor", 'auto', ...
+    'MarkerEdgeColor','auto', 'MarkerSize', 10, 'LineWidth', 2, 'Color', 'r')
+grid on;
+xticks(2:n_max);
+xticklabels(string(2:n_max));
+xlabel('Degree')
+ylabel('[m]')
+title('C_{nm} sectoral coefficients')
+
+subplot(1, 2, 2)
+plot(2:n_max, sectoral(2, :), 'Marker','square', 'LineStyle','--', "MarkerFaceColor", 'auto', ...
+    'MarkerEdgeColor','auto', 'MarkerSize', 10, 'LineWidth', 2, 'Color', 'r')
+grid on;
+xticks(2:n_max);
+xticklabels(string(2:n_max));
+xlabel('Degree')
+ylabel('[m]')
+title('S_{nm} sectoral coefficients')
+
 figure;
 subplot(1, 2, 1)
 imagesc(C_Perr);
@@ -306,6 +345,7 @@ function [sigmaN] = computeRMS_analytical(GM, Re, n, w, L, r)
         sigmaN(j) = r^(3+j)/(GM * Re^j) * w / sqrt(L) * sqrt(1 / P);
     end
 end
+
 function [] = plot_gravField(X, SH_R, SH_N, n_max, tt1, tt2, ls, mk, lgn)
     [Nc, Ns, ~] = count_num_coeff(n_max); 
     [num_C, num_S, str_C, str_S] = SH_xlabel(n_max);
@@ -330,4 +370,22 @@ function [] = plot_gravField(X, SH_R, SH_N, n_max, tt1, tt2, ls, mk, lgn)
     xticklabels(str_S);
     grid on;
     legend(lgn);
+end
+
+function [zonal, sectoral] = get_ZonalSectoral(n_max, C, S)
+    % output matrices
+    zonal  = ones(1, n_max - 1) * NaN;      % from n = 2 to n_max
+    sectoral = ones(2, n_max - 1) * NaN;    % from n = 2 to n_max
+    
+    % fill up zonal coeffcients
+    zonal = C(3:end, 1);
+    
+    % fill up sectoral coefficients
+    for j = 2:n_max
+        val = C(j+1, j+1);
+        if(isreal(val)), sectoral(1, j-1) = val; else, sectoral(1, j-1) = NaN; end
+
+        val = S(j + 1, j + 1);
+        if(isreal(val)), sectoral(2, j-1) = val; else, sectoral(2, j-1) = NaN; end
+    end
 end
