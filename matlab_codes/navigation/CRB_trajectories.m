@@ -29,15 +29,13 @@ Rm_ND = Rm / D;                     % [-]
     load_universe("CR3BP", [0, pi], 1);
 
 % load initial condition and trajectory
-data = load('EM_NHalo_L2_Family.mat');
+data = load('EM_Lyap_L1_Family.mat');
 % % data = load('EM_DRO_Family.mat');
 % % data = load('EM_LoPO_Family.mat');
 % % data = load('EM_31_Res_Family.mat');
 Nd =length(data.trajFam);
 index = 1:40:Nd;
-Nd = 1;
-index = 50;
-periapsis = 1;  % starting @ periapsis? 1 yes / 0 no
+periapsis = 0;  % starting @ periapsis? 1 yes / 0 no
 insidePlanet = zeros(1, length(index));
 
 % trajectories struct
@@ -57,6 +55,7 @@ for j = 1:length(index)
     mu = data.trajFam{index(j),1}.mu;
     P    = data.trajFam{index(j), 1}.period;
     Ns   = 6;
+    planetParams(1) = mu;
     
     [r0, v0] = rotate2inertial(x0(1:3), x0(4:6), 0, 1);
     X0 = [r0;v0];
@@ -107,17 +106,17 @@ for j = 1:length(index)
         sG    = 1E-12 / (n^2);                         % [-]
         R_QGG = diag([sG, sG, sG, sG, sG, sG].^2);     % [-]
         
-        sP = 1E-3/D;                                   % [-]
-        sV = 1E-1/(D*n);                                % [-]
-        P0 = diag([sP, sP, sP, sV, sV, sV].^2);        % [-]
+        sP = 1E8/D;                                   % [-]
+        sV = 10/(D*n);                                % [-]
+        P0 = diag([sP, sP, sP, sV, sV, sV].^2);       % [-]
         
         % compute Upper bounds
         scaleP = D;     % [m]
         scaleV = D*n;   % [m/s]
-        [CRB_pos_L, CRB_vel_L] = compute_CRB_Linear(state, posM, posE, t, P0, R_QGG, Ns,...
+        [CRB_pos, CRB_vel] = compute_CRB_Linear(state, posM, posE, t, P0, R_QGG, Ns,...
             mu, meas);
-        [X, P, CRB_pos, CRB_vel] = compute_CRB_Unscented(X0, P0, planetParams, ...
-            poleParams, Cmat, Smat, posM, posE, t, R_QGG, system);
+% %         [X, P, CRB_pos, CRB_vel] = compute_CRB_Unscented(X0, P0, ...
+% %             planetParams, t, R_QGG);
         dataCRB_pos(j).value = CRB_pos.*scaleP;    % [m]
         dataCRB_vel(j).value = CRB_vel.*scaleV;    % [m/s]
     else
@@ -272,8 +271,7 @@ function [CRB_pos, CRB_vel] = compute_CRB_Linear(state, posM, posE, t, P0, R0, N
     end
 end
 
-
-function [X, P, CRB_pos, CRB_vel] = compute_CRB_Unscented(X0, P0, planetParams, poleParams, Cmat, Smat, posM, posE, t, R0, system)
+function [X, P, CRB_pos, CRB_vel] = compute_CRB_Unscented(X0, P0, planetParams, t, R0)
     % compute PCRLB and upper bound to compare
     Nt  = length(t);
     Ns  = length(X0);
@@ -295,9 +293,8 @@ function [X, P, CRB_pos, CRB_vel] = compute_CRB_Unscented(X0, P0, planetParams, 
         time = [t(k-1), t(k)];
         Xhat_i = xhat_i_prev.*0;
         for i = 1:2*Ns
-            STM0 = reshape(eye(Ns, Ns), [Ns*Ns, 1]);
-            [~, state] = ode113(@(t, x) EOM_navigation(t, x, planetParams, ...
-            poleParams, Cmat, Smat, "CR3BP", 0, {0, 0}, 0), time, [xhat_i_prev(:, i); STM0], options);
+            [~, state] = ode113(@(t, x) propagator(t, x, planetParams(1)),...
+                time, [xhat_i_prev(:, i)], options);
             Xhat_i(:, i) = state(end, 1:Ns)';
         end
     
@@ -317,8 +314,7 @@ function [X, P, CRB_pos, CRB_vel] = compute_CRB_Unscented(X0, P0, planetParams, 
         % compute predicted measurements. State @ time k
         Yhat_i = zeros(Nm, 2*Ns);
         for i = 1:2*Ns
-         [Yhat_i(:, i), ~, ~] = compute_measurements(t(k), Xhat_i(:, i)', planetParams, ...
-         poleParams, Cmat, Smat, 0, 0, 0, [], t(k), posE(:, k), posM(:, k), posE(:, k), system);
+         [Yhat_i(:, i)] = compute_measuremts(t(k), Xhat_i(:, i)', planetParams(1), zeros(6, 1));
         end
         Yhat = 1/(2*Ns).* sum(Yhat_i, 2);
     
@@ -350,6 +346,54 @@ function [X, P, CRB_pos, CRB_vel] = compute_CRB_Unscented(X0, P0, planetParams, 
     end
 end
 
+% CR3BP propagator in the inertial frame
+function [dx] = propagator(t, x, mu)
+        M = t;
+        r1 = [x(1)+mu*cos(M);x(2)+mu*sin(M);x(3)];              % SC-Earth
+        r2 = [x(1)+(mu - 1)*cos(M); x(2)+(mu-1)*sin(M); x(3)];  % SC-Moon
+        
+        Cmat = zeros(7, 7); Smat = Cmat;
+        Cmat(1, 1) = 1; Smat(1, 1) = 0;
+        n_max = 0; normalized = 1; Re = 1;
+
+        [~, dU1, ~] = potentialGradient_nm(Cmat, Smat, n_max, ...
+                                                    r1, Re, 1-mu, ...
+                                                    normalized);
+
+        [~, dU2, ~] = potentialGradient_nm(Cmat, Smat, n_max, ...
+                                                    r2, Re, mu, ...
+                                                    normalized);
+        dU = (dU1 + dU2);
+
+        dx = [x(4);
+          x(5);
+          x(6);
+          dU(1);
+          dU(2);
+          dU(3)];
+end
+
+% GG measurements c
+function [y] = compute_measuremts(t, x, mu, noise)
+        M = t;
+        r1 = [x(1)+mu*cos(M);x(2)+mu*sin(M);x(3)];              % SC-Earth
+        r2 = [x(1)+(mu - 1)*cos(M); x(2)+(mu-1)*sin(M); x(3)];  % SC-Moon
+        
+        Cmat = zeros(3, 3); Smat = Cmat;
+        Cmat(1, 1) = 1; Smat(1, 1) = 0;
+        n_max = 0; normalized = 1; Re = 1;
+
+        [~, ~, ddU1] = potentialGradient_nm(Cmat, Smat, n_max, ...
+                                                    r1, Re, 1-mu, ...
+                                                    normalized);
+
+        [~, ~, ddU2] = potentialGradient_nm(Cmat, Smat, n_max, ...
+                                                    r2, Re, mu, ...
+                                                    normalized);
+        T = ddU1 + ddU2;
+        y0 = [T(1,1); T(1, 2); T(1, 3); T(2, 2); T(2, 3); T(3, 3)];
+        y = y0 + noise;
+end
 
 function [xhat_i] = sigmaPoints_state(Ns, P, Xhat)
     xhat_i = zeros(Ns, 2*Ns);
