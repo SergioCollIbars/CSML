@@ -26,7 +26,7 @@ function [dx] = EOM_navigation(t, x, planetParams, poleParams,...
 
     % S/C parameters
     AU = 1.496e+11 / planetParams(2);   % [-]
-    eta = planetParams(10);
+    eta = 0;
     m = planetParams(11);
     A = planetParams(12);
 
@@ -90,6 +90,7 @@ function [dx] = EOM_navigation(t, x, planetParams, poleParams,...
         ddU2 = ACAF2_EM' * ddU2 * ACAF2_EM;
         
         % compute SRP acceleration
+        if(augmented_st), eta = x(7); end
         [aSRP, daSRP_dr, daSRP_deta] = SRP(r3, eta, m, A, planetParams);
 
         % total acceleration
@@ -209,6 +210,7 @@ function [dx] = EOM_navigation(t, x, planetParams, poleParams,...
         ddU2 = J2000_MOON  * ddU2  * J2000_MOON';
 
         % compute SRP acceleration
+        if(augmented_st), eta = x(7); end
         [aSRP, daSRP_dr, daSRP_deta] = SRP(r3, eta, m, A, planetParams);
 
         % total acceleration
