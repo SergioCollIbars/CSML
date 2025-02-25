@@ -20,7 +20,7 @@ D    = 384399E3;                    % [m]
 n    = sqrt((GM_E + GM_M) / D^3);   % [1/s]
 
 % load initial condition and trajectory
-data = load('EM_Lyap_L2_Family.mat');
+data = load('EM_Lyap_L3_Family.mat');
 % % data = load('EM_DRO_Family.mat');
 % % data = load('EM_LoPO_Family.mat');
 % % data = load('EM_31_Res_Family.mat');
@@ -106,9 +106,12 @@ hold on;
 end
 plot(-mu, 0, "o",'MarkerFaceColor',"#7E2F8E", 'MarkerEdgeColor', "#7E2F8E")
 plot((1-mu),0, "o",'MarkerFaceColor',"#77AC30", 'MarkerEdgeColor', "#77AC30")
-colorbar; % Show color scale
-% % caxis([log10(min(minVal)) log10(max(maxVal))]); % Adjust color range to scalar values
-% % caxis([-3, 6])
+h= colorbar; % Show color scale
+caxis([-2, 6]);
+h.Ticks = linspace(min(caxis), max(caxis), 9); % Set tick positions
+h.TickLabels = {'< 1 cm', '10 cm', '1m', '10 m', '100 m', '1 km', '10 km', '100 km', '+ 1000 km'}; % Custom labels
+xlabel('X [-]')
+ylabel('Y [-]')
 title('Maximum value from covariance')
 
 figure()
@@ -124,12 +127,16 @@ scatter3(rB(1, :), rB(2, :), rB(3, :), 20, log10(scalarValues), 'filled');
 axis equal;
 hold on;
 end
-plot(-mu, 0, "o",'MarkerFaceColor',"#7E2F8E", 'MarkerEdgeColor', "#7E2F8E")
+% % plot(-mu, 0, "o",'MarkerFaceColor',"#7E2F8E", 'MarkerEdgeColor', "#7E2F8E")
 plot((1-mu),0, "o",'MarkerFaceColor',"#77AC30", 'MarkerEdgeColor', "#77AC30")
-colorbar; % Show color scale
-% % caxis([log10(min(minVal)) log10(max(maxVal))]); % Adjust color range to scalar values
-% % caxis([-3, 6])
-title('Instant measurement covariance bound')
+h= colorbar; % Show color scale
+caxis([-2, 6]);
+h.Ticks = linspace(min(caxis), max(caxis), 9); % Set tick positions
+h.TickLabels = {'< 1 cm', '10 cm', '1m', '10 m', '100 m', '1 km', '10 km', '100 km', '+ 1000 km'}; % Custom labels
+title('Instant measurement bound')
+xlabel('X [-]')
+ylabel('Y [-]')
+
 
 % PLOT
 figure()

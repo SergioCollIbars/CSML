@@ -7,8 +7,8 @@ function [Xnot, P0, R0, Q0, Bw, c, Pc, Pxc, Cmat_estim, Smat_estim] = ...
     % Date: 03/27/2024
     
     % apriori covariance
-    sigmaState = [1E7, 1E7, 1E7, 10, 10, 10, 1];        % [m], [m/s] and [-]
-    % % sigmaState = [1E3, 1E3, 1E3, 0.1, 0.1, 0.1, 1];        % [m], [m/s] and [-]
+    % % sigmaState = [1E7, 1E7, 1E7, 10, 10, 10, 1];        % [m], [m/s] and [-]
+    sigmaState = [1E3, 1E3, 1E3, 0.1, 0.1, 0.1, 1];        % [m], [m/s] and [-]
 
 
     % apriori measurement error matrix
@@ -23,6 +23,7 @@ function [Xnot, P0, R0, Q0, Bw, c, Pc, Pxc, Cmat_estim, Smat_estim] = ...
 
     % inital deviation
     XNOT = [1E6; 1E6; 1E6; 5; 5; 5; 0.5];               % [m], [m/s] and [-]
+    XNOT = [1E1; 1E1; 1E1; .05; .05; .05; 0.5];               % [m], [m/s] and [-]
 
 
     % consider parameters & consider uncertainty

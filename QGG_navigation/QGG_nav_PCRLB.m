@@ -23,11 +23,11 @@ close all;
 clc;
 
 % specify simulation time, frequency and noise
-tmin = 0;                                            % Phi = 0  [-]
-% % tmin = 0.75449775462963;                         % Phi = 180[-]
+% % tmin = 0;                                            % Phi = 0  [-]
+tmin = 0.75449775462963;                         % Phi = 180[-]
 % % tmin =  0.615368240740741;                       % Phi = 30 [-]
 tmax = 3*1.4968 + tmin;                              % [-]
-frec = 1/10;
+frec = 1/60;
 augmented_st = 0;
 
 % define system
@@ -57,7 +57,7 @@ Nq = 6;
 % random-walk bias process noise
 sigmaQ_b = 1E-15/ (planetParams(3)^3);               % [-]
 qb = diag([sigmaQ_b, sigmaQ_b, sigmaQ_b, sigmaQ_b, sigmaQ_b, ...
-    sigmaQ_b].^2).*1;
+    sigmaQ_b].^2).*0;
 if(det(qb) ~= 0)
     Nx = 12; 
     Ns = 6;
@@ -69,9 +69,9 @@ end
 % load parameters & initial conditions
 [planetParams, poleParams, C_mat, S_mat, TIME, ~] = ...
     load_universe(system, [tmin, tmax], frec);
-X0 = load_initCond(system, planetParams);
-% % X0 = [ 0.720230409024078;0.675424403969901;0.00837326048601556;...
-% %     -1.81989246557446;1.92454671114969;0.119861341700249];  % state @ periapsis
+% % X0 = load_initCond(system, planetParams);
+X0 = [ 0.720230409024078;0.675424403969901;0.00837326048601556;...
+    -1.81989246557446;1.92454671114969;0.119861341700249];  % state @ periapsis
 % % X0 = [0.838678033240026; 0.542367087602379 ; -0.0740369975323576;...
 % %     -0.624211548421406;0.826244659528416;0.42190501223657];     % state @ phi = 30
 
@@ -146,8 +146,8 @@ for k = 2:Nt
     if(isnan(vecnorm(Y)))
         Ai_plus = Ai_min;
     else
-        % % Ai_plus = Ai_min + h' * (R0(1:Nm, 1:Nm) \ h);
-        Ai_plus = Ai_min;
+        Ai_plus = Ai_min + h' * (R0(1:Nm, 1:Nm) \ h);
+        % % Ai_plus = Ai_min;
     end
     obs(k) = rank(Ai_plus);
 

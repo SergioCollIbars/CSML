@@ -27,7 +27,7 @@ tmin = 0;                                          % Phi = 0  [-]
 tmax = 3.4968 + tmin;                              % [-]
 frec = 1/60;
 
-system = "FCR3BP"; % options: 2BP, CR3BP, F2BP
+system = "CR3BP"; % options: 2BP, CR3BP, F2BP
 [planetParams, poleParams, C_mat, S_mat, ~, ~] = ...
     load_universe(system, [tmin, tmax], frec);
 
@@ -56,9 +56,14 @@ end
 
 figure();
 [X, Y] = meshgrid(rad2deg(PHI), rad2deg(LAMBDA));
-surf(X, Y, BD_QGG)
+surf(X, Y, BD_QGG, 'EdgeColor','none')
 xlabel('Latitude \phi [deg]')
 ylabel('Longitude \lambda [deg]')
+h = colorbar;
+h.Ticks = linspace(min(caxis), max(caxis), 5); % Set tick positions
+h.TickLabels = {'Low', 'Medium-Low', 'Medium', 'Medium-High', 'High'}; % Custom labels
+xlim([-90, 90])
+
 
 %%                  COMPUTE INFO. AT DIFFERENT POINTS
 

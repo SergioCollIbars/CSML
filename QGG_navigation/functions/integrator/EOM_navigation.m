@@ -246,7 +246,7 @@ function [dx] = EOM_navigation(t, x, planetParams, poleParams,...
             Ns = 6;
             
             % compute Jacobian
-            J = [zeros(3, 3), eye(3,3); T+daSRP_dr, zeros(3, 3)];
+            J = [zeros(3, 3), eye(3,3); T, zeros(3, 3)];
         end
     end
     

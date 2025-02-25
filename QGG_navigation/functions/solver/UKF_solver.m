@@ -62,7 +62,7 @@ function [X, Pc, Xhat, Xnot, pref, posf] = UKF_solver(time, X0, P0, ...
         Yhat_i = zeros(Nm, 2*Ns);
         for i = 1:2*Ns
             [Yhat_i(:, i), ~, ~] = compute_measurements(time(k), Xhat_i(1:6,i)', planetParams, ...
-             poleParams, Cmat, Smat, 0, consider_cov, augmented_st, [], DOM, posE(:, k), posM(:, k), posS(:, k), system);
+             poleParams, Cmat, Smat, 0, consider_cov, augmented_st, [], time(k), posE(:, k), posM(:, k), posS(:, k), system);
         end
         Yhat = 1/(2*Ns).* sum(Yhat_i, 2);
         
@@ -70,32 +70,32 @@ function [X, Pc, Xhat, Xnot, pref, posf] = UKF_solver(time, X0, P0, ...
             X(:, k) = Xhat_min;
             Pc(k, :) = reshape(P_min, [36, 1]);
         else
-            % compute measurement covariance
-             B  = zeros(Nm, Nm);
-            for i = 1:2*Ns
-                B = B + (Yhat_i(:, i) - Yhat) * (Yhat_i(:, i) - Yhat)';
-            end
-             Py = 1/(2*Ns).* B + R0;
-             
-            C  = zeros(Ns, Nm);
-            for i = 1:2*Ns
-                C = C + (Xhat_i(:, i) - Xhat_min) * (Yhat_i(:, i) - Yhat)';
-            end
-             Pxy = 1/(2*Ns).* C;
-        
-             % kalman update
-             K = Pxy/(Py);
-             Xhat_plus = Xhat_min + K * (T(:, k) - Yhat);
-             P_plus = P_min - K * Py * K';
+        % compute measurement covariance
+         B  = zeros(Nm, Nm);
+        for i = 1:2*Ns
+            B = B + (Yhat_i(:, i) - Yhat) * (Yhat_i(:, i) - Yhat)';
+        end
+         Py = 1/(2*Ns).* B + R0;
+         
+        C  = zeros(Ns, Nm);
+        for i = 1:2*Ns
+            C = C + (Xhat_i(:, i) - Xhat_min) * (Yhat_i(:, i) - Yhat)';
+        end
+         Pxy = 1/(2*Ns).* C;
+    
+         % kalman update
+         K = Pxy/(Py);
+         Xhat_plus = Xhat_min + K * (T(:, k) - Yhat);
+         P_plus = P_min - K * Py * K';
 
-            ee = sum(eig(P_plus) < 0);
-            if(ee > 0)
-                s = 1;
-            end
-            
-             % save states
-             X(:, k) = Xhat_plus;
-             Pc(k, :) = reshape(P_plus, [36, 1]);
+        ee = sum(eig(P_plus) < 0);
+        if(ee > 0)
+            s = 1;
+        end
+        
+         % save states
+         X(:, k) = Xhat_plus;
+         Pc(k, :) = reshape(P_plus, [36, 1]);
         end
     end
     close(f);

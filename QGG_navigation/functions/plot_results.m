@@ -79,10 +79,9 @@ function plot_results(t, state_true, X, P, Pc, Xhat, pref, posf, planetParams, .
     % plot error
     err = state_true(:, 1:Ns)' - X(1:Ns, :);
     sigma = sqrt(diag(Pc));
-<<<<<<< HEAD
+
     eigP = zeros(Ns, length(t));
-=======
->>>>>>> e12bb3a6b89fc140530fa18d13ab934e4bcc0074
+
     cov = zeros(Ns, length(t)); cov2 = cov; cov2_RTN = cov;
     cov2_tot = zeros(6, length(t));
     cov2_E = zeros(6, length(t));
@@ -91,10 +90,9 @@ function plot_results(t, state_true, X, P, Pc, Xhat, pref, posf, planetParams, .
     for j = 1:length(t)
         p = reshape(P(j, :), [Np,Np]); p_RTN = reshape(P_RTN(j, :), [Np,Np]);
         a = sqrt(diag(p)); a_RTN = sqrt(diag(p_RTN));
-<<<<<<< HEAD
+
         eigP(: , j) = eig(p);
-=======
->>>>>>> e12bb3a6b89fc140530fa18d13ab934e4bcc0074
+
         cov(:, j) = a(1:Ns);
         cov2(:, j) = a(1:Ns).^2;
         cov2_RTN(:, j) = a_RTN(1:Ns).^2;
@@ -133,7 +131,7 @@ function plot_results(t, state_true, X, P, Pc, Xhat, pref, posf, planetParams, .
     legend('error', '3 \sigma')
     sgtitle('State error vector norm and 3 \sigma bound')
 
-<<<<<<< HEAD
+
     figure()
     scale1 = planetParams(2);                   % [m]
     scale2 = planetParams(2)*planetParams(3);   % [m/s]
@@ -147,44 +145,41 @@ function plot_results(t, state_true, X, P, Pc, Xhat, pref, posf, planetParams, .
     xlabel('Date')
     sgtitle('Covariance eigen-value over time')
 
-=======
->>>>>>> e12bb3a6b89fc140530fa18d13ab934e4bcc0074
-
-    figure()
-    index = [1, 3, 5];
-    scale = planetParams(2)./1000;
-    for j = 1:3
-        subplot(3, 2, index(j))
-        upper_bound = +3*cov(j, :) * scale;
-        lower_bound = -3*cov(j, :) * scale;
-        plot(time, err(j, :) * scale, 'LineWidth', lw, 'Color', color1)
-        hold on;
-        fill([time, fliplr(time)], [upper_bound, fliplr(lower_bound)], ...
-            color1, 'FaceAlpha', 0.1, 'EdgeColor', 'none');
-        xlabel(xlb)
-        ylabel('error R_' + string(j) + '[km]')
-        
-        str = {'RMS = ' + string(rms(err(j, :) * scale))};
-        legend(str,'Location', 'best');
-    end
-
-    index = [2, 4, 6];
-    scale = planetParams(3) * planetParams(2);
-    for j = 1:3
-        subplot(3, 2, index(j))
-        upper_bound = +3*cov(j+3, :) * scale;
-        lower_bound = -3*cov(j+3, :) * scale;
-        plot(time, err(j+3, :) * scale, 'LineWidth', lw, 'Color', color1)
-        hold on;
-        fill([time, fliplr(time)], [upper_bound, fliplr(lower_bound)], ...
-            color1, 'FaceAlpha', 0.1, 'EdgeColor', 'none');
-        xlabel(xlb)
-        ylabel('error V_' + string(j) + '[m/s]')
-
-        str = {'RMS = ' + string(rms(err(j+3, :) * scale))};
-        legend(str,'Location', 'best');
-    end
-    sgtitle("State error + 3\sigma bounds " + tt)
+% %     figure()
+% %     index = [1, 3, 5];
+% %     scale = planetParams(2)./1000;
+% %     for j = 1:3
+% %         subplot(3, 2, index(j))
+% %         upper_bound = +3*cov(j, :) * scale;
+% %         lower_bound = -3*cov(j, :) * scale;
+% %         plot(time, err(j, :) * scale, 'LineWidth', lw, 'Color', color1)
+% %         hold on;
+% %         fill([time, fliplr(time)], [upper_bound, fliplr(lower_bound)], ...
+% %             color1, 'FaceAlpha', 0.1, 'EdgeColor', 'none');
+% %         xlabel(xlb)
+% %         ylabel('error R_' + string(j) + '[km]')
+% %         
+% %         str = {'RMS = ' + string(rms(err(j, :) * scale))};
+% %         legend(str,'Location', 'best');
+% %     end
+% % 
+% %     index = [2, 4, 6];
+% %     scale = planetParams(3) * planetParams(2);
+% %     for j = 1:3
+% %         subplot(3, 2, index(j))
+% %         upper_bound = +3*cov(j+3, :) * scale;
+% %         lower_bound = -3*cov(j+3, :) * scale;
+% %         plot(time, err(j+3, :) * scale, 'LineWidth', lw, 'Color', color1)
+% %         hold on;
+% %         fill([time, fliplr(time)], [upper_bound, fliplr(lower_bound)], ...
+% %             color1, 'FaceAlpha', 0.1, 'EdgeColor', 'none');
+% %         xlabel(xlb)
+% %         ylabel('error V_' + string(j) + '[m/s]')
+% % 
+% %         str = {'RMS = ' + string(rms(err(j+3, :) * scale))};
+% %         legend(str,'Location', 'best');
+% %     end
+% %     sgtitle("State error + 3\sigma bounds " + tt)
     
     figure()
     index = [1, 3, 5];
@@ -255,23 +250,17 @@ function plot_results(t, state_true, X, P, Pc, Xhat, pref, posf, planetParams, .
     % plot  trace uncertainty. RTN frame
     figure()
     index = [1, 3, 5, 2, 4, 6];
-<<<<<<< HEAD
+
     ttitle = ["R", "T", "N", "V_R", "V_T", "V_N"];
-=======
->>>>>>> e12bb3a6b89fc140530fa18d13ab934e4bcc0074
     for k = 1:6
         subplot(3, 2, index(k));
         semilogy(time, sqrt(cov2_RTN(k, :)), ...
             'LineWidth', lw, 'Color', 'g')
         xlabel(xlb)
         ylabel('[-]')
-<<<<<<< HEAD
         title(ttitle(k));
     end
     sgtitle('Covariance evolution over time. RTN Moon centered frame')
-=======
-    end
->>>>>>> e12bb3a6b89fc140530fa18d13ab934e4bcc0074
 
 
     % plot 1 sigma state error due to consider parameters

@@ -296,10 +296,8 @@ function [X, P, CRB_pos, CRB_vel] = compute_CRB_Unscented(X0, P0, planetParams, 
         Xhat_i = xhat_i_prev.*0;
         for i = 1:2*Ns
             STM0 = reshape(eye(Ns, Ns), [Ns*Ns, 1]);
-% %             [~, state] = ode113(@(t, x) EOM_3BP(t, x, planetParams, ...
-% %             poleParams, Cmat, Smat, system), time, [xhat_i_prev(:, i); STM0], options);
-            [~, state] = ode113(@(t, x) EOM_navigation(t, x, planetParams, ...
-            poleParams, Cmat, Smat, "CR3BP", 0, {0, 0}, 0), time, [xhat_i_prev(:, i); STM0], options);
+            [~, state] = ode113(@(t, x) EOM_3BP(t, x, planetParams, ...
+            poleParams, Cmat, Smat, system), time, [xhat_i_prev(:, i); STM0], options);
             Xhat_i(:, i) = state(end, 1:Ns)';
         end
     
@@ -320,7 +318,7 @@ function [X, P, CRB_pos, CRB_vel] = compute_CRB_Unscented(X0, P0, planetParams, 
         Yhat_i = zeros(Nm, 2*Ns);
         for i = 1:2*Ns
          [Yhat_i(:, i), ~, ~] = compute_measurements(t(k), Xhat_i(:, i)', planetParams, ...
-         poleParams, Cmat, Smat, 0, 0, 0, [], t(k), posE(:, k), posM(:, k), posE(:, k), system);
+         poleParams, Cmat, Smat, 0, 0, 0, [], t(k), posE(:, k), posM(:, k), posE(:, k), system); % WARNING. Check input params
         end
         Yhat = 1/(2*Ns).* sum(Yhat_i, 2);
     

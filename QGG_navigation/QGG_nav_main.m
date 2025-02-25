@@ -1,5 +1,5 @@
-% % clear;
-% % clc;
+clear;
+clc;
 close all;
 format short;
 
@@ -21,15 +21,15 @@ cspice_furnsh('/Users/sergiocollibars/Documents/MATLAB/kernels/kernels.tm')
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % Initial configuration
-system = "EPHEM";    % options: CR3BP, FCR3BP, EPHEM
-solver = "EKF";      % options: CKF, EKF, batch
-plotResults   = 0;   % options: 1 or 0
+system = "CR3BP";    % options: CR3BP, FCR3BP, EPHEM
+solver = "UKF";      % options: CKF, EKF, batch
+plotResults   = 1;   % options: 1 or 0
 consider_cov  = 0;   % options: 1 or 0
-process_noise = "SNC"; % options: SNC, DMC, 0
-augmented_st  = 1;   % options: 1 or 0
+process_noise = "0"; % options: SNC, DMC, 0
+augmented_st  = 0;   % options: 1 or 0
 
 % time parameters
-tmin = 4*1.4968;
+tmin = 0*1.4968;
 tmax = 3*1.4968 + tmin;                                 % [rad] 
 frec = 1/30;                                            % measurement freq. [Hz]
 
@@ -46,9 +46,8 @@ for h = 1:n/N
     DOM(h) = TIME(val);
 end
 
-
-% % X0 = load_initCond(system, planetParams, TIME);
-X0 = load('initState_truth_SRP.mat').s;
+X0_true = load_initCond(system, planetParams, TIME);
+% % X0_true = load('initState_truth_SRP.mat').s;
 STM0 = reshape(eye(6,6), [36, 1]);
 if(augmented_st), X0_true = [X0_true; planetParams(10)]; STM0 = reshape(eye(7,7), [49, 1]);  end
 
@@ -66,8 +65,8 @@ poleParams, Cmat_true, Smat_true, system, 0, {0,0}, augmented_st), TIME, ...
 [posE, posM, posS] = compute_posPrimaries(TIME, planetParams, system);
 
 % compute gradiometer measurements
-% % noiseSeed = load("noiseSeed_f10_T5.mat"). noise;
-noiseSeed = [];
+noiseSeed = load("noiseSeed_f10_T5.mat"). noise;
+% % noiseSeed = [];
 [T, ~, ~] = compute_measurements(TIME, state, planetParams, poleParams, ...
     Cmat_true, Smat_true, 1, 0, augmented_st, noiseSeed, DOM, posE, posM, posS, system);
 
@@ -75,10 +74,10 @@ noiseSeed = [];
 if(plotResults), plot_measurements(TIME, T, planetParams, augmented_st, system); end
 
 % initialize filter. Add error to true state
-[~, ~, R0, Q0, Bw, c, Pc, Pxc, Cmat_estim, Smat_estim] = ...
+[Xnot, P0, R0, Q0, Bw, c, Pc, Pxc, Cmat_estim, Smat_estim] = ...
     initialize_filter(planetParams, Cmat_true, Smat_true, ...
     consider_cov, process_noise, augmented_st);
-% % X0 = X0_true + Xnot;
+X0 = X0_true + Xnot;
 
 if(process_noise == "DMC")
     Xnot  = zeros(9, 1); X0 = [X0; zeros(3, 1)]; Ns = 9;
@@ -89,8 +88,8 @@ else
     Xnot  = zeros(6, 1); Ns = 6; 
 end
 
-X0 = load('initState_SRP.mat').s;
-P0 = reshape(load('initCov_SRP.mat', 'p').p, [Ns,Ns]);
+% % X0 = load('initState_SRP.mat').s;
+% % P0 = reshape(load('initCov_SRP.mat', 'p').p, [Ns,Ns]);
 
 % compute initial error
 scale = [planetParams(2)*ones(3, 1)/1E3; ...
