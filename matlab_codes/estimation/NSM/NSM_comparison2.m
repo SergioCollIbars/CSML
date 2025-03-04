@@ -101,7 +101,7 @@ noise = normrnd(repmat(means', 1, num_realizations), ...
 options = odeset('RelTol',1e-11,'AbsTol',1e-11);
 STM0 = reshape(eye(6,6), [36, 1]);
 [~, state_t] = ode113(@(t, x) EoM(t, x, Cnm, Snm, n_max, GM, Re, normalized, ...
-    W0, W, RA, DEC), t, [r0;v0;STM0], options);
+    W0, W, RA, DEC, 0), t, [r0;v0;STM0], options);
 rn = state_t(:, 1:3)' + ones(3, Nt).*Ar;                                % constant position error
 % % rn = state_t(:, 1:3)' + [sin(1E-4.*t);sin(1E-3.*t);sin(5E-4.*t)].*Ar;   % sinusoidal position error
 % % rn = state_t(:, 1:3)' + Ar_gaussian;                                        % random Gaussian error                          

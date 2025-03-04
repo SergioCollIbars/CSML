@@ -29,7 +29,7 @@ Rm_ND = Rm / D;                     % [-]
     load_universe("CR3BP", [0, pi], 1);
 
 % load initial condition and trajectory
-data = load('EM_Lyap_L1_Family.mat');
+data = load('EM_NHalo_L3_Family.mat');
 % % data = load('EM_DRO_Family.mat');
 % % data = load('EM_LoPO_Family.mat');
 % % data = load('EM_31_Res_Family.mat');
@@ -76,7 +76,7 @@ for j = 1:length(index)
     
     % Simulation parameters
     tmax = 1*P + tmin;         % [-]
-    frec = 1/60;             % [Hz]
+    frec = 1/30;             % [Hz]
     TIME = linspace(tmin, tmax, round(tmax*frec/n));
     meas = "QGG";            % QGG / DSN
     

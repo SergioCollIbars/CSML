@@ -28,13 +28,13 @@ RA = deg2rad(86.6388);    % Right Ascension     [rad]
 DEC = deg2rad(-65.1086);  % Declination         [rad]
 
 % % % Earth parameters
-% % savedData = 0;                % use saved data. 1 = yes / 0 = no
+% % savedData = 1;                % use saved data. 1 = yes / 0 = no
 % % path = "HARMCOEFS_EARTH_1.txt";
 % % [Cnm, Snm, Re] = readCoeff(path);
 % % path = "SIGMACOEFS_EARTH_1.txt";
 % % [sigma_Cnm, sigma_Snm, ~] = readCoeff(path);
 % % GM = 3.986004418E14;
-% % n_max  = 85;
+% % n_max  = 40;
 % % normalized = 1;
 % % W = 2 * pi / (24*3600);     % Rotation ang. vel   [rad/s]
 % % W0 = 0;                     % Initial asteroid longitude
@@ -49,7 +49,7 @@ asterParams = [GM, Re, n_max, normalized];
 [X] = mat2list(Cnm, Snm, Nc, Ns);
 
 % Initial conditions
-r      = 0.6E3;         % [m]
+r      = 1E3;         % [m]
 % % r      = Re + 300E3;    % [m] 
 phi    = pi/2;
 lambda = 0;
@@ -63,13 +63,13 @@ v0 = R * [0;0;sqrt(GM/r)];  % [ACI]
 % time vector
 n = sqrt(GM / r^3);    % Mean motion         [rad/s]
 T = (2 * pi / n);
-rev = 50;
+rev = 3;
 f = 1/60;
 t = linspace(0, rev*T, rev*T * f);
 Nt = length(t);
 
 % measurement uncertianty
-sigma = 1E-12;                          % [1/s^2]
+sigma = 1E-10;                          % [1/s^2]
 noise0 = zeros(9, Nt);
 
 % Integrate trajectory
@@ -80,7 +80,7 @@ else
     options = odeset('RelTol',1e-11,'AbsTol',1e-11);
     PHI0 = reshape(eye(6,6), [36, 1]);
     [~, state_t] = ode113(@(t, x) EoM(t, x, Cnm, Snm, n_max, GM, Re, normalized, ...
-        W0, W, RA, DEC), t, [r0;v0;PHI0], options);
+        W0, W, RA, DEC, 0), t, [r0;v0;PHI0], options);
     rn = state_t(:, 1:3)';
     vn = state_t(:, 4:6)';
 end
@@ -113,7 +113,7 @@ ylabel('[m]')
 title('S/C orbital radius')
 
 % perturb nominal coefficient
-sigma_n = 1E-2 * ones(1, n_max);
+sigma_n = 1E2 * ones(1, n_max);
 [Xp, Pp] = perturb_coeff(sigma_n, n_max, X);
 [Cp, Sp] = list2mat(n_max, Nc, Ns, Xp);
 P0 = Pp(2:end, 2:end); 
@@ -124,11 +124,15 @@ S = sqrt(Pp);
 % % P0 = diag((S(2:end)).^2);
 
 % Consider covariance
-Ar = 1E-3;
-Pxc = zeros(Ncs-1, 3); Pc = zeros(3, 3);
+Ar = 1E-1;  % [m]
+Av = 1E-1;  % [m/s]
+Pxc = zeros(Ncs-1, 6); Pc = zeros(6, 6);
 Pxc_NSM = zeros(Ncs - 1, 6); Pc_NSM = zeros(6, 6);
-for j = 1:length(Pc)
+for j = 1:3
     Pc(j, j) = (Ar(1))^2;
+end
+for j = 4:6
+    Pc(j, j) = (Av(1))^2;
 end
 for j = 1:length(Pc_NSM)
     Pc_NSM(j, j) = Ar(1)^4;
@@ -156,8 +160,11 @@ for j = 1:Nt
         Hx_ACI(6, 2:end)];
 
     % compute Consider Params partials for LS and NSM
+    PHI = reshape(state_t(j, 7:end), [6, 6]);
+    PHI = eye(6,6);
     [Hc] = compute_posPartials(n_max, normalized, Cnm, Snm, Re, GM, rn_ACI, ACAF_ACI);
-    hc = [Hc(1, :);Hc(2,:);Hc(3,:);Hc(5, :);Hc(6, :)];
+    hc_pos = [Hc(1, :);Hc(2,:);Hc(3,:);Hc(5, :);Hc(6, :)];
+    hc = [hc_pos, zeros(5, 3)] * PHI;
     hap = compute_posPartials_2ndOrder(GM, rn_ACI(1), rn_ACI(2), rn_ACI(3));
 
     Ax  = Ax  + (hx' * inv(R0) * hx);
@@ -197,16 +204,23 @@ s0_NSM = sqrt(diag(P0_NSM));
 C = diag(Px_NSM - Px);
 A = diag(Sxc_NSM * Sxc_NSM');
 B = diag(Sxc * Sxc');
-sigma = A.*0;
+sigmaTh = A.*0;
 for j = 1:length(A)
     c = C(j);
     b = B(j);
     a = A(j);
+% %     disp('a = ' + string(a) + ' b = ' + string(b))
     y = (- b + sqrt(b^2 - 4 * a * c)) / (-2*a);
     if(y < 0), y = (- b - sqrt(b^2 - 4 * a * c)) / (-2*a); end
-    sigma(j) = sqrt(y);
+    
+% %     % option including 'a' and 'b'
+% %     sigma(j) = sqrt(y);
+   
+    % approximation including only 'b'
+    sigmaTh(j) = (1/sigma)*sqrt(c/b) * 1/1E-9; % [m / E]
+% %     disp('a, ' + string(sqrt(y)) + ' b, ' + string(sqrt(c/b)))
 end
-[C_Perr, S_Perr] = list2mat(n_max, Nc, Ns, [0; sigma]);
+[C_Perr, S_Perr] = list2mat(n_max, Nc, Ns, [0; sigmaTh]);
 C_Perr(1, :) = C_Perr(1, :).*NaN; C_Perr(2, :) = C_Perr(2, :).*NaN;
 S_Perr(:, 1) = S_Perr(:, 1).*NaN; S_Perr(1:2, :) = S_Perr(1:2, :).*NaN;
 
@@ -214,45 +228,70 @@ S_Perr(:, 1) = S_Perr(:, 1).*NaN; S_Perr(1:2, :) = S_Perr(1:2, :).*NaN;
 [zonal, sectoral] = get_ZonalSectoral(n_max, C_Perr, S_Perr);
 
 figure()
-plot(2:n_max, zonal, 'Marker','square', 'LineStyle','--', "MarkerFaceColor", 'auto', ...
+semilogy(2:n_max, zonal, 'Marker','square', 'LineStyle','--', "MarkerFaceColor", 'auto', ...
     'MarkerEdgeColor','auto', 'MarkerSize', 10, 'LineWidth', 2, 'Color', 'r')
 grid on;
 xticks(2:n_max);
 xticklabels(string(2:n_max));
 xlabel('Degree')
-ylabel('[m]')
+ylabel('[m / Eotvos]')
 title('Zonal coefficients')
 
 figure()
 subplot(1, 2, 1)
-plot(2:n_max, sectoral(1, :), 'Marker','square', 'LineStyle','--', "MarkerFaceColor", 'auto', ...
+semilogy(2:n_max, sectoral(1, :), 'Marker','square', 'LineStyle','--', "MarkerFaceColor", 'auto', ...
     'MarkerEdgeColor','auto', 'MarkerSize', 10, 'LineWidth', 2, 'Color', 'r')
 grid on;
 xticks(2:n_max);
 xticklabels(string(2:n_max));
 xlabel('Degree')
-ylabel('[m]')
+ylabel('[m / Eotvos]')
 title('C_{nm} sectoral coefficients')
 
 subplot(1, 2, 2)
-plot(2:n_max, sectoral(2, :), 'Marker','square', 'LineStyle','--', "MarkerFaceColor", 'auto', ...
+semilogy(2:n_max, sectoral(2, :), 'Marker','square', 'LineStyle','--', "MarkerFaceColor", 'auto', ...
     'MarkerEdgeColor','auto', 'MarkerSize', 10, 'LineWidth', 2, 'Color', 'r')
 grid on;
 xticks(2:n_max);
 xticklabels(string(2:n_max));
 xlabel('Degree')
-ylabel('[m]')
+ylabel('[m / Eotvos]')
 title('S_{nm} sectoral coefficients')
+
+% % % Ensure 0 values appear white
+% % C_Perr(C_Perr == 0) = NaN;
+% % 
+% % C_Perr(C_Perr < 1e-3) = 1e-3; % Set anything below 1 mm to 1 mm
+% % C_Perr(C_Perr > 10) = 10; % Set anything above 10 m to 10 m
 
 figure;
 subplot(1, 2, 1)
 imagesc(C_Perr);
-title('C coefficients')
-colorbar
+set(gca, 'ColorScale', 'log'); % Logarithmic scale
+colormap(parula); % Use a smooth colormap
+colorbar;
+xticks(1:n_max+1)
+xticklabels(0:n_max)
+yticks(1:n_max+1)
+yticklabels(0:n_max)
+c = colorbar;
+c.Ticks = [1e-3, 1e-2, 1e-1, 1, 10, 100]; % 1mm, 1cm, 10cm, 1m, 10m
+c.TickLabels = {'1 mm', '1 cm', '10 cm', '1 m', '10 m', '100m'};
+title('C_{nm} coefficients')
+
 subplot(1, 2, 2)
 imagesc(S_Perr);
-colorbar
-title('S coefficients')
+set(gca, 'ColorScale', 'log'); % Logarithmic scale
+colormap("turbo"); % Use a smooth colormap
+colorbar;
+xticks(1:n_max+1)
+xticklabels(0:n_max)
+yticks(1:n_max+1)
+yticklabels(0:n_max)
+c = colorbar;
+c.Ticks = [1e-3, 1e-2, 1e-1, 1, 10]; % 1mm, 1cm, 10cm, 1m, 10m
+c.TickLabels = {'1 mm', '1 cm', '10 cm', '1 m', '10 m'};
+title('S_{nm} coefficients')
 
 % compute RMS value
 sigma_RMS_LS  = computeRMS_coeffErr(n_max, Nc, Ns, [1;s0], Cnm.*0, Snm.*0); 

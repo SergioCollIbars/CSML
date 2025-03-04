@@ -17,12 +17,24 @@ path = "HARMCOEFS_BENNU_OSIRIS_1.txt";
 name = "BENNU";
 [Cnm, Snm, Re] = readCoeff(path);
 GM = 5.2;
-n_max  = 6;
+n_max  = 3;
 normalized = 1;
 W = 4.06130329511851E-4;  % Rotation ang. vel   [rad/s]
 W0 = 0;                   % Initial asteroid longitude
 RA = deg2rad(86.6388);    % Right Ascension     [rad]
 DEC = deg2rad(-65.1086);  % Declination         [rad]
+
+% % path = "HARMCOEFS_EARTH_1.txt";
+% % [Cnm, Snm, Re] = readCoeff(path);
+% % path = "SIGMACOEFS_EARTH_1.txt";
+% % [sigma_Cnm, sigma_Snm, ~] = readCoeff(path);
+% % GM = 3.986004418E14;
+% % n_max  = 2;
+% % normalized = 1;
+% % W = 2 * pi / (24*3600);     % Rotation ang. vel   [rad/s]
+% % W0 = 0;                     % Initial asteroid longitude
+% % RA = -pi/2;                 % Right Ascension     [rad]
+% % DEC = pi/2;                 % Declination         [rad]
 
 poleParams = [W, W0, RA, DEC];
 asterParams = [GM, Re, n_max, normalized];
@@ -32,6 +44,7 @@ asterParams = [GM, Re, n_max, normalized];
 
 % Initial conditions
 r      = 1E3;
+% % r      = Re + 300E3;    % [m] 
 phi    = pi/2;
 lambda = 0;
 theta  = pi/2 - phi;% Orbit colatitude [m]
@@ -42,14 +55,14 @@ r0 = R * [r;0;0];           % [ACI]
 v0 = R * [0;0;sqrt(GM/r)];  % [ACI]
 
 % position error
-Ar = 2E-3.*[1;1;1];            % [ACI]
-Av = 0.*[1;1;1];           % [ACI]
+Ar = 1.*[1;1;1];            % [ACI]
+Av = 0.*[1;1;1];               % [ACI]
 
 % time vector
 n = sqrt(GM / r^3);    % Mean motion         [rad/s]
 T = (2 * pi / n);
-rev = 5;
-f = 1/30;
+rev = 1/20;
+f = 1/10;
 t = linspace(0, rev*T, rev*T * f);
 Nt = length(t);
 
@@ -59,7 +72,7 @@ sigma1  = 0.01 * 1E-9 * sqrt(f); % Vxx, Vyy
 sigma2  = 0.6  * 1E-9 * sqrt(f); % Vyz, Vyx
 sigma3  = 0.02 * 1E-9 * sqrt(f); % Vxz, Vzz
 
-sigma1 = 1E-13;
+sigma1 = 1E-12;
 sigma2 = sigma1; sigma3 = sigma1;
 
 means    = zeros(1, 9);
@@ -72,18 +85,19 @@ noise = normrnd(repmat(means', 1, num_realizations), ...
 
 % perturb nominal coefficient
 [X] = mat2list(Cnm, Snm, Nc, Ns);
-sigma_n = [1E-6;1E-6;1E-6;1E-6;1E-6];
+sigma_n = [1E1;1E1;1E1;1E1;1E1];
+% % [S] = mat2list(sigma_Cnm, sigma_Snm, Nc, Ns);
+% % SigmaMat = list2mat(n_max, Nc, Ns, S);
+% % sigma_n = 1E1.*SigmaMat(3:end, 1);
 [Xp, ~] = perturb_coeff(sigma_n, n_max, X);
 [Cp, Sp] = list2mat(n_max, Nc, Ns, Xp);
 
 % Integrate trajectory
 options = odeset('RelTol',1e-13,'AbsTol',1e-13);
 [~, state_t] = ode113(@(t, x) EoM(t, x, Cnm, Snm, n_max, GM, Re, normalized, ...
-    W0, W, RA, DEC), t, [r0;v0;reshape(eye(6,6), [36, 1])], options);
+    W0, W, RA, DEC, 0), t, [r0;v0;reshape(eye(6,6), [36, 1])], options);
 [~, state_n] = ode113(@(t, x) EoM(t, x, Cp, Sp, n_max, GM, Re, normalized, ...
-    W0, W, RA, DEC), t, [r0+Ar;v0+Av;reshape(eye(6,6), [36, 1])], options);
-rn = state_n(:, 1:3);
-vn = state_n(:, 4:6);
+    W0, W, RA, DEC, 0), t, [r0+Ar;v0+Av;reshape(eye(6,6), [36, 1])], options);
 
 figure()
 plot(t, (state_t(:, 1:3)-state_n(:, 1:3))')
@@ -96,23 +110,93 @@ title('Position error in time');
 % Gravity estimation weight meas. Initial uncertainty
 R_N = diag([sigma1, sigma2, sigma3, sigma1, sigma2].^2);
 
-sigma_n0 = [1E-2;1E-2;1E-2;1E-2;1E-2];      % apriori uncertanty gra. field
-sigmaPos = [1;1;1;1E-2;1E-2;1E-2];          % apriori uncertainty s/c state
+sigma_n0 = 1E1.*sigma_n;                                                         % apriori uncertanty gra. field
+sigmaPos = [1E1;1E1;1E1;1E-1;1E-1;1E-1];                                                % apriori uncertainty s/c state
 [~, Pp] = perturb_coeff(sigma_n0, n_max, X);
 P0 = Pp(2:end, 2:end); 
 
 % define output values & estimation parameters
-iterMax = 7;
-count   = 0;
 xnot_L = zeros(Ncs-1 + 6, 1); xnot_N = zeros(Ncs-1, 1);
 Cp_L = Cp; Cp_N = Cp; Cp_E = Cp;
 Sp_L = Sp; Sp_N = Sp; Sp_E = Sp;
 Xp_N = Xp;
+
+% solve for LS
+disp('Solve LS')
+Nx  = Nc + Ns + 5; % not acounting for GM
+X0 = [r0+Ar;v0+Av;reshape(eye(Nx,Nx), [Nx*Nx, 1])];
+[~, state_n] = ode113(@(t, x) EoM(t, x, Cp_L, Sp_L, n_max, GM, Re, normalized, ...
+    W0, W, RA, DEC, 1), t, X0, options);
+STM = state_n(:, 7:end);
+Xp_L = [Xp;state_n(1, 1:6)']; Xp_E = Xp_L;
+count = 0;
+iterMax = 10;
+err = 0;
+obs1 = ones(1, Nt) * NaN;
+while (count < iterMax) && (err < 1E7)
+    Ax_L = inv(blkdiag(P0, diag(sigmaPos.^2)));
+    Nx_L = -inv(blkdiag(P0, diag(sigmaPos.^2))) * xnot_L;
+    for j = 1:Nt        
+        % STM at current time
+        PHIt = reshape(STM(j, :), [Nx,Nx]);
+
+        % ACAF to ACI rotation matrix
+        Wt = W0 + W * t(j);
+        ACAF_ACI =rotationMatrix(pi/2 + RA, pi/2 - DEC, Wt, [3, 1, 3]);
+
+        % LS method
+        [Hpos] = compute_posPartials(n_max, normalized, Cp_L, Sp_L, Re, GM, state_n(j, 1:3)', ACAF_ACI);
+        [Yc, HC_ACI, ~] = gradiometer_meas(t(j) ,asterParams, poleParams, state_n(j, 1:6), ...
+                noise0, Cp_L, Sp_L);
+        [ax, nx] = LS_method(Y(:, j)-Yc, HC_ACI, Hpos, R_N, PHIt, noise(:, j));
+
+        Ax_L  = Ax_L + ax;
+        Nx_L  = Nx_L + nx;
+    end
+
+    % solve LS
+    XNOT_L = Ax_L\Nx_L;
+
+    Xp_L(2:end) = Xp_L(2:end) + XNOT_L;
+
+    [Cp_L, Sp_L] = list2mat(n_max, Nc, Ns, Xp_L(1:Ncs));
+
+    % update corrections
+    xnot_L = xnot_L + XNOT_L;
+
+    % compute new state
+    Nstate = Ncs + 6;
+    r0 = Xp_L(Nstate-5:Nstate-3);
+    v0 = Xp_L(Nstate-2:Nstate); 
+    [~, state_n] = ode113(@(t, x) EoM(t, x, Cp_L, Sp_L, n_max, GM, Re, normalized, ...
+    W0, W, RA, DEC, 1), t, [r0;v0;reshape(eye(Nx,Nx), [Nx*Nx, 1])], options);
+    STM = state_n(:, 7:end);
+
+    % show error
+    err = vecnorm(XNOT_L);
+    disp('LS update = '    + string(err));
+
+    % update counter
+    count = count + 1;
+end
+
+% plot correlation SH with position
+plot_correlation(inv(Ax_L), t, STM, Nx);
+figure()
+plot(t, (state_t(:, 1:3)-state_n(:, 1:3))')
+
 % solve for NSM
+iterMax = 7;
+count   = 0;
 disp('Solve NSM')
+rn = state_n(:, 1:3);
+vn = state_n(:, 4:6);
+P = inv(Ax_L);
+P0_NSM = P(1:Ncs-1, 1:Ncs-1);
+Cp_N = Cp_L; Sp_N = Sp_L; Xp_N = Xp_L(1:Ncs);
 while count < iterMax
-    Ax_N = inv(P0);
-    Nx_N = -inv(P0) * xnot_N;
+    Ax_N = inv(P0_NSM);
+    Nx_N = -inv(P0_NSM) * xnot_N;
     for j = 1:Nt
         % Position and velocity vector (used in NSM)
         rn_ACI = rn(j, :)';
@@ -149,63 +233,6 @@ while count < iterMax
     count = count + 1;
 end
 
-
-% solve for LS
-disp('Solve LS')
-[~, state_n] = ode113(@(t, x) EoM(t, x, Cp_L, Sp_L, n_max, GM, Re, normalized, ...
-    W0, W, RA, DEC), t, [r0+Ar;v0+Av;reshape(eye(6,6), [36, 1])], options);
-STM = state_n(:, 7:end);
-Xp_L = [Xp;state_n(1, 1:6)']; Xp_E = Xp_L;
-count = 0;
-iterMax = 20;
-err = 0;
-obs1 = ones(1, Nt) * NaN;
-while (count < iterMax) && (err < 5)
-    Ax_L = inv(blkdiag(P0, diag(sigmaPos.^2)));
-    Nx_L = -inv(blkdiag(P0, diag(sigmaPos.^2))) * xnot_L;
-    for j = 1:Nt        
-        % STM at current time
-        PHIt = reshape(STM(j, :), [6,6]);
-
-        % ACAF to ACI rotation matrix
-        Wt = W0 + W * t(j);
-        ACAF_ACI =rotationMatrix(pi/2 + RA, pi/2 - DEC, Wt, [3, 1, 3]);
-
-        % LS method
-        [Hpos] = compute_posPartials(n_max, normalized, Cp_L, Sp_L, Re, GM, state_n(j, 1:3)', ACAF_ACI);
-        [Yc, HC_ACI, ~] = gradiometer_meas(t(j) ,asterParams, poleParams, state_n(j, 1:6), ...
-                noise0, Cp_L, Sp_L);
-        [ax, nx] = LS_method(Y(:, j)-Yc, HC_ACI, Hpos, R_N, PHIt, noise(:, j));
-
-        Ax_L  = Ax_L + ax;
-        Nx_L  = Nx_L + nx;
-    end
-
-    % solve LS
-    XNOT_L = Ax_L\Nx_L;
-
-    Xp_L(2:end) = Xp_L(2:end) + XNOT_L;
-
-    [Cp_L, Sp_L] = list2mat(n_max, Nc, Ns, Xp_L(1:46));
-
-    % update corrections
-    xnot_L = xnot_L + XNOT_L;
-
-    % compute new state
-    r0 = Xp_L(47:49);
-    v0 = Xp_L(50:52); 
-    [~, state_n] = ode113(@(t, x) EoM(t, x, Cp_L, Sp_L, n_max, GM, Re, normalized, ...
-    W0, W, RA, DEC), t, [r0;v0;reshape(eye(6,6), [36, 1])], options);
-    STM = state_n(:, 7:end);
-
-    % show error
-    err = vecnorm(XNOT_L);
-    disp('LS update = '    + string(err));
-
-    % update counter
-    count = count + 1;
-end
-
 % solve for EKF
 disp('Solve EKF')
 P = blkdiag(P0, diag(sigmaPos.^2));
@@ -216,14 +243,14 @@ for j = 2:Nt
 
     % integrate trajectory
      [~, state_n] = ode113(@(t, x) EoM(t, x, Cp_E, Sp_E, n_max, GM, Re, normalized, ...
-    W0, W, RA, DEC), t_span, [s;reshape(eye(6,6), [36, 1])], options);
+    W0, W, RA, DEC, 1), t_span, [s;reshape(eye(Nx,Nx), [Nx*Nx, 1])], options);
     STM = state_n(:, 7:end);
 
     % current states 
     rn = state_n(end, 1:3);
     vn = state_n(end, 4:6);
 
-    PHIt = reshape(STM(end, :), [6,6]);
+    PHIt = reshape(STM(end, :), [Nx,Nx]);
 
     % ACAF to ACI rotation matrix
     Wt = W0 + W * t(j);
@@ -254,9 +281,9 @@ SH_L = Xp_L(2:46);
 SH_N = Xp_N(2:end);
 SH_E = Xp_E(2:46);
 
-% plot trajectory
-tt = 'Orbit radius along trajectory. T = ' + string(T./3600) + ' h';
-plot_orbit(state_t, name, t./T ,Re, tt)
+% % % plot trajectory
+% % tt = 'Orbit radius along trajectory. T = ' + string(T./3600) + ' h';
+% % plot_orbit(state_t, name, t./T ,Re, tt)
 
 % plot SH estimation
 tt1 = 'Estimation value. Cnm coefficients';
@@ -288,19 +315,14 @@ function [X_hat, P] = EKF_method(Y, Hc, Hp, R0, PHI, noise, P)
     % select measurements
     dY = [dy(1);dy(4);dy(7);dy(5);dy(8)];
     
-    % STM accounting for gravity field
-    Nc  = length(Hc(1, 2:end));
-    PHIt = [eye(Nc, Nc), zeros(Nc, 6); ...
-        zeros(6, Nc), PHI];
-    
     % compute measurement partials
     hp  = [Hp(1, :);Hp(2,:);Hp(3,:);Hp(5, :);Hp(6, :)];
     hc  = [Hc(1, 2:end); Hc(4, 2:end); Hc(7, 2:end);Hc(5, 2:end);...
         Hc(8, 2:end)];
-    ht  = [hc, hp, zeros(5, 3)] * PHIt;
+    ht  = [hc, hp, zeros(5, 3)] * PHI;
     
     % information and normal matrices
-    P_bar = PHIt * P * PHIt';
+    P_bar = PHI * P * PHI';
     K = P_bar * ht'/(ht * P_bar * ht' + R0);
     Nx = length(ht(1, :));
 
@@ -325,8 +347,7 @@ function [ax, nx] = LS_method(Y, Hc, Hp, R, PHI, noise)
     hp  = [Hp(1, :);Hp(2,:);Hp(3,:);Hp(5, :);Hp(6, :)];
     hc  = [Hc(1, 2:end); Hc(4, 2:end); Hc(7, 2:end);Hc(5, 2:end);...
         Hc(8, 2:end)];
-    ht  = [hc, hp, zeros(5, 3)] * [eye(Nc, Nc), zeros(Nc, 6); ...
-        zeros(6, Nc), PHI];
+    ht  = [hc, hp, zeros(5, 3)] * PHI;
     
     % information and normal matrices
     ax = ht' * inv(R) * ht;
@@ -460,4 +481,23 @@ function [] = plot_gravField(X, SH_R, SH_N, SH_E, n_max, tt1, tt2, ls, mk)
     xticklabels(str_S);
     grid on;
     legend('truth','LS', 'NSM', 'EKF')
+end
+
+function [] = plot_correlation(P0, t, STM, Nx)
+    C = ones(3, length(t)) * NaN;
+
+    n = 4;  % coefficient index in P matrix
+    for j = 1:length(t)
+        PHI = reshape(STM(j, :), [Nx,Nx]);
+        Pk = PHI * P0 * PHI';
+        p = Pk(46:48, n);
+        std_SH = sqrt(Pk(n, n));
+        std_X  = sqrt(Pk(46, 46)); 
+        std_Y  = sqrt(Pk(47, 47));
+        std_Z  = sqrt(Pk(48, 48));
+        C(:, j) = p./([std_SH*std_X; std_SH*std_Y; std_SH*std_Z]);
+    end
+
+    figure()
+    plot(t, C, 'LineWidth', 2)
 end
