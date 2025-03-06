@@ -53,7 +53,7 @@ r0 = R * [r;0;0];           % [ACI]
 v0 = R * [0;0;sqrt(GM/r)];  % [ACI]
 
 % position error
-Ar = 0.5*[1;1;1];            % [ACI]
+Ar = 0.1*[1;1;1];            % [ACI]
 
 % attitude error
 At = 5E-5.*[1;1;1];         % [yaw, pitch, roll]
@@ -86,7 +86,7 @@ noise = normrnd(repmat(means', 1, num_realizations), ...
 options = odeset('RelTol',1e-13,'AbsTol',1e-13);
 PHI0 = reshape(eye(6,6), [36, 1]);
 [~, state_t] = ode113(@(t, x) EoM(t, x, Cnm, Snm, n_max, GM, Re, normalized, ...
-    W0, W, RA, DEC), t, [r0;v0;PHI0], options);
+    W0, W, RA, DEC, 0), t, [r0;v0;PHI0], options);
 rn = state_t(:, 1:3)' + ones(3, Nt).*Ar;
 vn = state_t(:, 4:6)';
 
@@ -164,6 +164,7 @@ while count < iterMax
     % show error
     disp('Null space for position update = '  + string(vecnorm(XNOT_NP)));
     disp('Null space update = ' + string(vecnorm(XNOT_N)));
+    disp('--------------------------------------------------------'); 
     
     % update counter
     count = count + 1;
@@ -195,7 +196,7 @@ plot_gravField(X, SH_NP, SH_N, n_max, tt1, tt2, ls, mk);
 tt1 = 'Uncertainty SH. Cnm coefficients';
 tt2 = 'Uncertainty SH. Snm coefficients';
 ls  = '-'; mk = 'square'; 
-plot_gravField(X, sigma_NP, sigma_N, n_max, tt1, tt2, ls, mk);
+plot_gravField(X, 3.*sigma_NP, 3.*sigma_N, n_max, tt1, tt2, ls, mk);
 
 % ploting difference
 tt1 = 'Estimation error. Cnm coefficients';

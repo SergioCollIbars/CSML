@@ -50,8 +50,8 @@ asterParams = [GM, Re, n_max, normalized];
 
 % Initial conditions
 % % r      = 2E3;         % [m]
-r      = Re + 300E3;    % [m] 
-phi    = pi/2;
+r      = Re + 250E3;    % [m] 
+phi    = rad2deg(96.7);
 lambda = 0;
 theta  = pi/2 - phi;% Orbit colatitude [m]
 R = [sin(theta)*cos(lambda), cos(theta)*cos(lambda), -sin(lambda);...
@@ -63,8 +63,8 @@ v0 = R * [0;0;sqrt(GM/r)];  % [ACI]
 % time vector
 n = sqrt(GM / r^3);    % Mean motion         [rad/s]
 T = (2 * pi / n);
-rev = 100;
-f = 1/10;
+rev = 150;
+f = 1/30;
 t = linspace(0, rev*T, rev*T * f);
 Nt = length(t);
 
@@ -81,8 +81,8 @@ else
 % %     Nx = Ncs + 5;
     Nx = 6;
     PHI0 = reshape(eye(Nx,Nx), [Nx*Nx, 1]);
-    [~, state_t] = ode113(@(t, x) EoM(t, x, Cnm, Snm, 2, GM, Re, normalized, ...
-        W0, W, RA, DEC, 0), t, [r0;v0;PHI0], options); % WARNING. DYNAMICS with n = 2
+    [~, state_t] = ode113(@(t, x) EoM(t, x, Cnm, Snm, 4, GM, Re, normalized, ...
+        W0, W, RA, DEC, 0), t, [r0;v0;PHI0], options); % WARNING. DYNAMICS with n = 4
     rn = state_t(:, 1:3)';
     vn = state_t(:, 4:6)';
 end
@@ -109,7 +109,7 @@ grid on;
 hold on;
 
 figure()
-plot(t./86400, vecnorm(state_t(:, 1:3)'), 'LineWidth', 2)
+plot(t./86400, (vecnorm(state_t(:, 1:3)') - Re)./1E3, 'LineWidth', 2)
 xlabel('Time [days]')
 ylabel('[m]')
 title('S/C orbital radius')
@@ -307,6 +307,24 @@ c.TickLabels = {'1 mm', '1 cm', '10 cm', '1 m', '10 m', '100 m'};
 title('S_{nm} coefficients')
 xlabel('Degree')
 ylabel('Oder')
+
+figure;
+J = ones(121, 121*2) * NaN; B = fliplr(S_Perr);
+J(:, 1:121) = B;
+J(:, 122:end) = C_Perr;
+im = imagesc(J);
+set(gca, 'ColorScale', 'log');
+colormap("turbo");
+colorbar
+yticks(linspace(1, n_max + 1, 7))
+yticklabels(compose('%i', linspace(0, 120, 7)));
+xticks(linspace(1, 2*n_max + 2, 7))
+xticklabels(compose('%i', linspace(-120, 120, 7)));
+c = colorbar;
+c.Ticks = [1e-3, 1e-2, 1e-1, 1, 10, 100]; % 1mm, 1cm, 10cm, 1m, 10m
+c.TickLabels = {'1 mm', '1 cm', '10 cm', '1 m', '10 m', '100m'};
+xlabel('Degree');
+ylabel('Order');
 
 % compute RMS value
 sigma_RMS_LS  = computeRMS_coeffErr(n_max, Nc, Ns, [1;s0], Cnm.*0, Snm.*0); 
