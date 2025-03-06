@@ -17,7 +17,7 @@ path = "HARMCOEFS_BENNU_OSIRIS_1.txt";
 name = "BENNU";
 [Cnm, Snm, Re] = readCoeff(path);
 GM = 5.2;
-n_max  = 3;
+n_max  = 6;
 normalized = 1;
 W = 4.06130329511851E-4;  % Rotation ang. vel   [rad/s]
 W0 = 0;                   % Initial asteroid longitude
@@ -55,14 +55,14 @@ r0 = R * [r;0;0];           % [ACI]
 v0 = R * [0;0;sqrt(GM/r)];  % [ACI]
 
 % position error
-Ar = 1.*[1;1;1];            % [ACI]
-Av = 0.*[1;1;1];               % [ACI]
+Ar = 1E-4.*[1;1;1];            % [ACI]
+Av = 1E-3.*[1;1;1];               % [ACI]
 
 % time vector
 n = sqrt(GM / r^3);    % Mean motion         [rad/s]
 T = (2 * pi / n);
-rev = 1/20;
-f = 1/10;
+rev = 1/1;
+f = 1/30;
 t = linspace(0, rev*T, rev*T * f);
 Nt = length(t);
 
@@ -85,7 +85,7 @@ noise = normrnd(repmat(means', 1, num_realizations), ...
 
 % perturb nominal coefficient
 [X] = mat2list(Cnm, Snm, Nc, Ns);
-sigma_n = [1E1;1E1;1E1;1E1;1E1];
+sigma_n = [1E-2;1E-2;1E-2;1E-2;1E-2];
 % % [S] = mat2list(sigma_Cnm, sigma_Snm, Nc, Ns);
 % % SigmaMat = list2mat(n_max, Nc, Ns, S);
 % % sigma_n = 1E1.*SigmaMat(3:end, 1);
@@ -98,6 +98,8 @@ options = odeset('RelTol',1e-13,'AbsTol',1e-13);
     W0, W, RA, DEC, 0), t, [r0;v0;reshape(eye(6,6), [36, 1])], options);
 [~, state_n] = ode113(@(t, x) EoM(t, x, Cp, Sp, n_max, GM, Re, normalized, ...
     W0, W, RA, DEC, 0), t, [r0+Ar;v0+Av;reshape(eye(6,6), [36, 1])], options);
+rn = state_n(:, 1:3);
+vn = state_n(:, 4:6);
 
 figure()
 plot(t, (state_t(:, 1:3)-state_n(:, 1:3))')
@@ -133,7 +135,7 @@ count = 0;
 iterMax = 10;
 err = 0;
 obs1 = ones(1, Nt) * NaN;
-while (count < iterMax) && (err < 1E7)
+while (count < iterMax) && (err < 1E3)
     Ax_L = inv(blkdiag(P0, diag(sigmaPos.^2)));
     Nx_L = -inv(blkdiag(P0, diag(sigmaPos.^2))) * xnot_L;
     for j = 1:Nt        
@@ -181,22 +183,22 @@ while (count < iterMax) && (err < 1E7)
 end
 
 % plot correlation SH with position
-plot_correlation(inv(Ax_L), t, STM, Nx);
+% % plot_correlation(inv(Ax_L), t, STM, Nx);
 figure()
 plot(t, (state_t(:, 1:3)-state_n(:, 1:3))')
 
 % solve for NSM
-iterMax = 7;
+iterMax = 10;
 count   = 0;
 disp('Solve NSM')
 rn = state_n(:, 1:3);
 vn = state_n(:, 4:6);
 P = inv(Ax_L);
 P0_NSM = P(1:Ncs-1, 1:Ncs-1);
-Cp_N = Cp_L; Sp_N = Sp_L; Xp_N = Xp_L(1:Ncs);
+% % Cp_N = Cp_L; Sp_N = Sp_L; Xp_N = Xp_L(1:Ncs);
 while count < iterMax
-    Ax_N = inv(P0_NSM);
-    Nx_N = -inv(P0_NSM) * xnot_N;
+    Ax_N = inv(P0);
+    Nx_N = -inv(P0) * xnot_N;
     for j = 1:Nt
         % Position and velocity vector (used in NSM)
         rn_ACI = rn(j, :)';
@@ -236,7 +238,7 @@ end
 % solve for EKF
 disp('Solve EKF')
 P = blkdiag(P0, diag(sigmaPos.^2));
-s = Xp_E(47:end);
+s = Xp_E(Ncs+1:end);
 for j = 2:Nt
     % time span
     t_span = [t(j - 1), t(j)];
