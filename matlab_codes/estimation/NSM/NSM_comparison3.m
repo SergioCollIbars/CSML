@@ -68,7 +68,7 @@ Ar = 1E-1*[1;1;1];            % [ACI]
 % attitude error & nominal value
 frec    = 1E-4;                                                % [rad/s]
 % % At      = 5E-5.*sin(frec.*t).*ones(3, Nt);                     % [rad] [yaw, pitch, roll]
-At      = 5E-5.*ones(3, Nt);
+At      = 0.*5E-5.*ones(3, Nt);
 dA_dt   = At./dt.*1;               % [rad/s]
 ddA_ddt = At./(dt^2).*1;           % [rad/s^2]
 
@@ -169,9 +169,7 @@ while count < iterMax
           [1, 2, 3]);   
         ACAF_B = ACAF_ACI * B_ACI';
     
-         % compute position and attitude partials. Nominal body frame
-        [Hpos] = compute_posPartials(n_max, normalized, Cp_N, Sp_N, Re, GM, rn_ACI, ACAF_ACI, ACAF_B);
-
+         % compute attitude partials. Nominal body frame
         [Hrot_grad] = compute_rotPartials(n_max, normalized, Cp_N, Sp_N, Re, GM, rn_ACI, ACAF_ACI, ACAF_B);
         
         finish = 3*j;
@@ -180,9 +178,9 @@ while count < iterMax
         H_omegaDot = flipud(H_angAcc(init:finish, :));
         [Hrot_ang] = compute_angularPartials(flipud(angVel_nom(:, j)), H_omega, H_omegaDot);
         Hrot = Hrot_grad + Hrot_ang;
-        % % Hrot = Hrot_grad;
     
         % Null space method correcting for position + attitude
+        [Hpos] = compute_posPartials(n_max, normalized, Cp_N, Sp_N, Re, GM, rn_ACI, ACAF_ACI, ACAF_B);
         [Yc, ~, Hc_BODY] = gradiometer_meas(t(j) ,asterParams, poleParams, [rn(:, j)', vn(:, j)'], ...
                 noise0, Cp_N, Sp_N, B_ACI');
         [Yc] = add_angularComponents(Yc, attitude, zeros(3, Nt), flipud(angVel_nom),...
