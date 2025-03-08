@@ -1,4 +1,4 @@
-function [Hpos] = compute_rotPartials(n_max, normalized, Cmat, Smat, Re, GM, r, ACAF_ACI)
+function [Hpos] = compute_rotPartials(n_max, normalized, Cmat, Smat, Re, GM, r, ACAF_ACI, ACAF_B)
     % output value
     Hpos = ones(9, 3) * NaN;
     ACI_ACAF = ACAF_ACI';
@@ -11,20 +11,20 @@ function [Hpos] = compute_rotPartials(n_max, normalized, Cmat, Smat, Re, GM, r, 
         Atpos = At./2;
         Atneg = - At./2; 
 
-        [Rpos] = rotationMatrix(Atpos(1), Atpos(2), Atpos(3), [3, 2, 1]);
-        [Rneg] = rotationMatrix(Atneg(1), Atneg(2), Atneg(3), [3, 2, 1]);
+        [Rpos] = rotationMatrix(Atpos(1), Atpos(2), Atpos(3), [1, 2, 3]);
+        [Rneg] = rotationMatrix(Atneg(1), Atneg(2), Atneg(3), [1, 2, 3]);
 
         [~, ~, ddUpos] = potentialGradient_nm(Cmat, Smat, n_max, ...
                                                 ACI_ACAF'*r, Re, GM, ...
-                                                normalized);
-        ddUpos = ACI_ACAF * ddUpos * ACI_ACAF';
-        ddUpos = Rpos' * ddUpos * Rpos;
+                                                normalized);    % output in ACAF
+        ddUpos = ACAF_B' * ddUpos * ACAF_B; % S/C body frame
+        ddUpos = Rpos * ddUpos * Rpos';
 
         [~, ~, ddUneg] = potentialGradient_nm(Cmat, Smat, n_max, ...
                                                 ACI_ACAF'*r, Re, GM, ...
-                                                normalized);
-        ddUneg = ACI_ACAF * ddUneg * ACI_ACAF';
-        ddUneg = Rneg' * ddUneg * Rneg;
+                                                normalized);    % output in ACAF
+        ddUneg = ACAF_B' * ddUneg * ACAF_B; % S/C body frame
+        ddUneg = Rneg * ddUneg * Rneg';
 
         H = (ddUpos - ddUneg)./(vecnorm(Atpos-Atneg));
 

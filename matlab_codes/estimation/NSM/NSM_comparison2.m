@@ -13,27 +13,27 @@ set(0,'defaultAxesFontSize',16);
 % Date: 09/28/24
 
 % Asteroid parameters.
-% % path = "HARMCOEFS_BENNU_OSIRIS_1.txt";
-% % name = "BENNU";
-% % [Cnm, Snm, Re] = readCoeff(path);
-% % GM = 5.2;
-% % n_max  = 6;
-% % normalized = 1;
-% % W = 4.06130329511851E-4;  % Rotation ang. vel   [rad/s]
-% % W0 = 0;                   % Initial asteroid longitude
-% % RA = deg2rad(86.6388);    % Right Ascension     [rad]
-% % DEC = deg2rad(-65.1086);  % Declination         [rad]
-
-path = "HARMCOEFS_EROS_CD_1.txt";
-name = "EROS";
+path = "HARMCOEFS_BENNU_OSIRIS_1.txt";
+name = "BENNU";
 [Cnm, Snm, Re] = readCoeff(path);
-n_max  = 10;
+GM = 5.2;
+n_max  = 6;
 normalized = 1;
-GM =  459604.431484721;          % Point mass value    [m^3/s^2]
-W = 1639.38928 * pi/180 /86400;  % Rotation ang. vel   [rad/s]
-W0 = 0;                          % Initial asteroid longitude
-RA = deg2rad(11.363);            % Right Ascension     [rad]
-DEC = deg2rad(17.232);           % Declination         [rad]
+W = 4.06130329511851E-4;  % Rotation ang. vel   [rad/s]
+W0 = 0;                   % Initial asteroid longitude
+RA = deg2rad(86.6388);    % Right Ascension     [rad]
+DEC = deg2rad(-65.1086);  % Declination         [rad]
+
+% % path = "HARMCOEFS_EROS_CD_1.txt";
+% % name = "EROS";
+% % [Cnm, Snm, Re] = readCoeff(path);
+% % n_max  = 10;
+% % normalized = 1;
+% % GM =  459604.431484721;          % Point mass value    [m^3/s^2]
+% % W = 1639.38928 * pi/180 /86400;  % Rotation ang. vel   [rad/s]
+% % W0 = 0;                          % Initial asteroid longitude
+% % RA = deg2rad(11.363);            % Right Ascension     [rad]
+% % DEC = deg2rad(17.232);           % Declination         [rad]
 
 % % 
 % % path = "HARMCOEFS_EARTH_1.txt";
@@ -55,7 +55,7 @@ asterParams = [GM, Re, n_max, normalized];
 [Nc, Ns, Ncs] = count_num_coeff(n_max); 
 
 % Initial conditions
-r      = 24E3;      % [m]
+r      = 0.3E3;      % [m]
 % % r      = Re + 300E3; 
 phi    = pi/2;
 lambda = 0;
@@ -86,8 +86,8 @@ sigma1  = 0.01 * 1E-9 * sqrt(f); % Vxx, Vyy
 sigma2  = 0.01  * 1E-9 * sqrt(f); % Vyz, Vyx
 sigma3  = 0.02 * 1E-9 * sqrt(f); % Vxz, Vzz
 
-% % sigma1 = 1E-15;
-% % sigma2 = sigma1; sigma3 = sigma1;
+sigma1 = 1E-15;
+sigma2 = sigma1; sigma3 = sigma1;
 
 means    = zeros(1, 9);
 std_devs = [sigma1, sigma2, sigma3, sigma2, sigma1, sigma2, sigma3, ...
@@ -109,7 +109,7 @@ vn = state_t(:, 4:6)';
 
 % generate measurements
 [Y, ~, ~] = gradiometer_meas(t ,asterParams, poleParams, state_t, ...
-                noise0, Cnm, Snm);
+                noise0, Cnm, Snm, eye(3,3));
 
 % perturb nominal coefficient
 [X] = mat2list(Cnm, Snm, Nc, Ns);
@@ -145,7 +145,7 @@ end
 for j = 1:length(Pc_N_AP)
     Pc_N_AP(j, j) = Ar(1)^4;
 end
-c = Ar.*0; % apriori values for the Consider Parameters; 
+c = Ar.*1; % apriori values for the Consider Parameters; 
 c_N_AP = ones(6, 1).*Ar(1)^2.*1;
 
 while count < iterMax
@@ -168,7 +168,7 @@ while count < iterMax
     
         % Rummel's method
         [Yc, ~, Hc_RTN] = gradiometer_meas(t(j) ,asterParams, poleParams, [rn(:, j)', vn(:, j)'], ...
-                noise0, Cp_R, Sp_R);
+                noise0, Cp_R, Sp_R, ACI_RTN);
 
         [ax, nx] = rummels_method(Y(:, j)-Yc, Hc_RTN, R_R, ACI_RTN, noise(:, j));
         Ax_R  = Ax_R + ax;
@@ -176,9 +176,9 @@ while count < iterMax
     
         % Null space method
         [Yc, ~, Hc_RTN] = gradiometer_meas(t(j) ,asterParams, poleParams, [rn(:, j)', vn(:, j)'], ...
-                noise0, Cp_N, Sp_N);
+                noise0, Cp_N, Sp_N, ACI_RTN);
 
-        [Hpos] = compute_posPartials(n_max, normalized, Cp_N, Sp_N, Re, GM, rn_RTN, ACAF_ACI*ACI_RTN);
+        [Hpos] = compute_posPartials(n_max, normalized, Cp_N, Sp_N, Re, GM, rn_ACI, ACAF_ACI, ACAF_ACI*ACI_RTN);
 
         [ax, nx] = nullSpace_method(Y(:, j)-Yc, Hc_RTN, R_N, Hpos, ACI_RTN, noise(:, j));
         Ax_N  = Ax_N + ax;
@@ -186,9 +186,9 @@ while count < iterMax
 
         % Null space merthod + Apriori (AP)
         [Yc, Hc_ACI, ~] = gradiometer_meas(t(j) ,asterParams, poleParams, [rn(:, j)', vn(:, j)'], ...
-                noise0, Cp_N_AP, Sp_N_AP);
+                noise0, Cp_N_AP, Sp_N_AP, eye(3,3));
 
-        [Hpos] = compute_posPartials(n_max, normalized, Cp_N_AP, Sp_N_AP, Re, GM, rn_ACI, ACAF_ACI);
+        [Hpos] = compute_posPartials(n_max, normalized, Cp_N_AP, Sp_N_AP, Re, GM, rn_ACI, ACAF_ACI, ACAF_ACI);
 
         Hap = compute_posPartials_2ndOrder(GM, rn_ACI(1), rn_ACI(2), rn_ACI(3));
         [ax, nx, mxc, mcc] = nullSpace_method_AP(Y(:, j)-Yc, Hc_ACI, R_N, Hpos, Hap, eye(3,3), noise(:, j));
@@ -199,9 +199,9 @@ while count < iterMax
         
         % LS method
         [Yc, Hc_ACI, ~] = gradiometer_meas(t(j) ,asterParams, poleParams, [rn(:, j)', vn(:, j)'], ...
-                noise0, Cp_LS, Sp_LS);
+                noise0, Cp_LS, Sp_LS, eye(3,3));
 
-        [Hpos] = compute_posPartials(n_max, normalized, Cp_LS, Sp_LS, Re, GM, rn_ACI, ACAF_ACI);
+        [Hpos] = compute_posPartials(n_max, normalized, Cp_LS, Sp_LS, Re, GM, rn_ACI, ACAF_ACI, ACAF_ACI);
 
         [ax, nx, mxc, mcc] = LS_method(Y(:, j)-Yc, Hc_ACI, R_N, Hpos, eye(3,3), noise(:, j));
         Ax = Ax + ax;
