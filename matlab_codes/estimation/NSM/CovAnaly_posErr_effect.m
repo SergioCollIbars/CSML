@@ -27,19 +27,32 @@ set(0,'defaultAxesFontSize',16);
 % % RA = deg2rad(86.6388);    % Right Ascension     [rad]
 % % DEC = deg2rad(-65.1086);  % Declination         [rad]
 
-% Earth parameters
-savedData = 0;                % use saved data. 1 = yes / 0 = no
-path = "HARMCOEFS_EARTH_1.txt";
+% % % Earth parameters
+% % savedData = 0;                % use saved data. 1 = yes / 0 = no
+% % path = "HARMCOEFS_EARTH_1.txt";
+% % [Cnm, Snm, Re] = readCoeff(path);
+% % path = "SIGMACOEFS_EARTH_1.txt";
+% % [sigma_Cnm, sigma_Snm, ~] = readCoeff(path);
+% % GM = 3.986004418E14;
+% % n_max  = 120;
+% % normalized = 1;
+% % W = 2 * pi / (24*3600);     % Rotation ang. vel   [rad/s]
+% % W0 = 0;                     % Initial asteroid longitude
+% % RA = -pi/2;                 % Right Ascension     [rad]
+% % DEC = pi/2;                 % Declination         [rad]
+
+% Eros parameters
+savedData = 0;
+path = "HARMCOEFS_EROS_CD_1.txt";
+name = "EROS";
 [Cnm, Snm, Re] = readCoeff(path);
-path = "SIGMACOEFS_EARTH_1.txt";
-[sigma_Cnm, sigma_Snm, ~] = readCoeff(path);
-GM = 3.986004418E14;
-n_max  = 120;
+n_max  = 10;
 normalized = 1;
-W = 2 * pi / (24*3600);     % Rotation ang. vel   [rad/s]
-W0 = 0;                     % Initial asteroid longitude
-RA = -pi/2;                 % Right Ascension     [rad]
-DEC = pi/2;                 % Declination         [rad]
+GM =  459604.431484721;          % Point mass value    [m^3/s^2]
+W = 1639.38928 * pi/180 /86400;  % Rotation ang. vel   [rad/s]
+W0 = 0;                          % Initial asteroid longitude
+RA = deg2rad(11.363);            % Right Ascension     [rad]
+DEC = deg2rad(17.232);           % Declination         [rad]
 
 poleParams = [W, W0, RA, DEC];
 asterParams = [GM, Re, n_max, normalized];
@@ -50,8 +63,9 @@ asterParams = [GM, Re, n_max, normalized];
 
 % Initial conditions
 % % r      = 2E3;         % [m]
-r      = Re + 250E3;    % [m] 
-phi    = rad2deg(96.7);
+r = 24E3;               % [m]
+% % r      = Re + 250E3;    % [m] 
+phi    = deg2rad(89);
 lambda = 0;
 theta  = pi/2 - phi;% Orbit colatitude [m]
 R = [sin(theta)*cos(lambda), cos(theta)*cos(lambda), -sin(lambda);...
@@ -63,13 +77,13 @@ v0 = R * [0;0;sqrt(GM/r)];  % [ACI]
 % time vector
 n = sqrt(GM / r^3);    % Mean motion         [rad/s]
 T = (2 * pi / n);
-rev = 150;
-f = 1/30;
+rev = 3;
+f = 1/10;
 t = linspace(0, rev*T, rev*T * f);
 Nt = length(t);
 
 % measurement uncertianty
-sigma = 1E-15;                          % [1/s^2]
+sigma = 1E-12;                          % [1/s^2]
 noise0 = zeros(9, Nt);
 
 % Integrate trajectory
@@ -81,8 +95,8 @@ else
 % %     Nx = Ncs + 5;
     Nx = 6;
     PHI0 = reshape(eye(Nx,Nx), [Nx*Nx, 1]);
-    [~, state_t] = ode113(@(t, x) EoM(t, x, Cnm, Snm, 4, GM, Re, normalized, ...
-        W0, W, RA, DEC, 0), t, [r0;v0;PHI0], options); % WARNING. DYNAMICS with n = 4
+    [~, state_t] = ode113(@(t, x) EoM(t, x, Cnm, Snm, n_max, GM, Re, normalized, ...
+        W0, W, RA, DEC, 0), t, [r0;v0;PHI0], options);
     rn = state_t(:, 1:3)';
     vn = state_t(:, 4:6)';
 end
@@ -112,17 +126,17 @@ figure()
 plot(t./86400, (vecnorm(state_t(:, 1:3)') - Re)./1E3, 'LineWidth', 2)
 xlabel('Time [days]')
 ylabel('[m]')
-title('S/C orbital radius')
+title('S/C orbital Altitude')
 
 % perturb nominal coefficient
-% % sigma_n = 1E10 * ones(1, n_max);
-% % [~, Pp] = perturb_coeff(sigma_n, n_max, X);
-% % P0 = Pp(2:end, 2:end); 
-% % S = sqrt(diag(Pp));
+sigma_n = 1E2 * ones(1, n_max);
+[~, Pp] = perturb_coeff(sigma_n, n_max, X);
+P0 = Pp(2:end, 2:end); 
+S = sqrt(diag(Pp));
 
-[S] = mat2list(sigma_Cnm, sigma_Snm, Nc, Ns);
-S = 1.*S;
-P0 = diag((S(2:end)).^2);
+% % [S] = mat2list(sigma_Cnm, sigma_Snm, Nc, Ns);
+% % S = 1.*S;
+% % P0 = diag((S(2:end)).^2);
 
 % Consider covariance
 Ar = 1E-2;   % [m]
@@ -143,8 +157,7 @@ c_NSM = ones(6, 1).*Ar(1)^2.*1;
 
 [~, Mxc, Mcc] = get_considerCov_apriori(P0, Pc, Pxc);
 [~, Mxc_NSM, Mcc_NSM] = get_considerCov_apriori(P0, Pc_NSM, Pxc_NSM);
-Ax = inv(P0);  Ax_NSM = inv(P0); Acc = inv(diag([S(2:end).^2; diag(Pc)]));
-Acc2 = inv(Pc);
+Ax = inv(P0);  Ax_NSM = inv(P0);
 R0 = diag([sigma, sigma, sigma, sigma, sigma].^2);
 Nx = 5 + Ncs;
 for j = 1:Nt
@@ -158,13 +171,13 @@ for j = 1:Nt
 
     % computed meas. partials
     [~, Hx_ACI, ~] = gradiometer_meas(t(j) ,asterParams, poleParams, [rn(:, j)', vn(:, j)'], ...
-            noise0, Cnm, Snm);
+            noise0, Cnm, Snm, eye(3,3));
     hx = [Hx_ACI(1, 2:end); Hx_ACI(2, 2:end); Hx_ACI(3, 2:end);Hx_ACI(5, 2:end);...
         Hx_ACI(6, 2:end)];
 
     % compute Consider Params partials for LS and NSM
     PHI = eye(6,6);
-    [Hc] = compute_posPartials(n_max, normalized, Cnm, Snm, Re, GM, rn_ACI, ACAF_ACI);
+    [Hc] = compute_posPartials(n_max, normalized, Cnm, Snm, Re, GM, rn_ACI, ACAF_ACI, eye(3,3));
     hc_pos = [Hc(1, :);Hc(2,:);Hc(3,:);Hc(5, :);Hc(6, :)];
     hc = [hc_pos, zeros(5, 3)] * PHI;
     hap = compute_posPartials_2ndOrder(GM, rn_ACI(1), rn_ACI(2), rn_ACI(3));
@@ -174,7 +187,6 @@ for j = 1:Nt
     PHI = eye(Nx, Nx);
     ht = [hx, hc] * PHI;
     
-    Acc = Acc + (ht' * inv(R0) * ht);
     Ax  = Ax  + (hx' * inv(R0) * hx);
     Mxc = Mxc + (hx' * inv(R0) * hc);
     Mcc = Mcc + (hc' * inv(R0) * hc); 
@@ -196,7 +208,6 @@ Sxc = -Px * Mxc;
 Pxx = Px + Sxc*Pc*Sxc';
 Pxc = Sxc * Pc;
 P0_LS = [Pxx, Pxc;Pxc', Pc];
-% % P0_LS = inv(Acc);
 
 % compute final covariance at epoch time. NSM
 Px_NSM = inv(Ax_NSM);
@@ -309,9 +320,9 @@ xlabel('Degree')
 ylabel('Oder')
 
 figure;
-J = ones(121, 121*2) * NaN; B = fliplr(S_Perr);
-J(:, 1:121) = B;
-J(:, 122:end) = C_Perr;
+J = ones(n_max+1, (n_max+1)*2) * NaN; B = fliplr(S_Perr);
+J(:, 1:n_max+1) = B;
+J(:, n_max+2:end) = C_Perr;
 im = imagesc(J);
 set(gca, 'ColorScale', 'log');
 colormap("turbo");
