@@ -57,26 +57,30 @@ v0 = R * [0;0;sqrt(GM/r)];  % [ACI]
 n = sqrt(GM / r^3);    % Mean motion         [rad/s]
 T = (2 * pi / n);
 rev = 3;
-f = 1/60;
+f = 1/30;
 t = linspace(0, rev*T, rev*T * f);
 dt = t(2) - t(1);
 Nt = length(t);
 
 % position error
-Ar = 1E-1*[1;1;1];            % [ACI]
+Ar = 0*[1;1;1];            % [ACI]
 
-% attitude error & nominal value
+% attitude error
 frec    = 1E-4;                                                % [rad/s]
-% % At      = 5E-5.*sin(frec.*t).*ones(3, Nt);                     % [rad] [yaw, pitch, roll]
-At      = 05E-5.*ones(3, Nt);
+% % At      = 5E-5.*sin(frec.*t).*ones(3, Nt);                 % [rad] [yaw, pitch, roll]
+At      = 1.*1E-5.*ones(3, Nt);
+% % At = normrnd(0, 5E-5, 3, Nt);
 dA_dt   = At./dt.*1;               % [rad/s]
 ddA_ddt = At./(dt^2).*1;           % [rad/s^2]
 
-attitude = zeros(3, Nt);                                       % nominal attitude [rad]
+% attitude nominal value
+attitude  = .*sin(frec.*t).*ones(3, Nt);                         % nominal attitude [rad]
+datt_dt   = 1E-4.*frec*cos(frec.*t).*ones(3, Nt);
+ddatt_ddt = 1E-4.*-frec^2*sin(frec.*t).*ones(3, Nt); 
 attitude_true = attitude + At;                                 % true attitude    [rad]
-[angVel_true, angAcc_true, ~, ~] = compute_angularVals(attitude_true, dA_dt, ddA_ddt, t);
+[angVel_true, angAcc_true, ~, ~] = compute_angularVals(attitude_true, datt_dt + dA_dt, ddatt_ddt + ddA_ddt, t);
 [angVel_nom, angAcc_nom, H_angVel, H_angAcc]   = ...
-    compute_angularVals(attitude, zeros(3, Nt), zeros(3, Nt), t);
+    compute_angularVals(attitude, datt_dt, ddatt_ddt, t);
 
 figure()
 subplot(3, 2, 1)
@@ -90,7 +94,7 @@ subplot(3, 2, 5)
 plot(t./86400, angAcc_true, 'LineWidth', 2)
 legend({'$\dot{\omega_3}$', '$\dot{\omega_2}$', '$\dot{\omega_1}$'}, 'Interpreter', 'latex')
 subplot(3, 2, 2)
-plot(t./86400, attitude, 'LineWidth', 2)
+plot(t./86400, rad2deg(attitude), 'LineWidth', 2)
 legend('\Psi, yaw', '\theta, pitch', '\phi roll')
 title('Nominal attitude values')
 subplot(3, 2, 4)
@@ -105,7 +109,7 @@ noise0 = zeros(9, Nt);
 % % sigma1  = 0.01 * 1E-9 * sqrt(f); % Vxx, Vyy
 % % sigma2  = 0.6  * 1E-9 * sqrt(f); % Vyz, Vyx
 % % sigma3  = 0.02 * 1E-9 * sqrt(f); % Vxz, Vzz
-sigmaq  = 1E-7;                  % rad 
+sigmaq  = 1E-6;                  % rad 
 sigma1 = 1E-15;
 sigma2 = sigma1; sigma3 = sigma1;
 
@@ -169,9 +173,7 @@ while count < iterMax
           [1, 2, 3]);   
         ACAF_B = ACAF_ACI * B_ACI';
     
-         % compute position and attitude partials. Nominal body frame
-        [Hpos] = compute_posPartials(n_max, normalized, Cp_N, Sp_N, Re, GM, rn_ACI, ACAF_ACI, ACAF_B);
-
+         % compute attitude partials. Nominal body frame
         [Hrot_grad] = compute_rotPartials(n_max, normalized, Cp_N, Sp_N, Re, GM, rn_ACI, ACAF_ACI, ACAF_B);
         
         finish = 3*j;
@@ -180,20 +182,19 @@ while count < iterMax
         H_omegaDot = flipud(H_angAcc(init:finish, :));
         [Hrot_ang] = compute_angularPartials(flipud(angVel_nom(:, j)), H_omega, H_omegaDot);
         Hrot = Hrot_grad + Hrot_ang;
-        % % Hrot = Hrot_grad;
     
-        % Null space method correcting for position + attitude
+        % Null space method correcting for attitude
         [Yc, ~, Hc_BODY] = gradiometer_meas(t(j) ,asterParams, poleParams, [rn(:, j)', vn(:, j)'], ...
                 noise0, Cp_N, Sp_N, B_ACI');
         [Yc] = add_angularComponents(Yc, attitude, zeros(3, Nt), flipud(angVel_nom),...
             flipud(angAcc_nom));
 
-        [ax, nx] = nullSpace_method2(Y(:, j), Yc, attitude_true(:, j), attitude(:, j),...
-            [Hc_BODY;zeros(3, Ncs)], R_N, [Hpos,Hrot], noise(:, j));
+        [ax, nx] = nullSpace_method2(Y(:, j), Yc, Hc_BODY, R_NP, ...
+            Hrot, noise(:, j));
         Ax_N  = Ax_N + ax;
         Nx_N  = Nx_N + nx;
 
-        % Null space method accounting for position only
+        % Null space method correcting for position 
         [Hpos] = compute_posPartials(n_max, normalized, Cp_NP, Sp_NP, Re, GM, rn_ACI, ACAF_ACI, ACAF_B);
         [Yc, ~, Hc_BODY] = gradiometer_meas(t(j) ,asterParams, poleParams, [rn(:, j)', vn(:, j)'], ...
                 noise0, Cp_NP, Sp_NP, B_ACI');
@@ -234,7 +235,7 @@ while count < iterMax
 
     % show error
     disp('Null space update, position = '  + string(vecnorm(XNOT_NP)));
-    disp('Null space update, posittion + attitude = ' + string(vecnorm(XNOT_N)));
+    disp('Null space update, attitude = ' + string(vecnorm(XNOT_N)));
     disp('Least Squares update = ' + string(vecnorm(XNOT_LS)));
     disp('--------------------------------------------------------'); 
     
@@ -312,22 +313,21 @@ function [ax, nx] = nullSpace_method(Y, Yc, Hc, R, Hp, noise)
 end
 
 % NSM accounting for position and attitude errors
-function [ax, nx] = nullSpace_method2(Y, Yc, att, attc, Hc, R, Hpr, noise)
+function [ax, nx] = nullSpace_method2(Y, Yc, Hc, R, Hpr, noise)
     % add noise
     Y = Y + noise(1:9);
 
     % select measurements
-    dY = [Y(1)-Yc(1);Y(2)-Yc(2);Y(3)-Yc(3);Y(5)-Yc(5);Y(6)-Yc(6);...
-        att - attc + noise(10:12)];
+    dY = [Y(1)-Yc(1);Y(2)-Yc(2);Y(3)-Yc(3);Y(5)-Yc(5);Y(6)-Yc(6)];
 
     % look for null space
-    H = [Hpr;zeros(3,3), eye(3,3)];
-    C = null([H(1, :);H(2,:);H(3,:);H(5, :);H(6, :);H(10:12, :)]');
+    H = Hpr;
+    C = null([H(1, :);H(2,:);H(3,:);H(5, :);H(6, :)]');
 
     % project measurements
     y  = C' * dY;
     hc = C' * [Hc(1, 2:end); Hc(4, 2:end); Hc(7, 2:end);Hc(5, 2:end);...
-        Hc(8, 2:end); Hc(10:12, 2:end)];
+        Hc(8, 2:end)];
     r  = C' * R * C;
 
     % information and normal matrices
@@ -376,7 +376,8 @@ function [angVel, angAcc, H_angVel, H_angAcc] = compute_angularVals(attitude, dA
     end
     for j = 1:Nt
         theta = attitude(2, j); phi = attitude(3, j);
-        thetaDot = dA_dt(2, j); phiDot = dA_dt(3, j);
+        psiDot = dA_dt(1, j); thetaDot = dA_dt(2, j); phiDot = dA_dt(3, j);
+        psiDdot = ddA_ddt(1, j); thetaDdot = ddA_ddt(2, j); phiDdot = ddA_ddt(3, j);
         A = [-sin(theta), 0, 1;...
             sin(phi)*cos(theta), cos(phi), 0;...
             cos(phi)*cos(theta), -sin(phi), 0];
@@ -388,9 +389,23 @@ function [angVel, angAcc, H_angVel, H_angAcc] = compute_angularVals(attitude, dA
         angAcc(:, j) = A_dot * dA_dt(:, j) + A * ddA_ddt(:, j);
 
         % partials of angular acceleration w.r.t Euler angles
+        C12 = (sin(theta)*thetaDot-cos(theta)/dt)*psiDot;
+        C22 = (-cos(phi)*sin(theta)*phiDot - sin(phi)*cos(theta)*thetaDot - sin(phi)*sin(theta)/dt)*psiDot;
+        C31 = (sin(phi)*sin(theta)*phiDot -cos(phi)*cos(theta)*thetaDot - cos(phi)*sin(theta)/dt)*psiDot;
+        C23 = (-sin(phi)*cos(theta)*phiDot + cos(phi)*cos(theta)/dt - cos(phi)*sin(theta)*thetaDot)*psiDot + ...
+            (-cos(phi)*phiDot -sin(phi)/dt)*thetaDot;
+        C33 = (-cos(phi)*cos(theta)*phiDot - sin(phi)*cos(theta)/dt + sin(phi)*sin(theta)*thetaDot)*psiDot + ...
+            (sin(phi)*phiDot -cos(phi)/dt)*thetaDot;
+        C = [0,C12,0;...
+             0,C22,C23;...
+             0,C31,C33];
+
+        D = [0, -cos(theta)*psiDdot, 0;...
+             0, -sin(phi)*sin(theta)*psiDdot, cos(phi)*cos(theta)*psiDdot-sin(phi)*thetaDdot;...
+             0, -cos(phi)*sin(theta)*psiDdot, -sin(phi)*cos(theta)*psiDdot-cos(phi)*thetaDdot];
         finish = 3*j;
         init = finish - 2;
-        H_angAcc(init:finish, :) = (1/dt).*A_dot + (1/dt^2).*A;
+        H_angAcc(init:finish, :) = (1/dt).*A_dot + (1/dt^2).*A + C + D;
     end
 end
 

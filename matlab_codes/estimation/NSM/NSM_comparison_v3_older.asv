@@ -57,7 +57,7 @@ v0 = R * [0;0;sqrt(GM/r)];  % [ACI]
 Ar = 1E-3*[1;1;1];            % [ACI]
 
 % attitude error
-At = 1E-3.*[1;1;1];           % [yaw, pitch, roll]
+At = 1E-4.*[1;1;1];           % [yaw, pitch, roll]
 
 % time vector
 n = sqrt(GM / r^3);    % Mean motion         [rad/s]
@@ -72,10 +72,10 @@ noise0 = zeros(9, Nt);
 sigma1  = 0.01 * 1E-9 * sqrt(f); % Vxx, Vyy
 sigma2  = 0.6  * 1E-9 * sqrt(f); % Vyz, Vyx
 sigma3  = 0.02 * 1E-9 * sqrt(f); % Vxz, Vzz
-sigmaq  = 1E-2;                  % rad 
+sigmaq  = 1E-7;                  % rad 
 
-sigma1 = 1E-15;
-sigma2 = sigma1; sigma3 = sigma1;
+% % sigma1 = 1E-15;
+% % sigma2 = sigma1; sigma3 = sigma1;
 
 means    = zeros(1, 12);
 std_devs = [sigma1, sigma2, sigma3, sigma2, sigma1, sigma2, sigma3, ...
@@ -107,7 +107,6 @@ P0 = Pp(2:end, 2:end);
 
 % Gravity estimation
 R_NP = diag([sigma1, sigma2, sigma3, sigma1, sigma2].^2);
-R_N = diag([sigma1, sigma2, sigma3, sigma1, sigma2, sigmaq, sigmaq, sigmaq].^2);
 n = ones(2, Nt)*NaN;
 
 % loop
@@ -134,11 +133,10 @@ while count < iterMax
         [Hrot] = compute_rotPartials(n_max, normalized, Cp_N, Sp_N, Re, GM, rn_ACI, ACAF_ACI, ACAF_ACI);
     
         % Null space method correcting for attitude
-        [Hpos] = compute_posPartials(n_max, normalized, Cp_N, Sp_N, Re, GM, rn_ACI, ACAF_ACI, ACAF_ACI);
         [Yc, Hc_ACI, ~] = gradiometer_meas(t(j) ,asterParams, poleParams, [rn(:, j)', vn(:, j)'], ...
                 noise0, Cp_N, Sp_N, eye(3,3));
 
-        [ax, nx] = nullSpace_method2(Y(:, j), Yc, [Hc_ACI,;zeros(3, Ncs)], R_N, [Hpos, Hrot], eye(3,3), noise(:, j), At);
+        [ax, nx] = nullSpace_method2(Y(:, j), Yc, [Hc_ACI,;zeros(3, Ncs)], R_NP, [Hpos, Hrot], eye(3,3), noise(:, j), At);
         Ax_N  = Ax_N + ax;
         Nx_N  = Nx_N + nx;
 
@@ -257,13 +255,13 @@ function [ax, nx] = nullSpace_method2(Y, Yc, Hc, R, Hpr, ACI_RTN, noise, At)
     dY = [dy(1)-dyc(1);dy(4)-dyc(4);dy(7)-dyc(7);dy(5)-dyc(5);dy(8)-dyc(8); At + noise(10:12)];
    
     % look for null space
-    H = [Hpr; zeros(3, 3), eye(3,3)];
+    H = [Hpr; zeros(3, 3), eye();
     C = null([H(1, :);H(2,:);H(3,:);H(5, :);H(6, :); H(10:12, :)]');
 
     % project measurements
     y  = C' * dY;
     hc = C' * [Hc(1, 2:end); Hc(4, 2:end); Hc(7, 2:end);Hc(5, 2:end);...
-        Hc(8, 2:end); Hc(10:12, 2:end)];
+        Hc(8, 2:end); Hc(10:12, :)];
     r  = C' * R * C;
 
     % information and normal matrices
