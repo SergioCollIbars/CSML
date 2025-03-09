@@ -83,27 +83,9 @@ attitude_true = attitude + At;                                 % true attitude  
 [angVel_nom, angAcc_nom, H_angVel, H_angAcc]   = ...
     compute_angularVals(attitude, datt_dt, ddatt_ddt, t);
 
-figure()
-subplot(3, 2, 1)
-plot(t./86400, rad2deg(attitude_true), 'LineWidth', 2)
-legend('\Psi, yaw', '\theta, pitch', '\phi roll')
-title('Actual attitude values')
-subplot(3, 2, 3)
-plot(t./86400, rad2deg(angVel_true), 'LineWidth', 2)
-legend({'$\omega_3$', '$\omega_2$', '$\omega_1$'}, 'Interpreter', 'latex')
-subplot(3, 2, 5)
-plot(t./86400, rad2deg(angAcc_true), 'LineWidth', 2)
-legend({'$\dot{\omega_3}$', '$\dot{\omega_2}$', '$\dot{\omega_1}$'}, 'Interpreter', 'latex')
-subplot(3, 2, 2)
-plot(t./86400, rad2deg(attitude), 'LineWidth', 2)
-legend('\Psi, yaw', '\theta, pitch', '\phi roll')
-title('Nominal attitude values')
-subplot(3, 2, 4)
-plot(t./86400, rad2deg(angVel_nom), 'LineWidth', 2)
-legend({'$\omega_3$', '$\omega_2$', '$\omega_1$'}, 'Interpreter', 'latex')
-subplot(3, 2, 6)
-plot(t./86400, rad2deg(angAcc_nom), 'LineWidth', 2)
-legend({'$\dot{\omega_3}$', '$\dot{\omega_2}$', '$\dot{\omega_1}$'}, 'Interpreter', 'latex')
+% plot S/C attitude
+plot_Attitude(t, attitude, attitude_true, angVel_nom, ...
+    angVel_true, angAcc_nom, angAcc_true);
 
 % noise values from GOCE mission
 noise0 = zeros(9, Nt);
@@ -181,7 +163,7 @@ while count < iterMax
         init = finish - 2;
         H_omega = flipud(H_angVel(init:finish, :));
         H_omegaDot = flipud(H_angAcc(init:finish, :));
-        [Hrot_ang] = compute_angularPartials(flipud(angVel_nom(:, j)), H_omega, H_omegaDot);
+        [Hrot_ang] = compute_angularDyadPartials(flipud(angVel_nom(:, j)), H_omega, H_omegaDot);
         Hrot = Hrot_grad + Hrot_ang;
     
         % Null space method correcting for attitude
@@ -353,94 +335,6 @@ function [ax, nx] = LS_method(Y, Yc, Hc, R, noise)
     nx = hc' * inv(R) * dY;
 end
 
-function [angVel, angAcc, H_angVel, H_angAcc] = compute_angularVals(attitude, dA_dt, ddA_ddt, t)
-    Nt = length(t);
-    angVel = zeros(3, Nt); angAcc = zeros(3, Nt);
-    dt = t(2) - t(1);   % WARNING: assumes equal time
-    for j = 1:Nt                            % attitude rate of change (vel)
-        theta = attitude(2, j); phi = attitude(3, j);
-        A = [-sin(theta), 0, 1;...
-            sin(phi)*cos(theta), cos(phi), 0;...
-            cos(phi)*cos(theta), -sin(phi), 0];
-        
-        % angular velocity
-        angVel(:, j) = A * dA_dt(: ,j);
-        
-        % partials of angular velocity w.r.t Euler angles
-        finish = 3*j;
-        init = finish - 2;
-        psiDot = dA_dt(1, j); thetaDot = dA_dt(2, j);
-        B = [0, -cos(theta)*psiDot, 0;...
-             0, -sin(phi)*sin(theta)*psiDot, cos(phi)*cos(theta)*psiDot-sin(phi)*thetaDot;...
-             0, -cos(phi)*sin(theta)*psiDot, -sin(phi)*cos(theta)*psiDot-cos(phi)*thetaDot];
-        H_angVel(init:finish, :) = B + (1/dt).*A; 
-    end
-    for j = 1:Nt
-        theta = attitude(2, j); phi = attitude(3, j);
-        psiDot = dA_dt(1, j); thetaDot = dA_dt(2, j); phiDot = dA_dt(3, j);
-        psiDdot = ddA_ddt(1, j); thetaDdot = ddA_ddt(2, j); phiDdot = ddA_ddt(3, j);
-        A = [-sin(theta), 0, 1;...
-            sin(phi)*cos(theta), cos(phi), 0;...
-            cos(phi)*cos(theta), -sin(phi), 0];
-        A_dot = [-cos(theta)*thetaDot, 0, 0;...
-            cos(phi)*cos(theta)*phiDot-sin(phi)*sin(theta)*thetaDot, -sin(phi)*phiDot, 0;...
-            -sin(phi)*cos(theta)*phiDot-cos(phi)*sin(theta)*thetaDot, -cos(phi)*phiDot, 0];
-
-        % angular acceleration
-        angAcc(:, j) = A_dot * dA_dt(:, j) + A * ddA_ddt(:, j);
-
-        % partials of angular acceleration w.r.t Euler angles
-        C12 = (sin(theta)*thetaDot-cos(theta)/dt)*psiDot;
-        C22 = (-cos(phi)*sin(theta)*phiDot - sin(phi)*cos(theta)*thetaDot - sin(phi)*sin(theta)/dt)*psiDot;
-        C31 = (sin(phi)*sin(theta)*phiDot -cos(phi)*cos(theta)*thetaDot - cos(phi)*sin(theta)/dt)*psiDot;
-        C23 = (-sin(phi)*cos(theta)*phiDot + cos(phi)*cos(theta)/dt - cos(phi)*sin(theta)*thetaDot)*psiDot + ...
-            (-cos(phi)*phiDot -sin(phi)/dt)*thetaDot;
-        C33 = (-cos(phi)*cos(theta)*phiDot - sin(phi)*cos(theta)/dt + sin(phi)*sin(theta)*thetaDot)*psiDot + ...
-            (sin(phi)*phiDot -cos(phi)/dt)*thetaDot;
-        C = [0,C12,0;...
-             0,C22,C23;...
-             0,C31,C33];
-
-        D = [0, -cos(theta)*psiDdot, 0;...
-             0, -sin(phi)*sin(theta)*psiDdot, cos(phi)*cos(theta)*psiDdot-sin(phi)*thetaDdot;...
-             0, -cos(phi)*sin(theta)*psiDdot, -sin(phi)*cos(theta)*psiDdot-cos(phi)*thetaDdot];
-        finish = 3*j;
-        init = finish - 2;
-        H_angAcc(init:finish, :) = (1/dt).*A_dot + (1/dt^2).*A + C + D;
-    end
-end
-
-function [Y] = add_angularComponents(Y, attitude, At, angVel, angAcc)
-    Nt  = length(Y(1, :));
-    for j = 1:Nt
-      omega = [0, angVel(3, j), -angVel(2, j);...
-        -angVel(3, j), 0 ,angVel(1, j);...
-         angVel(2, j), -angVel(1, j), 0];
-      omegaDot = [0, angAcc(3, j), -angAcc(2, j);...
-        -angAcc(3, j), 0 ,angAcc(1, j);...
-        angAcc(2, j), -angAcc(1, j), 0];
-      a = omega^2;
-      b = omegaDot;
-      A = [a(1,1); a(1,2); a(1,3); a(2, 1); a(2, 2); a(2, 3); ...
-          a(3, 1); a(3, 2); a(3, 3)];
-      B = [b(1,1); b(1,2); b(1,3); b(2, 1); b(2, 2); b(2, 3); ...
-          b(3, 1); b(3, 2); b(3, 3)];
-
-      % rotate to actual body frame. 
-      BN =rotationMatrix(attitude(1, j), attitude(2, j), attitude(3, j), ...
-          [1, 2, 3]);   % from ACI to Nominal body frame
-      AB =rotationMatrix(At(1, j), At(2, j), At(3, j), ...
-          [3, 2, 1]);   % from Nominal body frame to actual frame (A)
-      AN = AB * BN; 
-      jN = [Y(1, j), Y(2, j), Y(3, j);Y(4, j), Y(5, j), Y(6, j);...
-          Y(7, j), Y(8, j), Y(9, j)];
-      jB = AN * jN * AN';
-      JB = [jB(1,1); jB(1,2) ; jB(1,3); jB(2,1);...
-         jB(2,2); jB(2,3) ; jB(3,1); jB(3,2); jB(3,3)];
-      Y(:, j) = JB + A - B;
-    end
-end
-
 function [num_C, num_S, str_C, str_S] = SH_xlabel(n_max)    
     num_C = ones(1, n_max-1) * NaN;
     num_S = num_C;
@@ -536,21 +430,27 @@ function [] = plot_gravField(X, SH_R, SH_N, n_max, tt1, tt2, ls, mk, llg)
     legend(llg)
 end
 
-function [Hrot_ang] = compute_angularPartials(omega, H_omega, H_omegaDot)
-        % partials w.r.t angular acceleration
-        H_omegaDot = [zeros(1, 3); - H_omegaDot(3, :); H_omegaDot(2, :); ...
-            H_omegaDot(3, :); zeros(1, 3); - H_omegaDot(1, :); ...
-            -H_omegaDot(2, :); H_omegaDot(1, :); zeros(1, 3)];
-
-        % partials w.r.t angular velocity. For a (3-2-1) rotation
-        dw11_dt = -2*omega(2)*H_omega(2, :) - 2*omega(3)*H_omega(3, :);
-        dw12_dt = omega(2)*H_omega(1, :) + omega(1)*H_omega(2, :);
-        dw13_dt = omega(3)*H_omega(1, :) + omega(1)*H_omega(3, :);
-        dw22_dt = -2*omega(1)*H_omega(1, :) - 2*omega(3)*H_omega(3, :);
-        dw23_dt = omega(3)*H_omega(2, :) + omega(2)*H_omega(3, :);
-        dw33_dt = -2*omega(1)*H_omega(1, :) - 2*omega(2)*H_omega(2, :);
-
-        H_omega = [dw11_dt; dw12_dt; dw13_dt; dw12_dt; dw22_dt; dw23_dt;...
-            dw13_dt; dw23_dt; dw33_dt];
-        Hrot_ang = H_omega + H_omegaDot;
+function [] = plot_Attitude(t, attitude_nom, attitude_true, angVel_nom, ...
+    angVel_true, angAcc_nom, angAcc_true)
+    figure()
+    subplot(3, 2, 1)
+    plot(t./86400, rad2deg(attitude_true), 'LineWidth', 2)
+    legend('\Psi, yaw', '\theta, pitch', '\phi roll')
+    title('Actual attitude values')
+    subplot(3, 2, 3)
+    plot(t./86400, rad2deg(angVel_true), 'LineWidth', 2)
+    legend({'$\omega_3$', '$\omega_2$', '$\omega_1$'}, 'Interpreter', 'latex')
+    subplot(3, 2, 5)
+    plot(t./86400, rad2deg(angAcc_true), 'LineWidth', 2)
+    legend({'$\dot{\omega_3}$', '$\dot{\omega_2}$', '$\dot{\omega_1}$'}, 'Interpreter', 'latex')
+    subplot(3, 2, 2)
+    plot(t./86400, rad2deg(attitude_nom), 'LineWidth', 2)
+    legend('\Psi, yaw', '\theta, pitch', '\phi roll')
+    title('Nominal attitude values')
+    subplot(3, 2, 4)
+    plot(t./86400, rad2deg(angVel_nom), 'LineWidth', 2)
+    legend({'$\omega_3$', '$\omega_2$', '$\omega_1$'}, 'Interpreter', 'latex')
+    subplot(3, 2, 6)
+    plot(t./86400, rad2deg(angAcc_nom), 'LineWidth', 2)
+    legend({'$\dot{\omega_3}$', '$\dot{\omega_2}$', '$\dot{\omega_1}$'}, 'Interpreter', 'latex')
 end
