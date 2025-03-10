@@ -66,25 +66,26 @@ Nt = length(t);
 Ar = 0*[1;1;1];            % [ACI]
 
 % attitude error
-frec    = 1E-4;                                                % [rad/s]
-% % At      = 5E-5.*sin(frec.*t).*ones(3, Nt);                 % [rad] [yaw, pitch, roll]
-% % At = normrnd(0, 5E-5, 3, Nt);
-At      = 1.*1E-5.*ones(3, Nt);
-dA_dt   = At./dt.*1;               % [rad/s]
-ddA_ddt = At./(dt^2).*1;           % [rad/s^2]
+frec    = 5E-5;                        % [rad/s]
+Amp     = 5E-8;
+At      = Amp*sin(frec*t).*ones(3, Nt);         % [rad] [yaw, pitch, roll]
+dA_dt   = Amp*frec*cos(frec*t).*ones(3, Nt);
+ddA_ddt = -Amp*frec^2*sin(frec*t).*ones(3, Nt);   
+
+% % At      = 1E-7.*ones(3, Nt);
+% % dA_dt   = zeros(3, Nt);                % [rad/s]
+% % ddA_ddt = zeros(3, Nt);                % [rad/s^2]
 
 % attitude nominal value
 Amp = 0;
 attitude  = Amp.*sin(frec.*t).*ones(3, Nt);                         % nominal attitude [rad]
 datt_dt   = Amp.*frec*cos(frec.*t).*ones(3, Nt);
 ddatt_ddt = Amp.*-frec^2*sin(frec.*t).*ones(3, Nt); 
-attitude_true = attitude + At;                                 % true attitude    [rad]
-[angVel_true, angAcc_true, ~, ~] = compute_angularVals(attitude_true, datt_dt + dA_dt, ddatt_ddt + ddA_ddt, t);
-[angVel_nom, angAcc_nom, H_angVel, H_angAcc]   = ...
-    compute_angularVals(attitude, datt_dt, ddatt_ddt, t);
+[angVel_true, angAcc_true] = compute_angularVals(attitude + At, datt_dt + dA_dt, ddatt_ddt + ddA_ddt, t);
+[angVel_nom, angAcc_nom]   = compute_angularVals(attitude, datt_dt, ddatt_ddt, t);
 
 % plot S/C attitude
-plot_Attitude(t, attitude, attitude_true, angVel_nom, ...
+plot_Attitude(t, attitude, attitude + At, angVel_nom, ...
     angVel_true, angAcc_nom, angAcc_true);
 
 % noise values from GOCE mission
@@ -158,13 +159,10 @@ while count < iterMax
     
          % compute attitude partials. Nominal body frame
         [Hrot_grad] = compute_rotPartials(n_max, normalized, Cp_N, Sp_N, Re, GM, rn_ACI, ACAF_ACI, ACAF_B);
-        
-        finish = 3*j;
-        init = finish - 2;
-        H_omega = flipud(H_angVel(init:finish, :));
-        H_omegaDot = flipud(H_angAcc(init:finish, :));
-        [Hrot_ang] = compute_angularDyadPartials(flipud(angVel_nom(:, j)), H_omega, H_omegaDot);
-        Hrot = Hrot_grad + Hrot_ang;
+        [Hrot_dA_ang, Hrot_dAdT_ang] = compute_angularDyadPartials(flipud(angVel_nom(:, j)), attitude(:, j), datt_dt(:, j), ddatt_ddt(:, j));
+        Hrot_dA = Hrot_grad + Hrot_dA_ang;
+        Hrot_dAdT = Hrot_dAdT_ang;
+        Hrot = Hrot_dA;
     
         % Null space method correcting for attitude
         [Yc, ~, Hc_BODY] = gradiometer_meas(t(j) ,asterParams, poleParams, [rn(:, j)', vn(:, j)'], ...
@@ -181,7 +179,7 @@ while count < iterMax
         [Hpos] = compute_posPartials(n_max, normalized, Cp_NP, Sp_NP, Re, GM, rn_ACI, ACAF_ACI, ACAF_B);
         [Yc, ~, Hc_BODY] = gradiometer_meas(t(j) ,asterParams, poleParams, [rn(:, j)', vn(:, j)'], ...
                 noise0, Cp_NP, Sp_NP, B_ACI');
-        [Yc] = add_angularComponents(Yc, attitude(:, j), zeros(3, Nt), flipud(angVel_nom(:, j)),...
+        [Yc] = add_angularComponents(Yc, attitude(:, j), zeros(3, 1), flipud(angVel_nom(:, j)),...
             flipud(angAcc_nom(:, j)));
         [ax, nx] = nullSpace_method(Y(:, j), Yc, Hc_BODY, R_NP, Hpos, noise(:, j));
         Ax_NP  = Ax_NP + ax;
@@ -190,7 +188,7 @@ while count < iterMax
         % classic LS
         [Yc, ~, Hc_BODY] = gradiometer_meas(t(j) ,asterParams, poleParams, [rn(:, j)', vn(:, j)'], ...
                 noise0, Cp_LS, Sp_LS, B_ACI');
-        [Yc] = add_angularComponents(Yc, attitude(:, j), zeros(3, Nt), flipud(angVel_nom(:, j)),...
+        [Yc] = add_angularComponents(Yc, attitude(:, j), zeros(3, 1), flipud(angVel_nom(:, j)),...
             flipud(angAcc_nom(:, j)));
         [ax, nx] = LS_method(Y(:, j), Yc, Hc_BODY, R_NP, noise(:, j));
         Ax_LS  = Ax_LS + ax;

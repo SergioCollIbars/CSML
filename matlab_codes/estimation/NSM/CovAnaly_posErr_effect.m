@@ -16,16 +16,16 @@ set(0,'defaultAxesFontSize',16);
 
 
 % Asteroid parameters.
-% % savedData = 0;
-% % path = "HARMCOEFS_BENNU_OSIRIS_1.txt";
-% % [Cnm, Snm, Re] = readCoeff(path);
-% % GM = 5.2;
-% % n_max  = 6;
-% % normalized = 1;
-% % W = 4.06130329511851E-4;  % Rotation ang. vel   [rad/s]
-% % W0 = 0;                   % Initial asteroid longitude
-% % RA = deg2rad(86.6388);    % Right Ascension     [rad]
-% % DEC = deg2rad(-65.1086);  % Declination         [rad]
+savedData = 0;
+path = "HARMCOEFS_BENNU_OSIRIS_1.txt";
+[Cnm, Snm, Re] = readCoeff(path);
+GM = 5.2;
+n_max  = 6;
+normalized = 1;
+W = 4.06130329511851E-4;  % Rotation ang. vel   [rad/s]
+W0 = 0;                   % Initial asteroid longitude
+RA = deg2rad(86.6388);    % Right Ascension     [rad]
+DEC = deg2rad(-65.1086);  % Declination         [rad]
 
 % % % Earth parameters
 % % savedData = 0;                % use saved data. 1 = yes / 0 = no
@@ -41,18 +41,18 @@ set(0,'defaultAxesFontSize',16);
 % % RA = -pi/2;                 % Right Ascension     [rad]
 % % DEC = pi/2;                 % Declination         [rad]
 
-% Eros parameters
-savedData = 0;
-path = "HARMCOEFS_EROS_CD_1.txt";
-name = "EROS";
-[Cnm, Snm, Re] = readCoeff(path);
-n_max  = 10;
-normalized = 1;
-GM =  459604.431484721;          % Point mass value    [m^3/s^2]
-W = 1639.38928 * pi/180 /86400;  % Rotation ang. vel   [rad/s]
-W0 = 0;                          % Initial asteroid longitude
-RA = deg2rad(11.363);            % Right Ascension     [rad]
-DEC = deg2rad(17.232);           % Declination         [rad]
+% % % Eros parameters
+% % savedData = 0;
+% % path = "HARMCOEFS_EROS_CD_1.txt";
+% % name = "EROS";
+% % [Cnm, Snm, Re] = readCoeff(path);
+% % n_max  = 10;
+% % normalized = 1;
+% % GM =  459604.431484721;          % Point mass value    [m^3/s^2]
+% % W = 1639.38928 * pi/180 /86400;  % Rotation ang. vel   [rad/s]
+% % W0 = 0;                          % Initial asteroid longitude
+% % RA = deg2rad(11.363);            % Right Ascension     [rad]
+% % DEC = deg2rad(17.232);           % Declination         [rad]
 
 poleParams = [W, W0, RA, DEC];
 asterParams = [GM, Re, n_max, normalized];
@@ -62,8 +62,8 @@ asterParams = [GM, Re, n_max, normalized];
 [X] = mat2list(Cnm, Snm, Nc, Ns);
 
 % Initial conditions
-% % r      = 2E3;         % [m]
-r = 24E3;               % [m]
+r      = 0.6E3;         % [m]
+% % r = 24E3;               % [m]
 % % r      = Re + 250E3;    % [m] 
 phi    = deg2rad(89);
 lambda = 0;
@@ -139,8 +139,8 @@ S = sqrt(diag(Pp));
 % % P0 = diag((S(2:end)).^2);
 
 % Consider covariance
-Ar = 1E-2;   % [m]
-Av = 1E-2;   % [m/s]
+Ar = 1E-10;   % [m]
+Av = 1E-10;   % [m/s]
 Pxc = zeros(Ncs-1, 6); Pc = zeros(6, 6);
 Pxc_NSM = zeros(Ncs - 1, 6); Pc_NSM = zeros(6, 6);
 for j = 1:3
@@ -159,7 +159,6 @@ c_NSM = ones(6, 1).*Ar(1)^2.*1;
 [~, Mxc_NSM, Mcc_NSM] = get_considerCov_apriori(P0, Pc_NSM, Pxc_NSM);
 Ax = inv(P0);  Ax_NSM = inv(P0);
 R0 = diag([sigma, sigma, sigma, sigma, sigma].^2);
-Nx = 5 + Ncs;
 for j = 1:Nt
     fprintf('Loading ... %.2f\n % ', j/Nt * 100);
     % current position
@@ -176,22 +175,30 @@ for j = 1:Nt
         Hx_ACI(6, 2:end)];
 
     % compute Consider Params partials for LS and NSM
-    PHI = eye(6,6);
     [Hc] = compute_posPartials(n_max, normalized, Cnm, Snm, Re, GM, rn_ACI, ACAF_ACI, eye(3,3));
-    hc_pos = [Hc(1, :);Hc(2,:);Hc(3,:);Hc(5, :);Hc(6, :)];
-    hc = [hc_pos, zeros(5, 3)] * PHI;
+    hpos = [Hc(1, :);Hc(2,:);Hc(3,:);Hc(5, :);Hc(6, :)];
     hap = compute_posPartials_2ndOrder(GM, rn_ACI(1), rn_ACI(2), rn_ACI(3));
     
-    % account for position and vel in the state estimation
-% %     PHI = reshape(state_t(j, 7:end), [Nx, Nx]);
-    PHI = eye(Nx, Nx);
-    ht = [hx, hc] * PHI;
+    % compute attitude partials. % Inertially fixed
+    [~, ~, H_angVel, H_angAcc] = compute_angularVals(zeros(3, 1), zeros(3, 1), zeros(3, 1), t);
+    H_omega = flipud(H_angVel);
+    H_omegaDot = flipud(H_angAcc);
+    [Hrot_ang] = compute_angularDyadPartials(zeros(3, 1), H_omega, H_omegaDot);
+    [Hrot_grad] = compute_rotPartials(n_max, normalized, Cnm, Snm, Re, GM, rn_ACI, ACAF_ACI, ACAF_ACI);
+    Hrot = Hrot_grad + Hrot_ang;
+    hrot = [Hrot(1, :);Hrot(2,:);Hrot(3,:);Hrot(5, :);Hrot(6, :)];
     
+    % select covarinace and estimation parameters
+    PHI = eye(Nx, Nx);
+    hc = [hrot, zeros(5, 3)] * PHI; % consider parameters matrix
+    hap = hap.*0;
+
+    % LS covariance
     Ax  = Ax  + (hx' * inv(R0) * hx);
     Mxc = Mxc + (hx' * inv(R0) * hc);
     Mcc = Mcc + (hc' * inv(R0) * hc); 
 
-    % NSM
+    % NSM covariance
     C = null(hc');
     hx_NSM = C' * hx;
     hap_NSM = C' * hap;
@@ -236,8 +243,10 @@ for j = 1:length(A)
     sigmaTh3(j) = sqrt(y);
    
     % approximation including only 'b'
-    sigmaTh1(j) = (1/sigma)*sqrt(c/b) * 1E-9;       % [m / E]
-    sigmaTh2(j) = sqrt(c/b);                        % [m]
+    sigmaTh1(j) = (1/sigma)*sqrt(c/b) * 1E-9;                    % [m / E]
+    sigmaTh1(j) = (1/sigma)*sqrt(c/b) * 1E-9 * 3600 * 180 / pi;  % [arcSec / E]
+    sigmaTh2(j) = sqrt(c/b);                                     % [m]
+
 end
 [C_Perr, S_Perr] = list2mat(n_max, Nc, Ns, [0; sigmaTh1]);
 C_Perr(1, :) = C_Perr(1, :).*NaN; C_Perr(2, :) = C_Perr(2, :).*NaN;
