@@ -8,7 +8,7 @@ set(0,'defaultAxesFontSize',16);
 
 %%              NSM METHODS COMPARISON
 % Description: Null space approach including attitude errors.
-% Test assuming inertial nominal attitude control.
+% Test assuming inertial nominal attitude cont
 % Author: Sergio Coll
 % Date: 09/28/24
 
