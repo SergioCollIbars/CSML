@@ -46,6 +46,7 @@ function [Hrot_dA_ang, Hrot_dAdT_ang] = compute_angularDyadPartials(omega, att, 
         -H_omegaDot(2, :); H_omegaDot(1, :); zeros(1, 3)];
 
     Hrot_dA_ang = H_dA_omega + H_dA_omegaDot;
+    Hrot_dA_ang = H_dA_omega;
 
     %%%%%%%%%%%%%%%%%%%%%% PARTIALS EULER RATE %%%%%%%%%%%%%%%%%%%%%%%
     % partials w.r.t angular velocity. For a (3-2-1) rotation
@@ -70,16 +71,14 @@ function [Hrot_dA_ang, Hrot_dAdT_ang] = compute_angularDyadPartials(omega, att, 
             -sin(phi)*cos(theta)*phiDot-cos(phi)*sin(theta)*thetaDot, -cos(phi)*phiDot, 0];
     H12 = -cos(theta)*psiDot;
     H22 = -sin(phi)*sin(theta)*psiDot;
-    H23 = cos(phi)*cos(theta)*psiDot - sin(phi)*thetaDot;
-    H32 = -cos(phi)*sin(theta)*psiDot;
-    H33 = -sin(phi)*cos(theta)*psiDot - cos(phi)*thetaDot;
+    H23 = cos(phi)*cos(theta)*psiDot - sin(phi)*thetaDo
     H = [0,H12,0;0,H22,H23;0,H32,H33];
-
     H_omegaDot = flipud(A_dot + H);
     H_dAdT_omegaDot = [zeros(1, 3); - H_omegaDot(3, :); H_omegaDot(2, :); ...
         H_omegaDot(3, :); zeros(1, 3); - H_omegaDot(1, :); ...
         -H_omegaDot(2, :); H_omegaDot(1, :); zeros(1, 3)];
 
     Hrot_dAdT_ang = H_dAdT_omega + H_dAdT_omegaDot;
+    Hrot_dAdT_ang = H_dAdT_omega;
 end
 

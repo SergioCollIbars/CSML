@@ -8,7 +8,7 @@ set(0,'defaultAxesFontSize',16);
 
 %%              NSM METHODS COMPARISON
 % Description: Null space approach including attitude errors.
-% Test assuming inertial nominal attitude control.
+% Test assuming rotation nominal attitude control.
 % Author: Sergio Coll
 % Date: 09/28/24
 
@@ -65,19 +65,19 @@ Nt = length(t);
 % position error
 Ar = 0*[1;1;1];            % [ACI]
 
-% attitude error
-frec    = 5E-5;                        % [rad/s]
-Amp     = 5E-8;
-At      = Amp*sin(frec*t).*ones(3, Nt);         % [rad] [yaw, pitch, roll]
-dA_dt   = Amp*frec*cos(frec*t).*ones(3, Nt);
-ddA_ddt = -Amp*frec^2*sin(frec*t).*ones(3, Nt);   
+% attitude error. Linear
+Amp     = 5E-6;                        % [rad]
+At      = Amp.*t.*ones(3, Nt);         % [rad] [yaw, pitch, roll]
+dA_dt   = Amp*ones(3, Nt);
+ddA_ddt = zeros(3, Nt);   
 
 % % At      = 1E-7.*ones(3, Nt);
 % % dA_dt   = zeros(3, Nt);                % [rad/s]
 % % ddA_ddt = zeros(3, Nt);                % [rad/s^2]
 
 % attitude nominal value
-Amp = 0;
+Amp = 1;                                            % [rad]
+frec = 1E-4;                                        % [rad/s]
 attitude  = Amp.*sin(frec.*t).*ones(3, Nt);                         % nominal attitude [rad]
 datt_dt   = Amp.*frec*cos(frec.*t).*ones(3, Nt);
 ddatt_ddt = Amp.*-frec^2*sin(frec.*t).*ones(3, Nt); 
@@ -93,13 +93,12 @@ noise0 = zeros(9, Nt);
 % % sigma1  = 0.01 * 1E-9 * sqrt(f); % Vxx, Vyy
 % % sigma2  = 0.6  * 1E-9 * sqrt(f); % Vyz, Vyx
 % % sigma3  = 0.02 * 1E-9 * sqrt(f); % Vxz, Vzz
-sigmaq  = 1E-6;                  % rad 
 sigma1 = 1E-15;
 sigma2 = sigma1; sigma3 = sigma1;
 
-means    = zeros(1, 12);
+means    = zeros(1, 9);
 std_devs = [sigma1, sigma2, sigma3, sigma2, sigma1, sigma2, sigma3, ...
-    sigma2, sigma3, sigmaq, sigmaq, sigmaq]; 
+    sigma2, sigma3]; 
 num_realizations = length(t); % Number of realizations
 
 noise = normrnd(repmat(means', 1, num_realizations), ...
@@ -121,20 +120,19 @@ vn = state_t(:, 4:6)';
 
 % perturb nominal coefficient
 [X] = mat2list(Cnm, Snm, Nc, Ns);
-sigma_n = 1*[1E-2;1E-2;1E-2;1E-2;1E-2];
+sigma_n = 1E-30*[1E-2;1E-2;1E-2;1E-2;1E-2];
 % % sigma_n = ones(10, 1).*1E-4;
 [Xp, Pp] = perturb_coeff(sigma_n, n_max, X);
 [Cp, Sp] = list2mat(n_max, Nc, Ns, Xp);
 P0 = Pp(2:end, 2:end); 
 
 % Gravity estimation
-R_N = diag([sigma1, sigma2, sigma3, sigma1, sigma2, sigmaq, sigmaq, sigmaq].^2);
 R_NP = diag([sigma1, sigma2, sigma3, sigma1, sigma2].^2);
-n = ones(2, Nt)*NaN;
 
 % loop
 iterMax = 6;
 count   = 0;
+iter    = 1;
 xnot_NP = zeros(Ncs-1, 1); xnot_N = xnot_NP; xnot_LS = xnot_NP;
 Cp_NP = Cp; Cp_N = Cp; Cp_LS = Cp;
 Sp_NP = Sp; Sp_N = Sp; Sp_LS = Sp;
@@ -162,14 +160,35 @@ while count < iterMax
         [Hrot_dA_ang, Hrot_dAdT_ang] = compute_angularDyadPartials(flipud(angVel_nom(:, j)), attitude(:, j), datt_dt(:, j), ddatt_ddt(:, j));
         Hrot_dA = Hrot_grad + Hrot_dA_ang;
         Hrot_dAdT = Hrot_dAdT_ang;
-        Hrot = Hrot_dA;
-    
+        PHI = [eye(3,3), eye(3,3)*dt;zeros(3,3), eye(3,3)];
+        Hrot = [Hrot_dA, Hrot_dAdT]*PHI;
+        
         % Null space method correcting for attitude
         [Yc, ~, Hc_BODY] = gradiometer_meas(t(j) ,asterParams, poleParams, [rn(:, j)', vn(:, j)'], ...
                 noise0, Cp_N, Sp_N, B_ACI');
         [Yc] = add_angularComponents(Yc, attitude(:, j), zeros(3, Nt), flipud(angVel_nom(:, j)),...
             flipud(angAcc_nom(:, j)));
+        
+        if(iter == 1)
+            dY = [Y(1, j)-Yc(1);Y(2, j)-Yc(2);Y(3, j)-Yc(3);Y(5, j)-Yc(5);Y(6, j)-Yc(6)];
+            Hc = [Hc_BODY(1, 2:end); Hc_BODY(4, 2:end); Hc_BODY(7, 2:end);Hc_BODY(5, 2:end);...
+                Hc_BODY(8, 2:end)];
+            Hpr = [Hrot(1, :);Hrot(2,:);Hrot(3,:);Hrot(5, :);Hrot(6, :)];
+        else
+            dy = [Y(1, j)-Yc(1);Y(2, j)-Yc(2);Y(3, j)-Yc(3);Y(5, j)-Yc(5);Y(6, j)-Yc(6)];
+            dY = [dY; dy];
 
+            hc = [Hc_BODY(1, 2:end); Hc_BODY(4, 2:end); Hc_BODY(7, 2:end);Hc_BODY(5, 2:end);...
+                Hc_BODY(8, 2:end)];
+            Hc = [Hc; hc];
+
+            hpr = [Hrot(1, :);Hrot(2,:);Hrot(3,:);Hrot(5, :);Hrot(6, :)];
+            Hpr = [Hpr; hpr];
+
+            C   = null(Hpr');
+            R = []
+
+        end
         [ax, nx] = nullSpace_method2(Y(:, j), Yc, Hc_BODY, R_NP, ...
             Hrot, noise(:, j));
         Ax_N  = Ax_N + ax;
