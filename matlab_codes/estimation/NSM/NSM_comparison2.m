@@ -13,27 +13,27 @@ set(0,'defaultAxesFontSize',16);
 % Date: 09/28/24
 
 % Asteroid parameters.
-path = "HARMCOEFS_BENNU_OSIRIS_1.txt";
-name = "BENNU";
-[Cnm, Snm, Re] = readCoeff(path);
-GM = 5.2;
-n_max  = 6;
-normalized = 1;
-W = 4.06130329511851E-4;  % Rotation ang. vel   [rad/s]
-W0 = 0;                   % Initial asteroid longitude
-RA = deg2rad(86.6388);    % Right Ascension     [rad]
-DEC = deg2rad(-65.1086);  % Declination         [rad]
-
-% % path = "HARMCOEFS_EROS_CD_1.txt";
-% % name = "EROS";
+% % path = "HARMCOEFS_BENNU_OSIRIS_1.txt";
+% % name = "BENNU";
 % % [Cnm, Snm, Re] = readCoeff(path);
-% % n_max  = 10;
+% % GM = 5.2;
+% % n_max  = 6;
 % % normalized = 1;
-% % GM =  459604.431484721;          % Point mass value    [m^3/s^2]
-% % W = 1639.38928 * pi/180 /86400;  % Rotation ang. vel   [rad/s]
-% % W0 = 0;                          % Initial asteroid longitude
-% % RA = deg2rad(11.363);            % Right Ascension     [rad]
-% % DEC = deg2rad(17.232);           % Declination         [rad]
+% % W = 4.06130329511851E-4;  % Rotation ang. vel   [rad/s]
+% % W0 = 0;                   % Initial asteroid longitude
+% % RA = deg2rad(86.6388);    % Right Ascension     [rad]
+% % DEC = deg2rad(-65.1086);  % Declination         [rad]
+
+path = "HARMCOEFS_EROS_CD_1.txt";
+name = "EROS";
+[Cnm, Snm, Re] = readCoeff(path);
+n_max  = 10;
+normalized = 1;
+GM =  459604.431484721;          % Point mass value    [m^3/s^2]
+W = 1639.38928 * pi/180 /86400;  % Rotation ang. vel   [rad/s]
+W0 = 0;                          % Initial asteroid longitude
+RA = deg2rad(11.363);            % Right Ascension     [rad]
+DEC = deg2rad(17.232);           % Declination         [rad]
 
 % % 
 % % path = "HARMCOEFS_EARTH_1.txt";
@@ -55,7 +55,7 @@ asterParams = [GM, Re, n_max, normalized];
 [Nc, Ns, Ncs] = count_num_coeff(n_max); 
 
 % Initial conditions
-r      = 0.3E3;      % [m]
+r      = 24E3;      % [m]
 % % r      = Re + 300E3; 
 phi    = pi/2;
 lambda = 0;
@@ -75,7 +75,7 @@ t = linspace(0, rev*T, rev*T * f);
 Nt = length(t);
 
 % position error
-Ar = 1E-2*[1;1;1].*1;            % [ACI]
+Ar = 1*[1;1;1].*1;            % [ACI]
 Ar_gaussian = [normrnd(0, Ar(1), 1, Nt); 
                normrnd(0, Ar(2), 1, Nt); 
                normrnd(0, Ar(3), 1, Nt)];
@@ -86,8 +86,8 @@ sigma1  = 0.01 * 1E-9 * sqrt(f); % Vxx, Vyy
 sigma2  = 0.01  * 1E-9 * sqrt(f); % Vyz, Vyx
 sigma3  = 0.02 * 1E-9 * sqrt(f); % Vxz, Vzz
 
-sigma1 = 1E-15;
-sigma2 = sigma1; sigma3 = sigma1;
+% % sigma1 = 1E-12;
+% % sigma2 = sigma1; sigma3 = sigma1;
 
 means    = zeros(1, 9);
 std_devs = [sigma1, sigma2, sigma3, sigma2, sigma1, sigma2, sigma3, ...

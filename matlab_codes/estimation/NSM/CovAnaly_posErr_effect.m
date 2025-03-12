@@ -62,10 +62,10 @@ asterParams = [GM, Re, n_max, normalized];
 [X] = mat2list(Cnm, Snm, Nc, Ns);
 
 % Initial conditions
-r      = 0.6E3;         % [m]
+r      = 0.3E3;         % [m]
 % % r = 24E3;               % [m]
-% % r      = Re + 250E3;    % [m] 
-phi    = deg2rad(89);
+% % r = Re + 250E3;         % [m] 
+phi    = pi/2;
 lambda = 0;
 theta  = pi/2 - phi;% Orbit colatitude [m]
 R = [sin(theta)*cos(lambda), cos(theta)*cos(lambda), -sin(lambda);...
@@ -78,12 +78,12 @@ v0 = R * [0;0;sqrt(GM/r)];  % [ACI]
 n = sqrt(GM / r^3);    % Mean motion         [rad/s]
 T = (2 * pi / n);
 rev = 3;
-f = 1/10;
+f = 1/30;
 t = linspace(0, rev*T, rev*T * f);
 Nt = length(t);
 
 % measurement uncertianty
-sigma = 1E-12;                          % [1/s^2]
+sigma = 3E-12;                          % [1/s^2]
 noise0 = zeros(9, Nt);
 
 % Integrate trajectory
@@ -125,11 +125,11 @@ hold on;
 figure()
 plot(t./86400, (vecnorm(state_t(:, 1:3)') - Re)./1E3, 'LineWidth', 2)
 xlabel('Time [days]')
-ylabel('[m]')
+ylabel('[km]')
 title('S/C orbital Altitude')
 
 % perturb nominal coefficient
-sigma_n = 1E2 * ones(1, n_max);
+sigma_n = 1 * ones(1, n_max);
 [~, Pp] = perturb_coeff(sigma_n, n_max, X);
 P0 = Pp(2:end, 2:end); 
 S = sqrt(diag(Pp));
@@ -139,15 +139,11 @@ S = sqrt(diag(Pp));
 % % P0 = diag((S(2:end)).^2);
 
 % Consider covariance
-Ar = 1E-10;   % [m]
-Av = 1E-10;   % [m/s]
-Pxc = zeros(Ncs-1, 6); Pc = zeros(6, 6);
+Ar = 1.5E-4;   % [m]
+Pxc = zeros(Ncs-1, 3); Pc = zeros(3, 3);
 Pxc_NSM = zeros(Ncs - 1, 6); Pc_NSM = zeros(6, 6);
 for j = 1:3
     Pc(j, j) = (Ar(1))^2;
-end
-for j = 4:6
-    Pc(j, j) = (Av(1))^2;
 end
 for j = 1:length(Pc_NSM)
     Pc_NSM(j, j) = Ar(1)^4;
@@ -180,17 +176,13 @@ for j = 1:Nt
     hap = compute_posPartials_2ndOrder(GM, rn_ACI(1), rn_ACI(2), rn_ACI(3));
     
     % compute attitude partials. % Inertially fixed
-    [~, ~, H_angVel, H_angAcc] = compute_angularVals(zeros(3, 1), zeros(3, 1), zeros(3, 1), t);
-    H_omega = flipud(H_angVel);
-    H_omegaDot = flipud(H_angAcc);
-    [Hrot_ang] = compute_angularDyadPartials(zeros(3, 1), H_omega, H_omegaDot);
     [Hrot_grad] = compute_rotPartials(n_max, normalized, Cnm, Snm, Re, GM, rn_ACI, ACAF_ACI, ACAF_ACI);
-    Hrot = Hrot_grad + Hrot_ang;
+    Hrot = Hrot_grad;
     hrot = [Hrot(1, :);Hrot(2,:);Hrot(3,:);Hrot(5, :);Hrot(6, :)];
     
     % select covarinace and estimation parameters
-    PHI = eye(Nx, Nx);
-    hc = [hrot, zeros(5, 3)] * PHI; % consider parameters matrix
+% %     hc = hpos; % consider parameters matrix. Position NSM
+    hc = hrot; % consider parameters matrix. Attitude NSM
     hap = hap.*0;
 
     % LS covariance
@@ -243,7 +235,7 @@ for j = 1:length(A)
     sigmaTh3(j) = sqrt(y);
    
     % approximation including only 'b'
-    sigmaTh1(j) = (1/sigma)*sqrt(c/b) * 1E-9;                    % [m / E]
+% %     sigmaTh1(j) = (1/sigma)*sqrt(c/b) * 1E-9;                    % [m / E]
     sigmaTh1(j) = (1/sigma)*sqrt(c/b) * 1E-9 * 3600 * 180 / pi;  % [arcSec / E]
     sigmaTh2(j) = sqrt(c/b);                                     % [m]
 

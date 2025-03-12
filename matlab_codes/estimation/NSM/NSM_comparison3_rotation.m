@@ -66,9 +66,9 @@ Nt = length(t);
 Ar = 0*[1;1;1];            % [ACI]
 
 % attitude error. Linear
-Amp     = 5E-8;                        % [rad]
-At      = Amp.*t.*ones(3, Nt);         % [rad] [yaw, pitch, roll]
-dA_dt   = Amp*ones(3, Nt);
+Amp     = 1E-11;                                     % [rad]
+At      = Amp.*t.*ones(3, Nt).*[1;0.5;0.7];         % [rad] [yaw, pitch, roll]
+dA_dt   = Amp*ones(3, Nt).*[1;0.5;0.7];
 ddA_ddt = zeros(3, Nt);   
 
 % % At      = 1E-7.*ones(3, Nt);
@@ -76,17 +76,17 @@ ddA_ddt = zeros(3, Nt);
 % % ddA_ddt = zeros(3, Nt);                % [rad/s^2]
 
 % attitude nominal value
-Amp = 1E-1;                                         % [rad]
-frec = 1E-4;                                        % [rad/s]
-attitude  = Amp.*sin(frec.*t).*ones(3, Nt);                         % nominal attitude [rad]
-datt_dt   = Amp.*frec*cos(frec.*t).*ones(3, Nt);
-ddatt_ddt = Amp.*-frec^2*sin(frec.*t).*ones(3, Nt); 
+Amp = n;                                    % [rad]
+attitude  = Amp.*t.*ones(3, Nt).*[0;1;0];   % nominal attitude [rad]
+datt_dt   = Amp.*ones(3, Nt).*[0;1;0];
+ddatt_ddt = zeros(3, Nt); 
 [angVel_true, angAcc_true] = compute_angularVals(attitude + At, datt_dt + dA_dt, ddatt_ddt + ddA_ddt);
 [angVel_nom, angAcc_nom]   = compute_angularVals(attitude, datt_dt, ddatt_ddt);
 
 % plot S/C attitude
-plot_Attitude(t, attitude, attitude + At, angVel_nom, ...
-    angVel_true, angAcc_nom, angAcc_true);
+scale = 3600 * 180 / pi;
+plot_Attitude(t./T, attitude, At * scale, angVel_nom, ...
+    dA_dt, angAcc_nom, ddA_ddt);
 
 % noise values from GOCE mission
 noise0 = zeros(9, Nt);
@@ -469,23 +469,32 @@ function [] = plot_Attitude(t, attitude_nom, attitude_true, angVel_nom, ...
     angVel_true, angAcc_nom, angAcc_true)
     figure()
     subplot(3, 2, 1)
-    plot(t./86400, rad2deg(attitude_true), 'LineWidth', 2)
-    legend('\Psi, yaw', '\theta, pitch', '\phi roll')
-    title('Actual attitude values')
+    plot(t, attitude_true, 'LineWidth', 2)
+    legend('\delta \Psi, yaw', '\delta \theta, pitch', '\delta \phi roll')
+    ylabel('Arcsecond')
+    title('Error attitude values')
     subplot(3, 2, 3)
-    plot(t./86400, rad2deg(angVel_true), 'LineWidth', 2)
-    legend({'$\omega_3$', '$\omega_2$', '$\omega_1$'}, 'Interpreter', 'latex')
+    plot(t, rad2deg(angVel_true), 'LineWidth', 2)
+    ylabel('[deg/s]')
+    legend({'$\delta \omega_3$', '$\delta \omega_2$', '$\delta \omega_1$'}, 'Interpreter', 'latex')
     subplot(3, 2, 5)
-    plot(t./86400, rad2deg(angAcc_true), 'LineWidth', 2)
-    legend({'$\dot{\omega_3}$', '$\dot{\omega_2}$', '$\dot{\omega_1}$'}, 'Interpreter', 'latex')
+    plot(t, rad2deg(angAcc_true), 'LineWidth', 2)
+    ylabel('[deg/s^2]')
+    legend({'$\delta \dot{\omega_3}$', '$\delta \dot{\omega_2}$', '$\delta \dot{\omega_1}$'}, 'Interpreter', 'latex')
+    xlabel('Orbit revolution')
     subplot(3, 2, 2)
-    plot(t./86400, rad2deg(attitude_nom), 'LineWidth', 2)
+    f = wrapTo2Pi(attitude_nom);
+    plot(t, rad2deg(f), 'LineWidth', 2)
     legend('\Psi, yaw', '\theta, pitch', '\phi roll')
+    ylabel('[deg]')
     title('Nominal attitude values')
     subplot(3, 2, 4)
-    plot(t./86400, rad2deg(angVel_nom), 'LineWidth', 2)
+    plot(t, rad2deg(angVel_nom), 'LineWidth', 2)
+    ylabel('[deg/s]')
     legend({'$\omega_3$', '$\omega_2$', '$\omega_1$'}, 'Interpreter', 'latex')
     subplot(3, 2, 6)
-    plot(t./86400, rad2deg(angAcc_nom), 'LineWidth', 2)
+    plot(t, rad2deg(angAcc_nom), 'LineWidth', 2)
+    ylabel('[deg/s^2]')
     legend({'$\dot{\omega_3}$', '$\dot{\omega_2}$', '$\dot{\omega_1}$'}, 'Interpreter', 'latex')
+    xlabel('Orbit revolution')
 end

@@ -66,11 +66,14 @@ Nt = length(t);
 Ar = 0*[1;1;1];            % [ACI]
 
 % attitude error
-frec    = 5E-5;                        % [rad/s]
-Amp     = 5E-8;
-At      = Amp*sin(frec*t).*ones(3, Nt);         % [rad] [yaw, pitch, roll]
-dA_dt   = Amp*frec*cos(frec*t).*ones(3, Nt);
-ddA_ddt = -Amp*frec^2*sin(frec*t).*ones(3, Nt);   
+frec    = 1E-4;                        % [rad/s]
+Amp     = 1E-7;
+
+% % frec    = 1E-4;                        % [rad/s]
+% % Amp     = 1E-5;
+At      = Amp*sin(frec*t).*ones(3, Nt).*[1;0.5;0.7];         % [rad] [yaw, pitch, roll]
+dA_dt   = Amp*frec*cos(frec*t).*ones(3, Nt).*[1;0.5;0.7];
+ddA_ddt = -Amp*frec^2*sin(frec*t).*ones(3, Nt).*[1;0.5;0.7];   
 
 % % At      = 1E-7.*ones(3, Nt);
 % % dA_dt   = zeros(3, Nt);                % [rad/s]
@@ -85,21 +88,21 @@ ddatt_ddt = Amp.*-frec^2*sin(frec.*t).*ones(3, Nt);
 [angVel_nom, angAcc_nom]   = compute_angularVals(attitude, datt_dt, ddatt_ddt);
 
 % plot S/C attitude
-plot_Attitude(t, attitude, attitude + At, angVel_nom, ...
-    angVel_true, angAcc_nom, angAcc_true);
+scale = 3600 * 180 / pi;
+plot_Attitude(t./T, attitude, At * scale, angVel_nom, ...
+    dA_dt, angAcc_nom, ddA_ddt);
 
 % noise values from GOCE mission
 noise0 = zeros(9, Nt);
 % % sigma1  = 0.01 * 1E-9 * sqrt(f); % Vxx, Vyy
 % % sigma2  = 0.6  * 1E-9 * sqrt(f); % Vyz, Vyx
 % % sigma3  = 0.02 * 1E-9 * sqrt(f); % Vxz, Vzz
-sigmaq  = 1E-6;                  % rad 
 sigma1 = 1E-15;
 sigma2 = sigma1; sigma3 = sigma1;
 
-means    = zeros(1, 12);
+means    = zeros(1, 9);
 std_devs = [sigma1, sigma2, sigma3, sigma2, sigma1, sigma2, sigma3, ...
-    sigma2, sigma3, sigmaq, sigmaq, sigmaq]; 
+    sigma2, sigma3]; 
 num_realizations = length(t); % Number of realizations
 
 noise = normrnd(repmat(means', 1, num_realizations), ...
@@ -128,9 +131,8 @@ sigma_n = 1*[1E-2;1E-2;1E-2;1E-2;1E-2];
 P0 = Pp(2:end, 2:end); 
 
 % Gravity estimation
-R_N = diag([sigma1, sigma2, sigma3, sigma1, sigma2, sigmaq, sigmaq, sigmaq].^2);
 R_NP = diag([sigma1, sigma2, sigma3, sigma1, sigma2].^2);
-n = ones(2, Nt)*NaN;
+
 
 % loop
 iterMax = 6;
@@ -432,23 +434,32 @@ function [] = plot_Attitude(t, attitude_nom, attitude_true, angVel_nom, ...
     angVel_true, angAcc_nom, angAcc_true)
     figure()
     subplot(3, 2, 1)
-    plot(t./86400, rad2deg(attitude_true), 'LineWidth', 2)
-    legend('\Psi, yaw', '\theta, pitch', '\phi roll')
-    title('Actual attitude values')
+    plot(t, attitude_true, 'LineWidth', 2)
+    legend('\delta \Psi, yaw', '\delta \theta, pitch', '\delta \phi roll')
+    ylabel('Arcsecond')
+    title('Error attitude values')
     subplot(3, 2, 3)
-    plot(t./86400, rad2deg(angVel_true), 'LineWidth', 2)
-    legend({'$\omega_3$', '$\omega_2$', '$\omega_1$'}, 'Interpreter', 'latex')
+    plot(t, rad2deg(angVel_true), 'LineWidth', 2)
+    ylabel('[deg/s]')
+    legend({'$\delta \omega_3$', '$\delta \omega_2$', '$\delta \omega_1$'}, 'Interpreter', 'latex')
     subplot(3, 2, 5)
-    plot(t./86400, rad2deg(angAcc_true), 'LineWidth', 2)
-    legend({'$\dot{\omega_3}$', '$\dot{\omega_2}$', '$\dot{\omega_1}$'}, 'Interpreter', 'latex')
+    plot(t, rad2deg(angAcc_true), 'LineWidth', 2)
+    ylabel('[deg/s^2]')
+    legend({'$\delta \dot{\omega_3}$', '$\delta \dot{\omega_2}$', '$\delta \dot{\omega_1}$'}, 'Interpreter', 'latex')
+    xlabel('Orbit revolution')
     subplot(3, 2, 2)
-    plot(t./86400, rad2deg(attitude_nom), 'LineWidth', 2)
+    f = wrapTo2Pi(attitude_nom);
+    plot(t, rad2deg(f), 'LineWidth', 2)
     legend('\Psi, yaw', '\theta, pitch', '\phi roll')
+    ylabel('[deg]')
     title('Nominal attitude values')
     subplot(3, 2, 4)
-    plot(t./86400, rad2deg(angVel_nom), 'LineWidth', 2)
+    plot(t, rad2deg(angVel_nom), 'LineWidth', 2)
+    ylabel('[deg/s]')
     legend({'$\omega_3$', '$\omega_2$', '$\omega_1$'}, 'Interpreter', 'latex')
     subplot(3, 2, 6)
-    plot(t./86400, rad2deg(angAcc_nom), 'LineWidth', 2)
+    plot(t, rad2deg(angAcc_nom), 'LineWidth', 2)
+    ylabel('[deg/s^2]')
     legend({'$\dot{\omega_3}$', '$\dot{\omega_2}$', '$\dot{\omega_1}$'}, 'Interpreter', 'latex')
+    xlabel('Orbit revolution')
 end
