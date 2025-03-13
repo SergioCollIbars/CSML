@@ -86,7 +86,7 @@ ddatt_ddt = zeros(3, Nt);
 % plot S/C attitude
 scale = 3600 * 180 / pi;
 plot_Attitude(t./T, attitude, At * scale, angVel_nom, ...
-    dA_dt, angAcc_nom, ddA_ddt);
+    angVel_true - angVel_nom, angAcc_nom, angAcc_true - angAcc_nom);
 
 % noise values from GOCE mission
 noise0 = zeros(9, Nt);
@@ -130,7 +130,7 @@ P0 = Pp(2:end, 2:end);
 R_NP = diag([sigma1, sigma2, sigma3, sigma1, sigma2].^2);
 
 % loop
-iterMax = 15;
+iterMax = 25;
 count   = 0;
 iter    = 1;
 xnot_NP = zeros(Ncs-1, 1); xnot_N = xnot_NP; xnot_LS = xnot_NP;
@@ -160,11 +160,6 @@ while count < iterMax
         [Hrot_dA_ang, Hrot_dAdT_ang] = compute_angularDyadPartials(flipud(angVel_nom(:, j)), attitude(:, j), datt_dt(:, j), ddatt_ddt(:, j));
         Hrot_dA = Hrot_grad + Hrot_dA_ang;
         Hrot_dAdT = Hrot_dAdT_ang;
-        if(j == 1), PHI = eye(6,6);
-        else
-            PHI = [eye(3,3), eye(3,3)*dt*(j-1);zeros(3,3), eye(3,3)];
-        end
-        Hrot = [Hrot_dA, Hrot_dAdT]*PHI;
         
         % Null space method correcting for attitude
         [Yc, ~, Hc_BODY] = gradiometer_meas(t(j) ,asterParams, poleParams, [rn(:, j)', vn(:, j)'], ...
@@ -173,6 +168,7 @@ while count < iterMax
             flipud(angAcc_nom(:, j)));
         
         if(iter == 1)
+            Hrot = [Hrot_dA, Hrot_dAdT];
             dY = [Y(1, j)-Yc(1);Y(2, j)-Yc(2);Y(3, j)-Yc(3);Y(5, j)-Yc(5);Y(6, j)-Yc(6)] + noise(1:5, j);
             Hc = [Hc_BODY(1, 2:end); Hc_BODY(4, 2:end); Hc_BODY(7, 2:end);Hc_BODY(5, 2:end);...
                 Hc_BODY(8, 2:end)];
@@ -181,6 +177,9 @@ while count < iterMax
             % update iter
             iter = 2;
         else
+            PHI = [eye(3,3), eye(3,3)*dt;zeros(3,3), eye(3,3)];
+            Hrot = [Hrot_dA, Hrot_dAdT]*PHI;
+
             dy = [Y(1, j)-Yc(1);Y(2, j)-Yc(2);Y(3, j)-Yc(3);Y(5, j)-Yc(5);Y(6, j)-Yc(6)] + noise(1:5, j);
             dY = [dY; dy];
 

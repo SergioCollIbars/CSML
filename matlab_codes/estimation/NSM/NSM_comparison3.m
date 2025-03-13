@@ -71,13 +71,14 @@ Amp     = 1E-7;
 
 % % frec    = 1E-4;                        % [rad/s]
 % % Amp     = 1E-5;
-At      = Amp*sin(frec*t).*ones(3, Nt).*[1;0.5;0.7];         % [rad] [yaw, pitch, roll]
-dA_dt   = Amp*frec*cos(frec*t).*ones(3, Nt).*[1;0.5;0.7];
-ddA_ddt = -Amp*frec^2*sin(frec*t).*ones(3, Nt).*[1;0.5;0.7];   
+% % At      = Amp*sin(frec*t).*ones(3, Nt).*[1;0.5;0.7];         % [rad] [yaw, pitch, roll]
+% % dA_dt   = Amp*frec*cos(frec*t).*ones(3, Nt).*[1;0.5;0.7];
+% % ddA_ddt = -Amp*frec^2*sin(frec*t).*ones(3, Nt).*[1;0.5;0.7];   
 
-% % At      = 1E-7.*ones(3, Nt);
-% % dA_dt   = zeros(3, Nt);                % [rad/s]
-% % ddA_ddt = zeros(3, Nt);                % [rad/s^2]
+Amp = 1E-11;
+At      = Amp*t.*ones(3, Nt).*[1;0.7;0.5];
+dA_dt   = Amp.*ones(3, Nt).*[1;0.7;0.5];        % [rad/s]
+ddA_ddt = zeros(3, Nt);                         % [rad/s^2]
 
 % attitude nominal value
 Amp = 0;
@@ -90,7 +91,7 @@ ddatt_ddt = Amp.*-frec^2*sin(frec.*t).*ones(3, Nt);
 % plot S/C attitude
 scale = 3600 * 180 / pi;
 plot_Attitude(t./T, attitude, At * scale, angVel_nom, ...
-    dA_dt, angAcc_nom, ddA_ddt);
+    angVel_true - angVel_nom, angAcc_nom, angAcc_true - angAcc_nom);
 
 % noise values from GOCE mission
 noise0 = zeros(9, Nt);

@@ -1,4 +1,5 @@
-function [Hrot_dA_ang, Hrot_dAdT_ang] = compute_angularDyadPartials(omega, att, datt_dt, ddatt_ddt)
+function [Hrot_dA_ang, Hrot_dAdT_ang, H_omega_dA, H_omegaDot_dA, H_omega_dAdt, H_omegaDot_dAdt] = ...
+    compute_angularDyadPartials(omega, att, datt_dt, ddatt_ddt)
     % Description: Using the partials of the angular velocity and
     % acceleration w.r.t the Euler angles, compute the Dyad partials w.r.t
     % the Euler angles.
@@ -12,7 +13,7 @@ function [Hrot_dA_ang, Hrot_dAdT_ang] = compute_angularDyadPartials(omega, att, 
     B = [0, -cos(theta)*psiDot, 0;...
          0, -sin(phi)*sin(theta)*psiDot, cos(phi)*cos(theta)*psiDot-sin(phi)*thetaDot;...
          0, -cos(phi)*sin(theta)*psiDot, -sin(phi)*cos(theta)*psiDot-cos(phi)*thetaDot];
-    H_omega = flipud(B); 
+    H_omega = flipud(B);  H_omega_dA = B;
 
     dw11_dt = -2*omega(2)*H_omega(2, :) - 2*omega(3)*H_omega(3, :);
     dw12_dt = omega(2)*H_omega(1, :) + omega(1)*H_omega(2, :);
@@ -40,7 +41,7 @@ function [Hrot_dA_ang, Hrot_dAdT_ang] = compute_angularDyadPartials(omega, att, 
          0, -sin(phi)*sin(theta)*psiDdot, cos(phi)*cos(theta)*psiDdot-sin(phi)*thetaDdot;...
          0, -cos(phi)*sin(theta)*psiDdot, -sin(phi)*cos(theta)*psiDdot-cos(phi)*thetaDdot];
 
-    H_omegaDot = flipud(C + D);
+    H_omegaDot = flipud(C + D);   H_omegaDot_dA = C + D;
     H_dA_omegaDot = [zeros(1, 3); - H_omegaDot(3, :); H_omegaDot(2, :); ...
         H_omegaDot(3, :); zeros(1, 3); - H_omegaDot(1, :); ...
         -H_omegaDot(2, :); H_omegaDot(1, :); zeros(1, 3)];
@@ -52,7 +53,7 @@ function [Hrot_dA_ang, Hrot_dAdT_ang] = compute_angularDyadPartials(omega, att, 
     A = [-sin(theta), 0, 1;...
             sin(phi)*cos(theta), cos(phi), 0;...
             cos(phi)*cos(theta), -sin(phi), 0];
-    H_omega = flipud(A); 
+    H_omega = flipud(A);   H_omega_dAdt =A;
 
     dw11_dt = -2*omega(2)*H_omega(2, :) - 2*omega(3)*H_omega(3, :);
     dw12_dt = omega(2)*H_omega(1, :) + omega(1)*H_omega(2, :);
@@ -74,8 +75,8 @@ function [Hrot_dA_ang, Hrot_dAdT_ang] = compute_angularDyadPartials(omega, att, 
     H32 = -cos(phi)*sin(theta)*psiDot;
     H33 = -sin(phi)*cos(theta)*psiDot - cos(phi)*thetaDot;
     H = [0,H12,0;0,H22,H23;0,H32,H33];
-
-    H_omegaDot = flipud(A_dot + H);
+    
+    H_omegaDot = flipud(A_dot + H); H_omegaDot_dAdt = A_dot + H;
     H_dAdT_omegaDot = [zeros(1, 3); - H_omegaDot(3, :); H_omegaDot(2, :); ...
         H_omegaDot(3, :); zeros(1, 3); - H_omegaDot(1, :); ...
         -H_omegaDot(2, :); H_omegaDot(1, :); zeros(1, 3)];
