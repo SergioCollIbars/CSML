@@ -128,6 +128,8 @@ P0 = Pp(2:end, 2:end);
 
 % Gravity estimation
 R_NP = diag([sigma1, sigma2, sigma3, sigma1, sigma2].^2);
+R = diag([sigma1, sigma2, sigma3, sigma1, sigma2, sigma1, ...
+    sigma1, sigma1, sigma1].^2);
 
 % loop
 iterMax = 25;
@@ -208,8 +210,12 @@ while count < iterMax
             % re-set iter
             iter = 1;
         end
-% %         [ax, nx] = nullSpace_method2(Y(:, j), Yc, Hc_BODY, R_NP, ...
+
+% %         Hrot = [Hrot_dA, Hrot_dAdT];
+% %         [ax, nx] = nullSpace_method2(Y(:, j), Yc, Hc_BODY, R, ...
 % %             Hrot, noise(:, j));
+% %         Ax_N  = Ax_N + ax;
+% %         Nx_N  = Nx_N + nx;
 
         % Null space method correcting for position 
         [Hpos] = compute_posPartials(n_max, normalized, Cp_NP, Sp_NP, Re, GM, rn_ACI, ACAF_ACI, ACAF_B);
@@ -334,17 +340,24 @@ function [ax, nx] = nullSpace_method2(Y, Yc, Hc, R, Hpr, noise)
     % add noise
     Y = Y + noise(1:9);
 
-    % select measurements
-    dY = [Y(1)-Yc(1);Y(2)-Yc(2);Y(3)-Yc(3);Y(5)-Yc(5);Y(6)-Yc(6)];
+    % % select measurements
+    % % dY = [Y(1)-Yc(1);Y(2)-Yc(2);Y(3)-Yc(3);Y(5)-Yc(5);Y(6)-Yc(6)];
 
-    % look for null space
-    H = Hpr;
-    C = null([H(1, :);H(2,:);H(3,:);H(5, :);H(6, :)]');
+% %     % look for null space
+% %     H = Hpr;
+% %     C = null([H(1, :);H(2,:);H(3,:);H(5, :);H(6, :)]');
+% %     hc = [Hc(1, 2:end); Hc(4, 2:end); Hc(7, 2:end);Hc(5, 2:end);...
+% %         Hc(8, 2:end)];
+
+    dY = Y - Yc;
+    C = null(Hpr');
+    hc = [Hc(1, 2:end); Hc(4, 2:end); Hc(7, 2:end); Hc(2, 2:end); Hc(5, 2:end);...
+         Hc(8, 2:end);  Hc(3, 2:end); Hc(6, 2:end); Hc(9, 2:end)];
+
 
     % project measurements
     y  = C' * dY;
-    hc = C' * [Hc(1, 2:end); Hc(4, 2:end); Hc(7, 2:end);Hc(5, 2:end);...
-        Hc(8, 2:end)];
+    hc = C' * hc;
     r  = C' * R * C;
 
     % information and normal matrices
