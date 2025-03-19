@@ -23,8 +23,8 @@ close all;
 clc;
 
 % specify simulation time, frequency and noise
-% % tmin = 0;                                            % Phi = 0  [-]
-tmin = 0.75449775462963;                         % Phi = 180[-]
+tmin = 0;                                            % Phi = 0  [-]
+% % tmin = 0.75449775462963;                         % Phi = 180[-]
 % % tmin =  0.615368240740741;                       % Phi = 30 [-]
 tmax = 3*1.4968 + tmin;                              % [-]
 frec = 1/60;
@@ -42,7 +42,7 @@ posDim  = planetParams(2);                            % [m]
 velDim  = planetParams(3) * planetParams(2);          % [m/s]
 
 % Measurement weights
-sigmaMeas = [1, 1/sqrt(2)] * 1E-12;                        % [1/s^2]
+sigmaMeas = [1, 1/sqrt(2)] * 1E-12;                  % [1/s^2]
 sigmaMeas = sigmaMeas./measDim;                      % [-]
 sAcc      = 1E-10./(planetParams(2)*planetParams(3)^2); % [-] 
 R0 = diag([sigmaMeas(1), sigmaMeas(2), sigmaMeas(2), sigmaMeas(1), ...
@@ -56,6 +56,7 @@ Nq = 6;
 
 % random-walk bias process noise
 sigmaQ_b = 1E-15/ (planetParams(3)^3);               % [-]
+tau      = 1; 
 qb = diag([sigmaQ_b, sigmaQ_b, sigmaQ_b, sigmaQ_b, sigmaQ_b, ...
     sigmaQ_b].^2).*0;
 if(det(qb) ~= 0)
@@ -69,9 +70,9 @@ end
 % load parameters & initial conditions
 [planetParams, poleParams, C_mat, S_mat, TIME, ~] = ...
     load_universe(system, [tmin, tmax], frec);
-% % X0 = load_initCond(system, planetParams);
-X0 = [ 0.720230409024078;0.675424403969901;0.00837326048601556;...
-    -1.81989246557446;1.92454671114969;0.119861341700249];  % state @ periapsis
+X0 = load_initCond(system, planetParams);
+% % X0 = [ 0.720230409024078;0.675424403969901;0.00837326048601556;...
+% %     -1.81989246557446;1.92454671114969;0.119861341700249];  % state @ periapsis
 % % X0 = [0.838678033240026; 0.542367087602379 ; -0.0740369975323576;...
 % %     -0.624211548421406;0.826244659528416;0.42190501223657];     % state @ phi = 30
 
@@ -100,7 +101,8 @@ end
 options = odeset('RelTol',1e-13,'AbsTol',1e-13);
 STM0 = reshape(eye(Ns,Ns), [Ns*Ns, 1]);
 [t, state] = ode113(@(t, x) EOM_navigation(t, x, planetParams, ...
-    poleParams, C_mat, S_mat, system, 0, {0,0}, augmented_st), TIME, [X0; STM0], options);
+    poleParams, C_mat, S_mat, system, 0, {0,0}, augmented_st), TIME, ...
+    [X0; STM0], options);
 
 STM  = state(:, Ns+1:Ns+Ns*Ns);
 Nt  = length(TIME);
@@ -120,7 +122,8 @@ for k = 2:Nt
 
     % compute measurements and visibility matrix
     [Y, Ht, ~] = compute_measurements(TIME(k), state(k, 1:Ns), planetParams, ...
-         poleParams, C_mat, S_mat, 0, 0, augmented_st, [], DOM, posE(:, k), posM(:, k), posS(:, k), system);
+         poleParams, C_mat, S_mat, 0, 0, augmented_st, [], DOM, posE(:, k), ...
+         posM(:, k), posS(:, k), system);
     
     % gamma function
      At = t(k) - t(k-1);
@@ -147,7 +150,6 @@ for k = 2:Nt
         Ai_plus = Ai_min;
     else
         Ai_plus = Ai_min + h' * (R0(1:Nm, 1:Nm) \ h);
-        % % Ai_plus = Ai_min;
     end
     obs(k) = rank(Ai_plus);
 

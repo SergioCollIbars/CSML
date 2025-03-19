@@ -62,7 +62,7 @@ asterParams = [GM, Re, n_max, normalized];
 [X] = mat2list(Cnm, Snm, Nc, Ns);
 
 % Initial conditions
-r      = 0.3E3;         % [m]
+r      = 2E3;         % [m]
 % % r = 24E3;               % [m]
 % % r = Re + 250E3;         % [m] 
 phi    = pi/2;

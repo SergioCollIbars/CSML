@@ -7,8 +7,7 @@ addpath('../../../QGG_gravEstim/src/')
 set(0,'defaultAxesFontSize',16);
 
 %%              NSM METHODS COMPARISON
-% Description: Null space approach including attitude errors.
-% Test assuming inertial nominal attitude control.
+% Description: Null space approach including attitude + position errors.
 % Author: Sergio Coll
 % Date: 09/28/24
 
@@ -42,7 +41,7 @@ asterParams = [GM, Re, n_max, normalized];
 [Nc, Ns, Ncs] = count_num_coeff(n_max); 
 
 % Initial conditions
-r      = 0.3E3;
+r      = 0.95E3;
 phi    = pi/2;
 lambda = 0;
 theta  = pi/2 - phi;% Orbit colatitude [m]
@@ -51,7 +50,6 @@ R = [sin(theta)*cos(lambda), cos(theta)*cos(lambda), -sin(lambda);...
     cos(theta), -sin(theta), 0];
 r0 = R * [r;0;0];           % [ACI]
 v0 = R * [0;0;sqrt(GM/r)];  % [ACI]
-
 
 % time vector
 n = sqrt(GM / r^3);    % Mean motion         [rad/s]
@@ -63,25 +61,16 @@ dt = t(2) - t(1);
 Nt = length(t);
 
 % position error
-Ar = 0*[1;1;1];            % [ACI]
+Ar = 1E-3*[1;1;1];                                 % [ACI]
 
 % attitude error
-frec    = 1E-4;                        % [rad/s]
-Amp     = 1E-7;
-
-% % frec    = 1E-4;                        % [rad/s]
-% % Amp     = 1E-5;
-% % At      = Amp*sin(frec*t).*ones(3, Nt).*[1;0.5;0.7];         % [rad] [yaw, pitch, roll]
-% % dA_dt   = Amp*frec*cos(frec*t).*ones(3, Nt).*[1;0.5;0.7];
-% % ddA_ddt = -Amp*frec^2*sin(frec*t).*ones(3, Nt).*[1;0.5;0.7];   
-
 Amp = 1E-11;
 At      = Amp*t.*ones(3, Nt).*[1;0.7;0.5];
 dA_dt   = Amp.*ones(3, Nt).*[1;0.7;0.5];        % [rad/s]
 ddA_ddt = zeros(3, Nt);                         % [rad/s^2]
 
 % attitude nominal value
-Amp = 0;
+Amp = 0; frec = 1E-4;
 attitude  = Amp.*sin(frec.*t).*ones(3, Nt);                         % nominal attitude [rad]
 datt_dt   = Amp.*frec*cos(frec.*t).*ones(3, Nt);
 ddatt_ddt = Amp.*-frec^2*sin(frec.*t).*ones(3, Nt); 
@@ -114,8 +103,8 @@ options = odeset('RelTol',1e-13,'AbsTol',1e-13);
 PHI0 = reshape(eye(6,6), [36, 1]);
 [~, state_t] = ode113(@(t, x) EoM(t, x, Cnm, Snm, n_max, GM, Re, normalized, ...
     W0, W, RA, DEC, 0), t, [r0;v0;PHI0], options);
-rn = state_t(:, 1:3)' + ones(3, Nt).*Ar;
-vn = state_t(:, 4:6)';
+rt = state_t(:, 1:3)';
+vt = state_t(:, 4:6)';
 
 % generate measurements & add rotations value
 [Y, ~, ~] = gradiometer_meas(t ,asterParams, poleParams, state_t, ...
@@ -125,32 +114,48 @@ vn = state_t(:, 4:6)';
 
 % perturb nominal coefficient
 [X] = mat2list(Cnm, Snm, Nc, Ns);
-sigma_n = 1*[1E-2;1E-2;1E-2;1E-2;1E-2];
+sigma_n = 1E-1*[1E-2;1E-2;1E-2;1E-2;1E-2];
 % % sigma_n = ones(10, 1).*1E-4;
 [Xp, Pp] = perturb_coeff(sigma_n, n_max, X);
 [Cp, Sp] = list2mat(n_max, Nc, Ns, Xp);
 P0 = Pp(2:end, 2:end); 
 
+options = odeset('RelTol',1e-13,'AbsTol',1e-13);
+PHI0 = reshape(eye(6,6), [36, 1]);
+[~, state_n] = ode113(@(t, x) EoM(t, x, Cp, Sp, n_max, GM, Re, normalized, ...
+    W0, W, RA, DEC, 0), t, [r0 + Ar;v0;PHI0], options);
+rn = state_n(:, 1:3)';
+vn = state_n(:, 4:6)';
+
+% plot position error
+figure()
+plot(t./T, rt - rn, 'LineWidth', 2);
+title('Position error over time')
+ylabel('[m]')
+xlabel('Orbital rev.')
+legend('\Delta x', '\Delta y', '\Delta z')
+
 % Gravity estimation
 R_NP = diag([sigma1, sigma2, sigma3, sigma1, sigma2].^2);
-R = diag([sigma1, sigma2, sigma3, sigma1, sigma2, sigma1, ...
+R_N = diag([sigma1, sigma2, sigma3, sigma1, sigma2, sigma1, ...
     sigma1, sigma1, sigma1].^2);
 
 % loop
 iterMax = 6;
 count   = 0;
+iter    = 1;
 xnot_NP = zeros(Ncs-1, 1); xnot_N = xnot_NP; xnot_LS = xnot_NP;
 Cp_NP = Cp; Cp_N = Cp; Cp_LS = Cp;
 Sp_NP = Sp; Sp_N = Sp; Sp_LS = Sp;
 Xp_NP = Xp; Xp_N = Xp; Xp_LS = Xp;
+rn_LS = rn; rn_N = rn; state_n_N = state_n;
 while count < iterMax
     Ax_NP = inv(P0); Ax_N = inv(P0); Ax_LS = inv(P0);
     Nx_NP = -inv(P0) * xnot_NP; Nx_N = -inv(P0) * xnot_N; Nx_LS = -inv(P0) * xnot_LS;
-    for j = 2:Nt
-        % RTN rotation matrix
-        ACI_RTN = RTN2ECI(rn(:, j), vn(:, j));
-        rn_RTN = ACI_RTN' * rn(:, j);
-        rn_ACI = rn(:, j);
+    for j = 1:Nt
+        % Position vector
+        rn_ACI_N = rn_N(:, j);
+        rn_ACI_LS = rn_LS(:, j);
         
         % ACAF to ACI rotation matrix
         Wt = W0 + W * t(j);
@@ -162,36 +167,67 @@ while count < iterMax
         ACAF_B = ACAF_ACI * B_ACI';
     
          % compute attitude partials. Nominal body frame
-        [Hrot_grad] = compute_rotPartials(n_max, normalized, Cp_N, Sp_N, Re, GM, rn_ACI, ACAF_ACI, ACAF_B);
+        [Hrot_grad] = compute_rotPartials(n_max, normalized, Cp_N, Sp_N, Re, GM, rn_ACI_N, ACAF_ACI, ACAF_B);
         [Hrot_dA_ang, Hrot_dAdT_ang] = compute_angularDyadPartials(flipud(angVel_nom(:, j)), attitude(:, j), datt_dt(:, j), ddatt_ddt(:, j));
         Hrot_dA = Hrot_grad + Hrot_dA_ang;
         Hrot_dAdT = Hrot_dAdT_ang;
         Hrot = [Hrot_dA, Hrot_dAdT];
-% %         [Hpos] = compute_posPartials(n_max, normalized, Cp_N, Sp_N, Re, GM, rn_ACI, ACAF_ACI, ACAF_B);
+        [Hpos] = compute_posPartials(n_max, normalized, Cp_N, Sp_N, Re, GM, rn_ACI_N, ACAF_ACI, ACAF_B);
     
         % Null space method correcting for attitude
-        [Yc, ~, Hc_BODY] = gradiometer_meas(t(j) ,asterParams, poleParams, [rn(:, j)', vn(:, j)'], ...
+        [Yc, ~, Hc_BODY] = gradiometer_meas(t(j) ,asterParams, poleParams, [rn_ACI_N', zeros(1, 3)], ...
                 noise0, Cp_N, Sp_N, B_ACI');
         [Yc] = add_angularComponents(Yc, attitude(:, j), zeros(3, Nt), flipud(angVel_nom(:, j)),...
             flipud(angAcc_nom(:, j)));
+      
+        if(iter == 1)
+            PHIi0 = reshape(state_n_N(j, 7:end), [6,6]);
+            Hpr = [Hpos, Hrot_dA, Hrot_dAdT];
+            dY = Y(:, j) - Yc + noise(:, j);
+            Hc = [Hc_BODY(1, 2:end); Hc_BODY(4, 2:end); Hc_BODY(7, 2:end); Hc_BODY(2, 2:end); Hc_BODY(5, 2:end);...
+                    Hc_BODY(8, 2:end);  Hc_BODY(3, 2:end); Hc_BODY(6, 2:end); Hc_BODY(9, 2:end)];
+            Ai = rt(:, j) - rn(:, j);
 
-        [ax, nx] = nullSpace_method2(Y(:, j), Yc, Hc_BODY, R, ...
-             Hrot, noise(:, j));
-        Ax_N  = Ax_N + ax;
-        Nx_N  = Nx_N + nx;
+            % update iter
+            iter = 2;
+        else
+            PHIj0 = reshape(state_n_N(j, 7:end), [6,6]);
+            PHIji = PHIj0/(PHIi0);
+            PHI = PHIji(1:3, 1:3);
+            Aj = rt(:, j) - rn(:, j);
+            Hrot = [Hpos, Hrot_dA, Hrot_dAdT]*[PHI, zeros(3, 6);zeros(6, 3), eye(6,6)];
 
-        % Null space method correcting for position 
-        [Hpos] = compute_posPartials(n_max, normalized, Cp_NP, Sp_NP, Re, GM, rn_ACI, ACAF_ACI, ACAF_B);
-        [Yc, ~, Hc_BODY] = gradiometer_meas(t(j) ,asterParams, poleParams, [rn(:, j)', vn(:, j)'], ...
-                noise0, Cp_NP, Sp_NP, B_ACI');
-        [Yc] = add_angularComponents(Yc, attitude(:, j), zeros(3, 1), flipud(angVel_nom(:, j)),...
-            flipud(angAcc_nom(:, j)));
-        [ax, nx] = nullSpace_method(Y(:, j), Yc, Hc_BODY, R_NP, Hpos, noise(:, j));
-        Ax_NP  = Ax_NP + ax;
-        Nx_NP  = Nx_NP + nx;
+            dy =  Y(:, j) - Yc + noise(:, j);
+            dY = [dY; dy];
+
+            hc = [Hc_BODY(1, 2:end); Hc_BODY(4, 2:end); Hc_BODY(7, 2:end); Hc_BODY(2, 2:end); Hc_BODY(5, 2:end);...
+                    Hc_BODY(8, 2:end);  Hc_BODY(3, 2:end); Hc_BODY(6, 2:end); Hc_BODY(9, 2:end)];
+            Hc = [Hc; hc];
+
+            hpr = Hrot;
+            Hpr = [Hpr; hpr];
+
+            C   = null(Hpr');
+            R = blkdiag(R_N, R_N);
+            
+            % project into null space
+            r  = C' * R * C;
+            y  = C' * dY;
+            hc = C' * Hc;
+
+            % information and normal matrices
+            ax = hc' * inv(r) * hc;
+            nx = hc' * inv(r) * y;
+
+            Ax_N  = Ax_N + ax;
+            Nx_N  = Nx_N + nx;
+
+            % re-set iter
+            iter = 1;
+        end
 
         % classic LS
-        [Yc, ~, Hc_BODY] = gradiometer_meas(t(j) ,asterParams, poleParams, [rn(:, j)', vn(:, j)'], ...
+        [Yc, ~, Hc_BODY] = gradiometer_meas(t(j) ,asterParams, poleParams, [rn_ACI_LS', zeros(1, 3)], ...
                 noise0, Cp_LS, Sp_LS, B_ACI');
         [Yc] = add_angularComponents(Yc, attitude(:, j), zeros(3, 1), flipud(angVel_nom(:, j)),...
             flipud(angAcc_nom(:, j)));
@@ -202,45 +238,47 @@ while count < iterMax
     end
 
     % solve LS
-    XNOT_NP = Ax_NP\Nx_NP;
     XNOT_N = Ax_N\Nx_N;
     XNOT_LS = Ax_LS\Nx_LS;
 
-    Xp_NP(2:end) = Xp_NP(2:end) + XNOT_NP;
     Xp_N(2:end) = Xp_N(2:end) + XNOT_N;
     Xp_LS(2:end) = Xp_LS(2:end) + XNOT_LS;
 
-    [Cp_NP, Sp_NP] = list2mat(n_max, Nc, Ns, Xp_NP);
     [Cp_N, Sp_N] = list2mat(n_max, Nc, Ns, Xp_N);
     [Cp_LS, Sp_LS] = list2mat(n_max, Nc, Ns, Xp_LS);
 
     % update corrections
-    xnot_NP = xnot_NP + XNOT_NP;
     xnot_N = xnot_N + XNOT_N;
     xnot_LS = xnot_LS + XNOT_LS;
 
     % show error
-    disp('Null space update, position = '  + string(vecnorm(XNOT_NP)));
-    disp('Null space update, attitude = ' + string(vecnorm(XNOT_N)));
+    disp('Null space update, attitude + position = ' + string(vecnorm(XNOT_N)));
     disp('Least Squares update = ' + string(vecnorm(XNOT_LS)));
     disp('--------------------------------------------------------'); 
-    
+
+    % recompute STM for the given orbit
+    options = odeset('RelTol',1e-13,'AbsTol',1e-13);
+    PHI0 = reshape(eye(6,6), [36, 1]);
+    [~, state_n_N] = ode113(@(t, x) EoM(t, x, Cp_N, Sp_N, n_max, GM, Re, normalized, ...
+        W0, W, RA, DEC, 0), t, [r0 + Ar;v0;PHI0], options);
+    rn_N = state_n_N(:, 1:3)';
+
+% %     [~, state_n] = ode113(@(t, x) EoM(t, x, Cp_LS, Sp_LS, n_max, GM, Re, normalized, ...
+% %         W0, W, RA, DEC, 0), t, [r0 + Ar;v0;PHI0], options);
+% %     rn_LS = state_n(:, 1:3)';
+
     % update counter
     count = count + 1;
 end
 
 P_N =  inv(Ax_N);
-P_NP =  inv(Ax_NP);
 P_LS =  inv(Ax_LS);
 sigma_N = sqrt(diag(P_N));
-sigma_NP = sqrt(diag(P_NP));
 sigma_LS = sqrt(diag(P_LS));
 
-[Xp_NP] = mat2list(Cp_NP, Sp_NP, Nc, Ns);
 [Xp_N] = mat2list(Cp_N, Sp_N, Nc, Ns);
 [Xp_LS] = mat2list(Cp_LS, Sp_LS, Nc, Ns);
 
-SH_NP = Xp_NP(2:end);
 SH_N = Xp_N(2:end);
 SH_LS = Xp_LS(2:end);
 
@@ -249,26 +287,14 @@ SH_LS = Xp_LS(2:end);
 tt = 'Orbit radius along trajectory. T = ' + string(T./3600) + ' h';
 plot_orbit(state_t, name, t./T ,Re, tt)
 
-% plot SH estimation
-tt1 = 'Estimation value. Cnm coefficients';
-tt2 = 'Estimation value. Snm coefficients';
-ls  = '-'; mk = 'square'; 
-llg = {'truth','NSM', 'ENSM'};
-plot_gravField(X, SH_NP, SH_N, n_max, tt1, tt2, ls, mk, llg);
 
 % plot uncertainty
 tt1 = 'Uncertainty SH. Cnm coefficients';
 tt2 = 'Uncertainty SH. Snm coefficients';
 ls  = '-'; mk = 'square'; 
 llg = {'truth','NSM', 'ENSM'};
-plot_gravField(X, 3.*sigma_NP, 3.*sigma_N, n_max, tt1, tt2, ls, mk, llg);
+plot_gravField(X, 3.*sigma_LS, 3.*sigma_N, n_max, tt1, tt2, ls, mk, llg);
 
-% ploting difference
-tt1 = 'Estimation error. Cnm coefficients';
-tt2 = 'Estimation error. Snm coefficients';
-ls  = '--'; mk = '*'; 
-llg = {'truth','NSM', 'ENSM'};
-plot_gravField(X.*NaN, X(2:end) - SH_NP, X(2:end) - SH_N, n_max, tt1, tt2, ls, mk, llg);
 
 tt1 = 'Estimation error. Cnm coefficients';
 tt2 = 'Estimation error. Snm coefficients';
