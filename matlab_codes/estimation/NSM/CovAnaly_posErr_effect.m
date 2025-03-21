@@ -62,7 +62,7 @@ asterParams = [GM, Re, n_max, normalized];
 [X] = mat2list(Cnm, Snm, Nc, Ns);
 
 % Initial conditions
-r      = 2E3;         % [m]
+r      = 1E3;            % [m]
 % % r = 24E3;               % [m]
 % % r = Re + 250E3;         % [m] 
 phi    = pi/2;
@@ -77,13 +77,13 @@ v0 = R * [0;0;sqrt(GM/r)];  % [ACI]
 % time vector
 n = sqrt(GM / r^3);    % Mean motion         [rad/s]
 T = (2 * pi / n);
-rev = 3;
+rev = 10;
 f = 1/30;
 t = linspace(0, rev*T, rev*T * f);
 Nt = length(t);
 
 % measurement uncertianty
-sigma = 3E-12;                          % [1/s^2]
+sigma = 1E-12;                          % [1/s^2]
 noise0 = zeros(9, Nt);
 
 % Integrate trajectory
@@ -129,7 +129,7 @@ ylabel('[km]')
 title('S/C orbital Altitude')
 
 % perturb nominal coefficient
-sigma_n = 1 * ones(1, n_max);
+sigma_n = 1E3 * ones(1, n_max);
 [~, Pp] = perturb_coeff(sigma_n, n_max, X);
 P0 = Pp(2:end, 2:end); 
 S = sqrt(diag(Pp));
@@ -139,7 +139,8 @@ S = sqrt(diag(Pp));
 % % P0 = diag((S(2:end)).^2);
 
 % Consider covariance
-Ar = 1.5E-4;   % [m]
+Ar = 1.5E-4;                    % [m]
+% % Ar = 0.5 * pi / (180*3600);     % [arcseconds]
 Pxc = zeros(Ncs-1, 3); Pc = zeros(3, 3);
 Pxc_NSM = zeros(Ncs - 1, 6); Pc_NSM = zeros(6, 6);
 for j = 1:3
@@ -171,7 +172,7 @@ for j = 1:Nt
         Hx_ACI(6, 2:end)];
 
     % compute Consider Params partials for LS and NSM
-    [Hc] = compute_posPartials(n_max, normalized, Cnm, Snm, Re, GM, rn_ACI, ACAF_ACI, eye(3,3));
+    [Hc] = compute_posPartials(n_max, normalized, Cnm, Snm, Re, GM, rn_ACI, ACAF_ACI, ACAF_ACI);
     hpos = [Hc(1, :);Hc(2,:);Hc(3,:);Hc(5, :);Hc(6, :)];
     hap = compute_posPartials_2ndOrder(GM, rn_ACI(1), rn_ACI(2), rn_ACI(3));
     
@@ -181,9 +182,9 @@ for j = 1:Nt
     hrot = [Hrot(1, :);Hrot(2,:);Hrot(3,:);Hrot(5, :);Hrot(6, :)];
     
     % select covarinace and estimation parameters
-% %     hc = hpos; % consider parameters matrix. Position NSM
-    hc = hrot; % consider parameters matrix. Attitude NSM
-    hap = hap.*0;
+    hc = hpos; % consider parameters matrix. Position NSM
+% %     hc = hrot; % consider parameters matrix. Attitude NSM
+% %     hap = hap.*0;
 
     % LS covariance
     Ax  = Ax  + (hx' * inv(R0) * hx);
@@ -224,6 +225,7 @@ C = diag(Px_NSM - Px);
 A = diag(Sxc_NSM * Sxc_NSM');
 B = diag(Sxc * Sxc');
 sigmaTh1 = A.*0; sigmaTh2 = sigmaTh1; sigmaTh3 = sigmaTh1;
+errRel = zeros(1, length(A));
 for j = 1:length(A)
     c = C(j);
     b = B(j);
@@ -235,11 +237,21 @@ for j = 1:length(A)
     sigmaTh3(j) = sqrt(y);
    
     % approximation including only 'b'
-% %     sigmaTh1(j) = (1/sigma)*sqrt(c/b) * 1E-9;                    % [m / E]
-    sigmaTh1(j) = (1/sigma)*sqrt(c/b) * 1E-9 * 3600 * 180 / pi;  % [arcSec / E]
+    sigmaTh1(j) = (1/sigma)*sqrt(c/b) * 1E-9;                    % [m / E]
+% %     sigmaTh1(j) = (1/sigma)*sqrt(c/b) * 1E-9 * 3600 * 180 / pi;  % [arcSec / E]
     sigmaTh2(j) = sqrt(c/b);                                     % [m]
+    
+    % relative error for a << b approximation
+    errRel(j) = (sigmaTh3(j) - sigmaTh2(j)) / sigmaTh3(j) * 100;
 
 end
+figure()
+plot(1:length(A), errRel, 'r', 'LineWidth', 2)
+ylabel('[%]')
+xlabel('Coefficient')
+title('Threshold approximation relative error ');
+grid on
+
 [C_Perr, S_Perr] = list2mat(n_max, Nc, Ns, [0; sigmaTh1]);
 C_Perr(1, :) = C_Perr(1, :).*NaN; C_Perr(2, :) = C_Perr(2, :).*NaN;
 S_Perr(:, 1) = S_Perr(:, 1).*NaN; S_Perr(1:2, :) = S_Perr(1:2, :).*NaN;
@@ -254,7 +266,8 @@ grid on;
 xticks(2:n_max);
 xticklabels(string(2:n_max));
 xlabel('Degree')
-ylabel('[m / Eotvos]')
+% % ylabel('[m / Eotvos]')
+ylabel('[arcsec / Eotvos]')
 title('Zonal coefficients')
 
 figure()
@@ -265,7 +278,8 @@ grid on;
 xticks(2:n_max);
 xticklabels(string(2:n_max));
 xlabel('Degree')
-ylabel('[m / Eotvos]')
+% % ylabel('[m / Eotvos]')
+ylabel('[arcsec / Eotvos]')
 title('C_{nm} sectoral coefficients')
 
 subplot(1, 2, 2)
@@ -275,7 +289,8 @@ grid on;
 xticks(2:n_max);
 xticklabels(string(2:n_max));
 xlabel('Degree')
-ylabel('[m / Eotvos]')
+% % ylabel('[m / Eotvos]')
+ylabel('[arcsec / Eotvos]')
 title('S_{nm} sectoral coefficients')
 
 % Ensure 0 values appear white (units of m)

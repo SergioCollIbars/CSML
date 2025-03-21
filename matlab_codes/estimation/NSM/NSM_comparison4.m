@@ -41,7 +41,7 @@ asterParams = [GM, Re, n_max, normalized];
 [Nc, Ns, Ncs] = count_num_coeff(n_max); 
 
 % Initial conditions
-r      = 0.95E3;
+r      = 0.6E3;
 phi    = pi/2;
 lambda = 0;
 theta  = pi/2 - phi;% Orbit colatitude [m]
@@ -55,13 +55,13 @@ v0 = R * [0;0;sqrt(GM/r)];  % [ACI]
 n = sqrt(GM / r^3);    % Mean motion         [rad/s]
 T = (2 * pi / n);
 rev = 3;
-f = 1/30;
+f = 1/60;
 t = linspace(0, rev*T, rev*T * f);
 dt = t(2) - t(1);
 Nt = length(t);
 
 % position error
-Ar = 1E-3*[1;1;1];                                 % [ACI]
+Ar = 1E-5*[1;1;1];                                 % [ACI]
 
 % attitude error
 Amp = 1E-11;
@@ -70,10 +70,10 @@ dA_dt   = Amp.*ones(3, Nt).*[1;0.7;0.5];        % [rad/s]
 ddA_ddt = zeros(3, Nt);                         % [rad/s^2]
 
 % attitude nominal value
-Amp = 0; frec = 1E-4;
-attitude  = Amp.*sin(frec.*t).*ones(3, Nt);                         % nominal attitude [rad]
-datt_dt   = Amp.*frec*cos(frec.*t).*ones(3, Nt);
-ddatt_ddt = Amp.*-frec^2*sin(frec.*t).*ones(3, Nt); 
+Amp = 0;                                    % [rad]
+attitude  = Amp.*t.*ones(3, Nt).*[0;1;0];   % nominal attitude [rad]
+datt_dt   = Amp.*ones(3, Nt).*[0;1;0];
+ddatt_ddt = zeros(3, Nt); 
 [angVel_true, angAcc_true] = compute_angularVals(attitude + At, datt_dt + dA_dt, ddatt_ddt + ddA_ddt);
 [angVel_nom, angAcc_nom]   = compute_angularVals(attitude, datt_dt, ddatt_ddt);
 
@@ -114,7 +114,7 @@ vt = state_t(:, 4:6)';
 
 % perturb nominal coefficient
 [X] = mat2list(Cnm, Snm, Nc, Ns);
-sigma_n = 1E-1*[1E-2;1E-2;1E-2;1E-2;1E-2];
+sigma_n = 1E-3*[1E-2;1E-2;1E-2;1E-2;1E-2];
 % % sigma_n = ones(10, 1).*1E-4;
 [Xp, Pp] = perturb_coeff(sigma_n, n_max, X);
 [Cp, Sp] = list2mat(n_max, Nc, Ns, Xp);
@@ -173,6 +173,7 @@ while count < iterMax
         Hrot_dAdT = Hrot_dAdT_ang;
         Hrot = [Hrot_dA, Hrot_dAdT];
         [Hpos] = compute_posPartials(n_max, normalized, Cp_N, Sp_N, Re, GM, rn_ACI_N, ACAF_ACI, ACAF_B);
+        Hpos2 = compute_posPartials_2ndOrder(GM, rn_ACI_N(1), rn_ACI_N(2), rn_ACI_N(3));
     
         % Null space method correcting for attitude
         [Yc, ~, Hc_BODY] = gradiometer_meas(t(j) ,asterParams, poleParams, [rn_ACI_N', zeros(1, 3)], ...
@@ -186,7 +187,7 @@ while count < iterMax
             dY = Y(:, j) - Yc + noise(:, j);
             Hc = [Hc_BODY(1, 2:end); Hc_BODY(4, 2:end); Hc_BODY(7, 2:end); Hc_BODY(2, 2:end); Hc_BODY(5, 2:end);...
                     Hc_BODY(8, 2:end);  Hc_BODY(3, 2:end); Hc_BODY(6, 2:end); Hc_BODY(9, 2:end)];
-            Ai = rt(:, j) - rn(:, j);
+% %             Hap = Hpos2;
 
             % update iter
             iter = 2;
@@ -194,8 +195,9 @@ while count < iterMax
             PHIj0 = reshape(state_n_N(j, 7:end), [6,6]);
             PHIji = PHIj0/(PHIi0);
             PHI = PHIji(1:3, 1:3);
-            Aj = rt(:, j) - rn(:, j);
-            Hrot = [Hpos, Hrot_dA, Hrot_dAdT]*[PHI, zeros(3, 6);zeros(6, 3), eye(6,6)];
+            Hrot = [Hpos, Hrot_dA, Hrot_dAdT]*[PHI, zeros(3, 6);...
+                zeros(3, 3), eye(3,3), zeros(3,3);...
+                zeros(3, 6), eye(3,3)];
 
             dy =  Y(:, j) - Yc + noise(:, j);
             dY = [dY; dy];
@@ -207,6 +209,8 @@ while count < iterMax
             hpr = Hrot;
             Hpr = [Hpr; hpr];
 
+% %             Hap = [Hap; Hpos2];
+
             C   = null(Hpr');
             R = blkdiag(R_N, R_N);
             
@@ -214,10 +218,13 @@ while count < iterMax
             r  = C' * R * C;
             y  = C' * dY;
             hc = C' * Hc;
+% %             hap = C' * Hap;
 
             % information and normal matrices
             ax = hc' * inv(r) * hc;
             nx = hc' * inv(r) * y;
+% %             mxc   = (hc' * inv(r) * hap);
+% %             mcc   = (hap' * inv(r) * hap);
 
             Ax_N  = Ax_N + ax;
             Nx_N  = Nx_N + nx;
@@ -263,9 +270,8 @@ while count < iterMax
         W0, W, RA, DEC, 0), t, [r0 + Ar;v0;PHI0], options);
     rn_N = state_n_N(:, 1:3)';
 
-% %     [~, state_n] = ode113(@(t, x) EoM(t, x, Cp_LS, Sp_LS, n_max, GM, Re, normalized, ...
-% %         W0, W, RA, DEC, 0), t, [r0 + Ar;v0;PHI0], options);
-% %     rn_LS = state_n(:, 1:3)';
+% %     [STM] = integrateSTM(t, state_n, asterParams, poleParams, Cp_N, Sp_N, 5);
+% %     state_n_N = [zeros(Nt, 6), STM];
 
     % update counter
     count = count + 1;

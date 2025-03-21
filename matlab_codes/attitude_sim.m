@@ -26,8 +26,9 @@ state0_true = state0_nom + [delta_theta0;delta_thetaDot0];
 time = linspace(0, 2*3600, 2*3600);
 
 % solver
+PHI0 = reshape(eye(6,6), [36, 1]);
 options = odeset('RelTol',1e-12,'AbsTol',1e-12);
-[~, state_nom] = ode113(@(t, x) EoM_att(t, x, I), time, state0_nom, options);
+[~, state_nom] = ode113(@(t, x) EoM_att(t, x, I), time, [state0_nom;PHI0], options);
 
 options = odeset('RelTol',1e-12,'AbsTol',1e-12);
 [~, state_true] = ode113(@(t, x) EoM_att(t, x, I), time, state0_true, options);
@@ -89,11 +90,13 @@ function [dx] = EoM_att(t, x, I)
      thetaDdot  = T_dot * omega + T * omegaDot;
 
      % compute PHI_dot
-     % TBD
+     J = [zeros(3,3), eye(3,3);zeros(3,3), zeros(3,3)];
+     PHI_dot = J * reshape(x(7:end), [6,6]);
+     PHI_dot_res = reshape(PHI_dot, [36, 1]);
 
      % time derivative vector
      dx = [psiDot;thetaDot;phiDot;...
-         thetaDdot(1);thetaDdot(2);thetaDdot(3);];
+         thetaDdot(1);thetaDdot(2);thetaDdot(3);PHI_dot_res];
 end
 
 

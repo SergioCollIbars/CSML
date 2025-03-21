@@ -42,7 +42,7 @@ asterParams = [GM, Re, n_max, normalized];
 [Nc, Ns, Ncs] = count_num_coeff(n_max); 
 
 % Initial conditions
-r      = 0.3E3;
+r      = 0.6E3;
 phi    = pi/2;
 lambda = 0;
 theta  = pi/2 - phi;% Orbit colatitude [m]
@@ -57,13 +57,13 @@ v0 = R * [0;0;sqrt(GM/r)];  % [ACI]
 n = sqrt(GM / r^3);    % Mean motion         [rad/s]
 T = (2 * pi / n);
 rev = 3;
-f = 1/30;
+f = 1/60;
 t = linspace(0, rev*T, rev*T * f);
 dt = t(2) - t(1);
 Nt = length(t);
 
 % position error
-Ar = 0*[1;1;1];            % [ACI]
+Ar = 5E-1*[1;1;1];            % [ACI]
 
 % attitude error
 frec    = 1E-4;                        % [rad/s]
@@ -98,7 +98,7 @@ noise0 = zeros(9, Nt);
 % % sigma1  = 0.01 * 1E-9 * sqrt(f); % Vxx, Vyy
 % % sigma2  = 0.6  * 1E-9 * sqrt(f); % Vyz, Vyx
 % % sigma3  = 0.02 * 1E-9 * sqrt(f); % Vxz, Vzz
-sigma1 = 1E-15;
+sigma1 = 1E-12;
 sigma2 = sigma1; sigma3 = sigma1;
 
 means    = zeros(1, 9);
@@ -125,8 +125,8 @@ vn = state_t(:, 4:6)';
 
 % perturb nominal coefficient
 [X] = mat2list(Cnm, Snm, Nc, Ns);
-sigma_n = 1*[1E-2;1E-2;1E-2;1E-2;1E-2];
-% % sigma_n = ones(10, 1).*1E-4;
+sigma_n = 1E3*[1E-2;1E-2;1E-2;1E-2;1E-2];
+% % sigma_n = ones(10, 1).*10;
 [Xp, Pp] = perturb_coeff(sigma_n, n_max, X);
 [Cp, Sp] = list2mat(n_max, Nc, Ns, Xp);
 P0 = Pp(2:end, 2:end); 

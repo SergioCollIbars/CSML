@@ -132,7 +132,7 @@ R = diag([sigma1, sigma2, sigma3, sigma1, sigma2, sigma1, ...
     sigma1, sigma1, sigma1].^2);
 
 % loop
-iterMax = 25;
+iterMax = 6;
 count   = 0;
 iter    = 1;
 xnot_NP = zeros(Ncs-1, 1); xnot_N = xnot_NP; xnot_LS = xnot_NP;
@@ -169,53 +169,53 @@ while count < iterMax
         [Yc] = add_angularComponents(Yc, attitude(:, j), zeros(3, Nt), flipud(angVel_nom(:, j)),...
             flipud(angAcc_nom(:, j)));
         
-        if(iter == 1)
-            Hrot = [Hrot_dA, Hrot_dAdT];
-            dY = [Y(1, j)-Yc(1);Y(2, j)-Yc(2);Y(3, j)-Yc(3);Y(5, j)-Yc(5);Y(6, j)-Yc(6)] + noise(1:5, j);
-            Hc = [Hc_BODY(1, 2:end); Hc_BODY(4, 2:end); Hc_BODY(7, 2:end);Hc_BODY(5, 2:end);...
-                Hc_BODY(8, 2:end)];
-            Hpr = [Hrot(1, :);Hrot(2,:);Hrot(3,:);Hrot(5, :);Hrot(6, :)];
+% %         if(iter == 1)
+% %             Hrot = [Hrot_dA, Hrot_dAdT];
+% %             dY = [Y(1, j)-Yc(1);Y(2, j)-Yc(2);Y(3, j)-Yc(3);Y(5, j)-Yc(5);Y(6, j)-Yc(6)] + noise(1:5, j);
+% %             Hc = [Hc_BODY(1, 2:end); Hc_BODY(4, 2:end); Hc_BODY(7, 2:end);Hc_BODY(5, 2:end);...
+% %                 Hc_BODY(8, 2:end)];
+% %             Hpr = [Hrot(1, :);Hrot(2,:);Hrot(3,:);Hrot(5, :);Hrot(6, :)];
+% % 
+% %             % update iter
+% %             iter = 2;
+% %         else
+% %             PHI = [eye(3,3), eye(3,3)*dt;zeros(3,3), eye(3,3)];
+% %             Hrot = [Hrot_dA, Hrot_dAdT]*PHI;
+% % 
+% %             dy = [Y(1, j)-Yc(1);Y(2, j)-Yc(2);Y(3, j)-Yc(3);Y(5, j)-Yc(5);Y(6, j)-Yc(6)] + noise(1:5, j);
+% %             dY = [dY; dy];
+% % 
+% %             hc = [Hc_BODY(1, 2:end); Hc_BODY(4, 2:end); Hc_BODY(7, 2:end);Hc_BODY(5, 2:end);...
+% %                 Hc_BODY(8, 2:end)];
+% %             Hc = [Hc; hc];
+% % 
+% %             hpr = [Hrot(1, :);Hrot(2,:);Hrot(3,:);Hrot(5, :);Hrot(6, :)];
+% %             Hpr = [Hpr; hpr];
+% % 
+% %             C   = null(Hpr');
+% %             R = blkdiag(R_NP, R_NP);
+% %             
+% %             % project into null space
+% %             r  = C' * R * C;
+% %             y  = C' * dY;
+% %             hc = C' * Hc;
+% % 
+% %             % information and normal matrices
+% %             ax = hc' * inv(r) * hc;
+% %             nx = hc' * inv(r) * y;
+% % 
+% %             Ax_N  = Ax_N + ax;
+% %             Nx_N  = Nx_N + nx;
+% % 
+% %             % re-set iter
+% %             iter = 1;
+% %         end
 
-            % update iter
-            iter = 2;
-        else
-            PHI = [eye(3,3), eye(3,3)*dt;zeros(3,3), eye(3,3)];
-            Hrot = [Hrot_dA, Hrot_dAdT]*PHI;
-
-            dy = [Y(1, j)-Yc(1);Y(2, j)-Yc(2);Y(3, j)-Yc(3);Y(5, j)-Yc(5);Y(6, j)-Yc(6)] + noise(1:5, j);
-            dY = [dY; dy];
-
-            hc = [Hc_BODY(1, 2:end); Hc_BODY(4, 2:end); Hc_BODY(7, 2:end);Hc_BODY(5, 2:end);...
-                Hc_BODY(8, 2:end)];
-            Hc = [Hc; hc];
-
-            hpr = [Hrot(1, :);Hrot(2,:);Hrot(3,:);Hrot(5, :);Hrot(6, :)];
-            Hpr = [Hpr; hpr];
-
-            C   = null(Hpr');
-            R = blkdiag(R_NP, R_NP);
-            
-            % project into null space
-            r  = C' * R * C;
-            y  = C' * dY;
-            hc = C' * Hc;
-
-            % information and normal matrices
-            ax = hc' * inv(r) * hc;
-            nx = hc' * inv(r) * y;
-
-            Ax_N  = Ax_N + ax;
-            Nx_N  = Nx_N + nx;
-
-            % re-set iter
-            iter = 1;
-        end
-
-% %         Hrot = [Hrot_dA, Hrot_dAdT];
-% %         [ax, nx] = nullSpace_method2(Y(:, j), Yc, Hc_BODY, R, ...
-% %             Hrot, noise(:, j));
-% %         Ax_N  = Ax_N + ax;
-% %         Nx_N  = Nx_N + nx;
+        Hrot = [Hrot_dA, Hrot_dAdT];
+        [ax, nx] = nullSpace_method2(Y(:, j), Yc, Hc_BODY, R, ...
+            Hrot, noise(:, j));
+        Ax_N  = Ax_N + ax;
+        Nx_N  = Nx_N + nx;
 
         % Null space method correcting for position 
         [Hpos] = compute_posPartials(n_max, normalized, Cp_NP, Sp_NP, Re, GM, rn_ACI, ACAF_ACI, ACAF_B);
