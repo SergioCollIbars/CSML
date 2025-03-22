@@ -14,25 +14,25 @@ set(0,'defaultAxesFontSize',16);
 % Date: 10/09/24
 
 % Asteroid parameters.
-path = "HARMCOEFS_BENNU_OSIRIS_1.txt";
-[Cnm, Snm, Re] = readCoeff(path);
-GM = 5.2;
-n_max  = 6;
-normalized = 1;
-W = 4.06130329511851E-4;  % Rotation ang. vel   [rad/s]
-W0 = 0;                   % Initial asteroid longitude
-RA = deg2rad(86.6388);    % Right Ascension     [rad]
-DEC = deg2rad(-65.1086);  % Declination         [rad]
-
-% % path = "HARMCOEFS_EROS_CD_1.txt";
+% % path = "HARMCOEFS_BENNU_OSIRIS_1.txt";
 % % [Cnm, Snm, Re] = readCoeff(path);
+% % GM = 5.2;
 % % n_max  = 6;
 % % normalized = 1;
-% % GM =  459604.431484721;          % Point mass value    [m^3/s^2]
-% % W = 1639.38928 * pi/180 /86400;  % Rotation ang. vel   [rad/s]
-% % W0 = 0;                          % Initial asteroid longitude
-% % RA = deg2rad(11.363);            % Right Ascension     [rad]
-% % DEC = deg2rad(17.232);           % Declination         [rad]
+% % W = 4.06130329511851E-4;  % Rotation ang. vel   [rad/s]
+% % W0 = 0;                   % Initial asteroid longitude
+% % RA = deg2rad(86.6388);    % Right Ascension     [rad]
+% % DEC = deg2rad(-65.1086);  % Declination         [rad]
+
+path = "HARMCOEFS_EROS_CD_1.txt";
+[Cnm, Snm, Re] = readCoeff(path);
+n_max  = 6;
+normalized = 1;
+GM =  459604.431484721;          % Point mass value    [m^3/s^2]
+W = 1639.38928 * pi/180 /86400;  % Rotation ang. vel   [rad/s]
+W0 = 0;                          % Initial asteroid longitude
+RA = deg2rad(11.363);            % Right Ascension     [rad]
+DEC = deg2rad(17.232);           % Declination         [rad]
 
 poleParams = [W, W0, RA, DEC];
 asterParams = [GM, Re, n_max, normalized];
@@ -42,7 +42,7 @@ asterParams = [GM, Re, n_max, normalized];
 [X] = mat2list(Cnm, Snm, Nc, Ns);
 
 % Initial conditions
-r      = 0.3E3;
+r      = 24E3;
 phi    = pi/2;
 lambda = 0;
 theta  = pi/2 - phi;% Orbit colatitude [m]
@@ -58,27 +58,27 @@ Ar = 0.5*[1;1;1];            % [ACI]
 % time vector
 n = sqrt(GM / r^3);    % Mean motion         [rad/s]
 T = (2 * pi / n);
-rev = 1;
+rev = 20;
 f = 1/60;
 t = linspace(0, rev*T, rev*T * f);
 Nt = length(t);
 
 % noise values
 noise0 = zeros(9, Nt);
-sigma  = 1E-20;
+sigma  = 1E-12;
 noise  =  normrnd(0, sigma, [9, length(t)]);
 
 % Integrate trajectory
 options = odeset('RelTol',1e-13,'AbsTol',1e-13);
 PHI0 = reshape(eye(6,6), [36, 1]);
 [~, state_t] = ode113(@(t, x) EoM(t, x, Cnm, Snm, n_max, GM, Re, normalized, ...
-    W0, W, RA, DEC), t, [r0;v0;PHI0], options);
+    W0, W, RA, DEC, 0), t, [r0;v0;PHI0], options);
 rn = state_t(:, 1:3)' + ones(3, Nt).*Ar;
 vn = state_t(:, 4:6)';
 
 % generate measurements
 [Y, ~, ~] = gradiometer_meas(t ,asterParams, poleParams, state_t, ...
-                noise0, Cnm, Snm);
+                noise0, Cnm, Snm, eye(3,3));
 
 % Gravity estimation
 Ax_R = 0; Ax_E = 0;
@@ -87,7 +87,7 @@ R_R = diag([sigma, sigma, sigma, sigma, sigma].^2);
 for j = 1:Nt
     % computed meas.
     [~, Hc_ACI, Hc_RTN] = gradiometer_meas(t(j) ,asterParams, poleParams, [rn(:, j)', vn(:, j)'], ...
-            noise0, Cnm, Snm);
+            noise0, Cnm, Snm, eye(3,3));
     
     % RTN rotation matrix
     ACI_RTN = RTN2ECI(rn(:, j), vn(:, j));
@@ -99,7 +99,7 @@ for j = 1:Nt
     ACAF_ACI =rotationMatrix(pi/2 + RA, pi/2 - DEC, Wt, [3, 1, 3]);
 
      % compute Point mass approx error
-    [Hp] = compute_posPartials(n_max, normalized, Cnm, Snm, Re, GM, rn_ACI, ACAF_ACI);
+    [Hp] = compute_posPartials(n_max, normalized, Cnm, Snm, Re, GM, rn_ACI, ACAF_ACI, ACAF_ACI);
 
     % Rummel's method
     [ax, nx] = rummels_method(Y(:, j), Hc_ACI, R_R, eye(3,3), noise(:, j));
@@ -211,6 +211,7 @@ for n = 1:n_max
     xlabel('radius [km]')
     ylabel('RMS error')
     title('n = ' + string(n))
+    ylim([1E-6, 1]);
 end
 sgtitle('Error introduced by ' + string(vecnorm(Ar)) + ' m position error for each SH RMS degree')
 legend('error', 'truth')
@@ -305,15 +306,15 @@ function [Xerr] = compute_error_pos(t, pos, Nt, R, asterParams, poleParams, Cnm,
     for j = 1:Nt
         % computed meas.
         [~, Hc_ACI, ~] = gradiometer_meas(t(j) ,asterParams, poleParams, [pos(:, j)', 0,0,0], ...
-                noise0, Cnm, Snm);
+                noise0, Cnm, Snm, eye(3,3));
         
         % ACAF to ACI rotation matrix
         Wt = W0 + W * t(j);
         ACAF_ACI =rotationMatrix(pi/2 + RA, pi/2 - DEC, Wt, [3, 1, 3]);
     
          % compute Point mass approx error
-        [Hp0] = compute_posPartials(0, normalized, Cnm, Snm, Re, GM, pos(:, j), ACAF_ACI);
-        [Hp] = compute_posPartials(n_max, normalized, Cnm, Snm, Re, GM, pos(:, j), ACAF_ACI);
+        [Hp0] = compute_posPartials(0, normalized, Cnm, Snm, Re, GM, pos(:, j), ACAF_ACI, ACAF_ACI);
+        [Hp] = compute_posPartials(n_max, normalized, Cnm, Snm, Re, GM, pos(:, j), ACAF_ACI, ACAF_ACI);
         % % Hp  = Hp - Hp0;
 
         % error value
@@ -345,14 +346,14 @@ function [Xerr] = compute_error_att(t, pos, Nt, R, asterParams, poleParams, Cnm,
     for j = 1:Nt
         % computed meas.
         [~, Hc_ACI, ~] = gradiometer_meas(t(j) ,asterParams, poleParams, [pos(:, j)', 0,0,0], ...
-                noise0, Cnm, Snm);
+                noise0, Cnm, Snm, eye(3,3));
         
         % ACAF to ACI rotation matrix
         Wt = W0 + W * t(j);
         ACAF_ACI =rotationMatrix(pi/2 + RA, pi/2 - DEC, Wt, [3, 1, 3]);
     
          % compute Point mass approx error
-        [Hrot] = compute_rotPartials(n_max, normalized, Cnm, Snm, Re, GM, pos(:, j), ACAF_ACI);
+        [Hrot] = compute_rotPartials(n_max, normalized, Cnm, Snm, Re, GM, pos(:, j), ACAF_ACI, ACAF_ACI);
     
         % error value
         hc = [Hc_ACI(1, 1:end); Hc_ACI(2, 1:end); Hc_ACI(3, 1:end);Hc_ACI(5, 1:end);...
