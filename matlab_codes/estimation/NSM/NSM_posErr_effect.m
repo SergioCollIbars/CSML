@@ -14,25 +14,25 @@ set(0,'defaultAxesFontSize',16);
 % Date: 10/09/24
 
 % Asteroid parameters.
-% % path = "HARMCOEFS_BENNU_OSIRIS_1.txt";
-% % [Cnm, Snm, Re] = readCoeff(path);
-% % GM = 5.2;
-% % n_max  = 6;
-% % normalized = 1;
-% % W = 4.06130329511851E-4;  % Rotation ang. vel   [rad/s]
-% % W0 = 0;                   % Initial asteroid longitude
-% % RA = deg2rad(86.6388);    % Right Ascension     [rad]
-% % DEC = deg2rad(-65.1086);  % Declination         [rad]
-
-path = "HARMCOEFS_EROS_CD_1.txt";
+path = "HARMCOEFS_BENNU_OSIRIS_1.txt";
 [Cnm, Snm, Re] = readCoeff(path);
+GM = 5.2;
 n_max  = 6;
 normalized = 1;
-GM =  459604.431484721;          % Point mass value    [m^3/s^2]
-W = 1639.38928 * pi/180 /86400;  % Rotation ang. vel   [rad/s]
-W0 = 0;                          % Initial asteroid longitude
-RA = deg2rad(11.363);            % Right Ascension     [rad]
-DEC = deg2rad(17.232);           % Declination         [rad]
+W = 4.06130329511851E-4;  % Rotation ang. vel   [rad/s]
+W0 = 0;                   % Initial asteroid longitude
+RA = deg2rad(86.6388);    % Right Ascension     [rad]
+DEC = deg2rad(-65.1086);  % Declination         [rad]
+
+% % path = "HARMCOEFS_EROS_CD_1.txt";
+% % [Cnm, Snm, Re] = readCoeff(path);
+% % n_max  = 10;
+% % normalized = 1;
+% % GM =  459604.431484721;          % Point mass value    [m^3/s^2]
+% % W = 1639.38928 * pi/180 /86400;  % Rotation ang. vel   [rad/s]
+% % W0 = 0;                          % Initial asteroid longitude
+% % RA = deg2rad(11.363);            % Right Ascension     [rad]
+% % DEC = deg2rad(17.232);           % Declination         [rad]
 
 poleParams = [W, W0, RA, DEC];
 asterParams = [GM, Re, n_max, normalized];
@@ -42,7 +42,7 @@ asterParams = [GM, Re, n_max, normalized];
 [X] = mat2list(Cnm, Snm, Nc, Ns);
 
 % Initial conditions
-r      = 24E3;
+r      = 1.5*Re;
 phi    = pi/2;
 lambda = 0;
 theta  = pi/2 - phi;% Orbit colatitude [m]
@@ -53,12 +53,12 @@ r0 = R * [r;0;0];           % [ACI]
 v0 = R * [0;0;sqrt(GM/r)];  % [ACI]
 
 % position error
-Ar = 0.5*[1;1;1];            % [ACI]
+Ar = 1*[1;1;1];            % [ACI]
 
 % time vector
 n = sqrt(GM / r^3);    % Mean motion         [rad/s]
 T = (2 * pi / n);
-rev = 20;
+rev = 3;
 f = 1/60;
 t = linspace(0, rev*T, rev*T * f);
 Nt = length(t);
@@ -100,6 +100,7 @@ for j = 1:Nt
 
      % compute Point mass approx error
     [Hp] = compute_posPartials(n_max, normalized, Cnm, Snm, Re, GM, rn_ACI, ACAF_ACI, ACAF_ACI);
+% %     [Hp] = compute_rotPartials(n_max, normalized, Cnm, Snm, Re, GM, rn_ACI, ACAF_ACI, ACAF_ACI);
 
     % Rummel's method
     [ax, nx] = rummels_method(Y(:, j), Hc_ACI, R_R, eye(3,3), noise(:, j));
@@ -110,7 +111,8 @@ for j = 1:Nt
     hc = [Hc_ACI(1, 1:end); Hc_ACI(2, 1:end); Hc_ACI(3, 1:end);Hc_ACI(5, 1:end);...
         Hc_ACI(6, 1:end)];
     E = [Hp(1, :);Hp(2,:);Hp(3,:);Hp(5, :);Hp(6, :)] * Ar;
-
+    
+    ax = hc' * inv(R_R) * hc;
     Ax_E  = Ax_E + ax;
     Nx_E  = Nx_E + hc' * inv(R_R) * E;
 end
@@ -142,6 +144,67 @@ xticks(num_C);
 xticklabels(str_C);
 grid on;
 legend('truth', 'Est. error', 'Pred. error')
+
+% plot error at close trajectory
+[C_Perr, S_Perr] = list2mat(n_max, Nc, Ns, abs(Ac_err./X).*100);
+C_Perr(1, :) = C_Perr(1, :).*NaN; C_Perr(2, :) = C_Perr(2, :).*NaN;
+S_Perr(:, 1) = S_Perr(:, 1).*NaN; S_Perr(1:2, :) = S_Perr(1:2, :).*NaN;
+C_Perr(C_Perr == 0) = NaN;   S_Perr(S_Perr == 0) = NaN; 
+
+% % C_Perr(C_Perr < 1)   = 1; % Set anything below 0.001 %  to 0.001%
+C_Perr(C_Perr > 100) = 100;   % Set anything above 100% to 100%
+% % 
+% % S_Perr(S_Perr < 1)   = 1; % Set anything below  0.001 % t0 0.001 % 
+S_Perr(S_Perr > 100) = 100;   % Set anything above 100% to 100%
+
+
+J = ones(n_max+1, (n_max+1)*2) * NaN; B = fliplr(S_Perr);
+J(:, 1:n_max+1) = B;
+J(:, n_max+2:end) = C_Perr;
+
+figure;
+cmap = turbo(256);  % Original colormap with 256 colors
+
+% Plot the matrix
+im = imagesc(J);
+% % set(gca, 'ColorScale', 'log');
+
+% Apply modified colormap
+colormap(cmap);
+
+% Set transparency to ignore NaNs and overlay a color
+set(im, 'AlphaData', ~isnan(J)); % Make NaNs transparent
+hold on;
+% % [x, y] = meshgrid(1:size(J,2), 1:size(J,1));
+% % scatter(x(isnan(J)), y(isnan(J)), 20, nanColor, 'filled'); % Overlay NaN points
+
+% Configure colorbar
+c = colorbar;
+c.Ticks = [1, 20, 40, 60, 80, 100]; 
+c.TickLabels = {'< 1', '20', '40', '60', '80', '> 100 %'};
+
+% Set axis properties
+yticks(linspace(1, n_max + 1, 7));
+yticklabels(compose('%i', linspace(0, n_max, 7)));
+xticks(linspace(1, 2*n_max + 2, 7));
+xticklabels(compose('%i', linspace(-n_max, n_max, 7)));
+
+xlabel('Degree');
+ylabel('Order');
+hold off;
+
+% % im = imagesc(J);
+% % set(gca, 'ColorScale', 'log');
+% % colorbar
+% % yticks(linspace(1, n_max + 1, 7))
+% % yticklabels(compose('%i', linspace(0, n_max, 7)));
+% % xticks(linspace(1, 2*n_max + 2, 7))
+% % xticklabels(compose('%i', linspace(-n_max, n_max, 7)));
+% % c = colorbar;
+% % c.Ticks = [10, 30, 50, 70, 90, 110]; % 1mm, 1cm, 10cm, 1m, 10m
+% % c.TickLabels = {'< 1', '20', '40', '60', '80', '> 100 %'};
+% % xlabel('Degree');
+% % ylabel('Order');
 
 %%  ESTIMATION ERROR @ DIFFERENT RADIUS
 Nr     = 50;                             % radius points 
