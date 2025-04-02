@@ -42,7 +42,7 @@ asterParams = [GM, Re, n_max, normalized];
 [Nc, Ns, Ncs] = count_num_coeff(n_max); 
 
 % Initial conditions
-r      = 0.6E3;
+r      = 0.35E3;
 phi    = pi/2;
 lambda = 0;
 theta  = pi/2 - phi;% Orbit colatitude [m]
@@ -63,7 +63,7 @@ dt = t(2) - t(1);
 Nt = length(t);
 
 % position error
-Ar = 5E-1*[1;1;1];            % [ACI]
+Ar = 0*[1;1;1];            % [ACI]
 
 % attitude error
 frec    = 1E-4;                        % [rad/s]
