@@ -57,6 +57,7 @@ asterParams = [GM, Re, n_max, normalized];
 % Initial conditions
 % % r      = 0.35E3;      % [m]
 r = 1.5*Re;
+r = 24E3;
 % % r      = Re + 300E3; 
 phi    = pi/2;
 lambda = 0;

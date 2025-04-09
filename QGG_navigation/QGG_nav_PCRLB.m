@@ -26,9 +26,11 @@ clc;
 tmin = 0;                                            % Phi = 0  [-]
 % % tmin = 0.75449775462963;                         % Phi = 180[-]
 % % tmin =  0.615368240740741;                       % Phi = 30 [-]
-tmax = 3*1.4968 + tmin;                              % [-]
-frec = 1/60;
+T = 1.4968;                                          % [-]
+tmax = 1*T + tmin;                                   % [-]
+frec = 1/30;
 augmented_st = 0;
+bias  = 1;
 
 % define system
 system = "CR3BP"; % options: 2BP, CR3BP, F2BP
@@ -37,9 +39,30 @@ system = "CR3BP"; % options: 2BP, CR3BP, F2BP
 
 % normalization values
 measDim = planetParams(3)^2;
-timeDim = planetParams(3);
+timeDim = planetParams(3);                            % [1/s]
 posDim  = planetParams(2);                            % [m]
 velDim  = planetParams(3) * planetParams(2);          % [m/s]
+
+% load parameters & initial conditions
+[planetParams, poleParams, C_mat, S_mat, TIME, ~] = ...
+    load_universe(system, [tmin, tmax], frec);
+X0 = load_initCond(system, planetParams);
+% % X0 = [ 0.720230409024078;0.675424403969901;0.00837326048601556;...
+% %     -1.81989246557446;1.92454671114969;0.119861341700249];  % state @ periapsis
+% % X0 = [0.838678033240026; 0.542367087602379 ; -0.0740369975323576;...
+% %     -0.624211548421406;0.826244659528416;0.42190501223657];     % state @ phi = 30
+
+% compute measurement time
+f_time = 1/30;
+n = round((TIME(end)-TIME(1))*(f_time/planetParams(3)) + 1);
+TIME = linspace(TIME(1), TIME(end), n);
+N = f_time / frec;
+DOM = ones(1, N) * NaN;
+for h = 1:n/N
+    val = N * (h - 1) + 1;
+    DOM(h) = TIME(val);
+end
+dt = TIME(2) - TIME(1);                 % [-]
 
 % Measurement weights
 sigmaMeas = [1, 1/sqrt(2)] * 1E-12;                  % [1/s^2]
@@ -54,48 +77,32 @@ qs = diag([sigmaQ_s, sigmaQ_s, sigmaQ_s].^2).*1;
 I = eye(3, 3);
 Nq = 6;
 
-% random-walk bias process noise
-sigmaQ_b = 1E-15/ (planetParams(3)^3);               % [-]
-tau      = 1; 
-qb = diag([sigmaQ_b, sigmaQ_b, sigmaQ_b, sigmaQ_b, sigmaQ_b, ...
-    sigmaQ_b].^2).*0;
-if(det(qb) ~= 0)
-    Nx = 12; 
-    Ns = 6;
-    Nm = 6;
-else 
-    if(augmented_st), Nx = 7; Ns = 7; Nm = 6; else Nx = 6;  Ns = 6; Nm = 6; end
+% random-walk bias process noise (FOGM)
+sigmaQ = 1E-5;                                       % [E / sec]
+varQ   = sigmaQ^2;                                   % [E^2 / sec^2]
+qE     = varQ * dt / timeDim;                        % [E^2 / sec] assuming it is multiplied by dt
+q      = qE * 1E-18;                                 % [1 / sec^5]
+q      = q  / (timeDim^5);                           % [-]
+tau    = 5 * timeDim;                                % [-]
+
+if(augmented_st), Nx = 7; Ns = 7; Nm = 6; 
+elseif(bias), Nx = 18; Ns = 6; Nm = 6;
+else, Nx = 6;  Ns = 6; Nm = 6; end
+
+if(tau == 0)
+    Nx  = 12; % constant bias
+    q = 0;
+elseif(tau/timeDim >= 1E20 )
+    Nx  = 18; % random-walk bias
+    PHIbd = [1, dt;0, 1];
+    Sbd   = zeros(2,2);
+else
+    PHIbd = compute_STM_FOGM(dt, tau);         
+    Sbd   = compute_PN_FOGM(dt, tau, q);   
 end
 
-% load parameters & initial conditions
-[planetParams, poleParams, C_mat, S_mat, TIME, ~] = ...
-    load_universe(system, [tmin, tmax], frec);
-X0 = load_initCond(system, planetParams);
-% % X0 = [ 0.720230409024078;0.675424403969901;0.00837326048601556;...
-% %     -1.81989246557446;1.92454671114969;0.119861341700249];  % state @ periapsis
-% % X0 = [0.838678033240026; 0.542367087602379 ; -0.0740369975323576;...
-% %     -0.624211548421406;0.826244659528416;0.42190501223657];     % state @ phi = 30
-
-[~, P0, ~, ~, ~, ~, ~, ~, ~, ~] = ...
-    initialize_filter(planetParams, C_mat, S_mat, ...
-    0, "0", augmented_st);
 if(augmented_st), X0 = [X0; planetParams(10)]; end
-if(Nx == 12)
-    sx = diag(P0); sb = 1E-14/(planetParams(3)^3);
-    sb = 1E-8 / (planetParams(3)^2);
-    P0 = diag([sx; [sb;sb;sb;sb;sb;sb].^2]); 
-end
-
-% compute measurement time
-f_time = 1/10;
-n = round((TIME(end)-TIME(1))*(f_time/planetParams(3)) + 1);
-TIME = linspace(TIME(1), TIME(end), n);
-N = f_time / frec;
-DOM = ones(1, N) * NaN;
-for h = 1:n/N
-    val = N * (h - 1) + 1;
-    DOM(h) = TIME(val);
-end
+P0 = diag(repelem(1E3, Nx));
 
 % integrate trajectory
 options = odeset('RelTol',1e-13,'AbsTol',1e-13);
@@ -130,21 +137,21 @@ for k = 2:Nt
      Gamma = At * [At/2*I;I];
      PHI_inv = inv(PHI);
      Aiprev_plus = reshape(PCRB(k-1, :), [Nx,Nx]);
-     if(Nx == 12) % include bias noise
+     if(Nx == 18) % include bias noise     
+         F = diag_stack(PHI, PHIbd, PHIbd, PHIbd, PHIbd, PHIbd, PHIbd);
+         Qy = diag_stack(Gamma * qs * Gamma', Sbd, Sbd, Sbd, Sbd, Sbd, Sbd);
+         M = inv(F)' * Aiprev_plus * inv(F);
+         Ai_min = M - M*Qy*inv(eye(Nx, Nx) + M * Qy)*M;
+         Hb = compute_biasDrift_measPartials();
+         h = [Ht, Hb];
+     else % constant bias or random-walk       
          F = [PHI, zeros(6,6);zeros(6,6), eye(6,6)];
-% %          Qy= [Gamma * qs * Gamma', zeros(6,6);zeros(6,6), qb.*At];
-         Qy= [Gamma * qs * Gamma', zeros(6,6);zeros(6,6), zeros(6,6)];
-         P_min = F * (Aiprev_plus \ F') + Qy;
-         Ai_min = inv(P_min);
-         h = [Ht, eye(6,6)];
-     else % only account for process noise
-         P_min = PHI * (Aiprev_plus \  PHI');
-         Qy = zeros(Ns, Ns);
-         if(det(qs) ~= 0)
-            Qy(1:Nq, 1:Nq) =  Gamma * qs * Gamma';
-         end
-         Ai_min = inv(P_min + Qy);
-         h = Ht(1:6, :);
+         Qq = q * dt * eye(6,6);
+         Qy = diag_stack(Gamma * qs * Gamma', Qq);
+         M = inv(F)' * Aiprev_plus * inv(F);
+         Ai_min = M - M*Qy*inv(eye(Nx, Nx) + M * Qy)*M;
+         
+         h = [Ht, eye(6, 6)];
      end
     if(isnan(vecnorm(Y)))
         Ai_plus = Ai_min;
@@ -163,7 +170,6 @@ for j = 1:Nt
     sigmaP(:, j)   = sqrt(diag(p));
     sigmaP(1:3, j) = sigmaP(1:3, j).*(posDim/1E3);
     sigmaP(4:6, j) =  sigmaP(4:6 ,j).*(velDim);
-    if(Nx == 12), sigmaP(7:end, j) = sigmaP(7:end, j) * planetParams(3)^2; end
 end
 
 % plot observability
@@ -171,7 +177,7 @@ figure()
 plot(TIME/timeDim/86400, obs, 'LineWidth', 2)
 xlabel('TIME [days]')
 ylabel('[-]');
-title('sytem observability')
+title('system observability')
 
 % plot uncertainty
 figure()
@@ -189,35 +195,31 @@ end
 tt = ["b_{xx}", "b_{xy}", "b_{xz}", "b_{yy}", "b_{yz}", ...
     "b_{zz}"];
 tty = ["[E]", "[E]", "[E]", "[E]", "[E]", "[E]"];
-if(Nx == 12)
-    % generate bias
-    b = zeros(6, Nt);
-    b(:, 1) = ones(6, 1).*1E-9; % [1/s^2]
-    for j = 2:Nt
-        At = t(j) - t(j-1);
-        s = sigmaQ_b * At * planetParams(3)^2; % [1/s^2]
-        b(:, j) = b(:, j-1) + normrnd(0, s, [6, 1]);
+if(Nx == 18)
+    b = zeros(6, length(TIME)); d = b;
+    for j = 1:Nt
+        b(:, j) = [sigmaP(7, j); sigmaP(9, j); sigmaP(11, j); sigmaP(13, j);...
+            sigmaP(15, j); sigmaP(17, j)];
+        d(:, j) = [sigmaP(8, j); sigmaP(10, j); sigmaP(12, j); sigmaP(14, j);...
+            sigmaP(16, j); sigmaP(18, j)];
     end
-    % plot bias uncertainty
     figure()
-    scale = 1E-9;
-    for j = 1:6
-        subplot(3, 2, j)
-        semilogy(TIME/timeDim/86400, 3*sigmaP(j+6, :)/scale, 'LineWidth', 2)
-        title(tt(j));
-        xlabel('TIME [days]')
-        ylabel(tty(j))
-        grid on;
+    subplot(1, 2, 1)
+    semilogy(TIME/timeDim/86400, b.*measDim/1E-9, 'LineWidth', 2)
+    title('Bias uncertianty [Eotvos]')
+    subplot(1, 2, 2)
+    semilogy(TIME/timeDim/86400, d.*timeDim^3/1E-9, 'LineWidth', 2)
+    title('Drift uncertianty [Eotvos / sec]')
+   
+else
+     b = zeros(6, length(TIME)); d = b;
+    for j = 1:Nt
+        b(:, j) = [sigmaP(7, j); sigmaP(8, j); sigmaP(9, j); sigmaP(10, j);...
+            sigmaP(11, j); sigmaP(12, j)];
     end
-    % plot bias
     figure()
-    for j = 1:6
-        subplot(3, 2, j)
-        semilogy(TIME/timeDim/86400, abs(b(j, :)), 'LineWidth', 2, 'Color', 'k')
-        title(tt(j));
-        xlabel('TIME [days]')
-        ylabel(tty(j))
-    end
+    semilogy(TIME/timeDim/86400, b.*measDim/1E-9, 'LineWidth', 2)
+    title('Bias uncertianty [Eotvos]')
 end
 % clear kernels
 cspice_kclear
@@ -292,3 +294,42 @@ function [Htot] = arrangePartials(Hgrad, Homega, HomegaDot, w)
 end
 
 
+function BigMatrix = diag_stack(varargin)
+    % Determine total size
+    total_size = sum(cellfun(@(M) size(M, 1), varargin));
+    
+    % Initialize the big matrix
+    BigMatrix = zeros(total_size);
+    
+    % Fill the diagonal blocks
+    idx = 1;
+    for i = 1:length(varargin)
+        M = varargin{i};
+        s = size(M, 1);
+        BigMatrix(idx:idx+s-1, idx:idx+s-1) = M;
+        idx = idx + s;
+    end
+end
+
+function [Hb] = compute_biasDrift_measPartials()
+    Hb = zeros(6, 12);
+    for j = 1:6
+        maxInd = j * 2;
+        minInd = maxInd - 1;
+        Hb(j, minInd:maxInd) = [1, 0];
+    end
+end
+
+function [PHIbd] = compute_STM_FOGM(t, tau)
+    PHIbd = [1, tau*(1 - exp(-t/ tau));...
+        0, exp(-t/tau)];
+end
+
+function [Sbd] = compute_PN_FOGM(t, tau, sigmaQ_b)
+    S11 = tau^2 * ((1-exp(-2*t/tau)) - 4*(1-exp(-t/tau)) + 2*t/tau);
+    S12 = tau * (1 - exp(-t/tau))^2;
+    S21 = tau * (1 - exp(-t/tau))^2;
+    S22 = (1 - exp(-2*t/tau));
+
+    Sbd = sigmaQ_b * tau / 2 * [S11,S12;S21,S22];
+end

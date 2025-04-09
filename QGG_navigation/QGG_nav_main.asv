@@ -27,7 +27,7 @@ plotResults   = 1;   % options: 1 or 0
 consider_cov  = 0;   % options: 1 or 0
 process_noise = "0"; % options: SNC, DMC, 0
 augmented_st  = 0;   % options: 1 or 0
-bias          = 0;   % options: 1 or 0
+bias 
 
 % time parameters
 tmin = 0*1.4968;
