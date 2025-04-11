@@ -7,11 +7,10 @@ tmax = 6 * 86400;
 N = round(tmax * f);
 TIME = linspace(0, tmax, N);
 dt = TIME(2) - TIME(1);
-sigmaQ = 1E-5;                                       % [E / sec]
-varQ   = sigmaQ^2;                                   % [E^2 / sec^2]
-qE     = varQ*dt;                                    % [E^2 / sec] assuming it is multiplied by dt
-q      = qE * 1E-18;                                 % [1 / sec^5]
-tau    = 5;                                          % [sec]
+sigmaQ = 1E-5;                                       % [E / sqrt(sec)]
+varQ   = sigmaQ^2;                                   % [E^2 / sec]
+q      = varQ * 1E-18;                               % [1 / sec^5]
+tau    = 5;                                       % [sec]
 
 % bais and covariance
 s = q * tau / 2 * (1 - exp(-2/tau * dt));
@@ -41,9 +40,18 @@ end
 figure()
 plot(1:N, b./1E-9 + noise./1E-9, 'LineWidth', 2, 'color', 'b')
 hold all;
-%plot(1:N, b_RW./1E-9 + noise./1E-9, 'LineWidth', 2)
+plot(1:N, b_RW./1E-9 + noise./1E-9, 'LineWidth', 2)
 legend('FOMP \tau = ' + string(tau), 'Random Walk')
 ylabel('Eotvos')
+
+% integrate the STM
+options = odeset('RelTol',1e-12,'AbsTol',1e-12);
+[~, STATE] = ode113(@(t, x) integrate_STM(t, x, tau), TIME, reshape(eye(2,2), [4, 1]), options);
+ 
+PHI11 = STATE(:, 1)';
+PHI21 = STATE(:, 2)';
+PHI12 = STATE(:, 3)';
+PHI22 = STATE(:, 4)';
 
 
 % FUNCTIONS
@@ -59,4 +67,11 @@ function [Sbd] = compute_PN_FOGM(t, tau, sigmaQ_b)
     S22 = (1 - exp(-2*t/tau));
 
     Sbd = sigmaQ_b * tau / 2 * [S11,S12;S21,S22];
+end
+
+function [dx] = integrate_STM(t, x, tau)
+    S = reshape(x, [2,2]);
+    J = [0, 1;0, 0];
+    PHIdot = J * S;
+    dx = reshape(PHIdot, [4, 1]);
 end

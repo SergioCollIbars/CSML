@@ -1,6 +1,6 @@
 function [X, Pt, Xhat, Xnot, pref, posf] = CKF_solver(TIME, X0, Xnot, P0, ...
     R0, Q0, Bw, T, planetParams, poleParams, C_mat, S_mat, ...
-    system, consider_cov, augmented_st, DOM, posE, posM, posS)
+    system, consider_cov, augmented_st, DOM, posE, posM, posS, bias, Qb)
     %%                    CKF FILTER FUNCTION
     % Description: Process measurements to refine real orbit. Use STM as  
     % a propagator.
@@ -9,10 +9,10 @@ function [X, Pt, Xhat, Xnot, pref, posf] = CKF_solver(TIME, X0, Xnot, P0, ...
 
     % compute dynamics. Use measured STM
     Nt = length(TIME);
-    
+    Nm = length(T(:, 1));
 
     if(det(Bw) == 0)
-        if(augmented_st), Ns = 7; else Ns = 6; end
+        if(augmented_st), Ns = 7; elseif(bias), Ns = 12; else, Ns = 6; end
         DMC = 0;  type = "SNC";
     else
         DMC = 1; Ns = 9; type = "DMC"; 
@@ -25,8 +25,8 @@ function [X, Pt, Xhat, Xnot, pref, posf] = CKF_solver(TIME, X0, Xnot, P0, ...
 
     options = odeset('RelTol',1e-12,'AbsTol',1e-12);
     [~, STATE] = ode113(@(t, x) EOM_navigation(t, x, planetParams, ...
-        poleParams, C_mat, S_mat, system, consider_cov, {DMC, Bw}, augmented_st), TIME, initState, options);
-    X = STATE(:, 1:Ns)';
+        poleParams, C_mat, S_mat, system, consider_cov, {DMC, Bw}, augmented_st, bias), TIME, initState, options);
+    X    = STATE(:, 1:Ns)';
     STM  = STATE(:, Ns+1:end);
 
     Pt = ones(Nt, Ns*Ns) * NaN;
@@ -34,7 +34,7 @@ function [X, Pt, Xhat, Xnot, pref, posf] = CKF_solver(TIME, X0, Xnot, P0, ...
     
     % data gap
     DG = 0;
-
+    
     % start filter
     for j = 1:Nt
         % initial CKF and EKF estimations
@@ -58,6 +58,11 @@ function [X, Pt, Xhat, Xnot, pref, posf] = CKF_solver(TIME, X0, Xnot, P0, ...
         state = X(:, j)';
         [Tc, Hx, ~] = compute_measurements(TIME(j), state, planetParams, ...
              poleParams, C_mat, S_mat, 0, consider_cov, augmented_st, [], DOM, posE(:, j), posM(:, j), posS(:, j), system);
+        if(bias)
+            b  = X(7:Ns, j);
+            Tc = Tc + b;
+            Hx = [Hx, eye(6,6)];
+        end
         dY = T(:, j) - Tc;
         if(type == "DMC"), Hi = [Hx, zeros(6, 6)]; else,  Hi = Hx; end
          
@@ -76,6 +81,9 @@ function [X, Pt, Xhat, Xnot, pref, posf] = CKF_solver(TIME, X0, Xnot, P0, ...
             Q = processNoise(Q0, DG, At, Bw, type, Ns);
         end
         Qp = Q;
+        if(bias)
+            Qp = [Qp, Qb];
+        end
 
         % run CKF
         [X_hat, P, ~, Qn] = CKF(dY, ...

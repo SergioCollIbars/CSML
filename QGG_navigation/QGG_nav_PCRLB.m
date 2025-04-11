@@ -80,25 +80,35 @@ Nq = 6;
 % random-walk bias process noise (FOGM)
 sigmaQ = 1E-5;                                       % [E / sec]
 varQ   = sigmaQ^2;                                   % [E^2 / sec^2]
-qE     = varQ * dt / timeDim;                        % [E^2 / sec] assuming it is multiplied by dt
-q      = qE * 1E-18;                                 % [1 / sec^5]
+% % qE     = varQ * dt / timeDim;                        % [E^2 / sec] assuming it is multiplied by dt
+q      = varQ * 1E-18;                               % [1 / sec^5]
 q      = q  / (timeDim^5);                           % [-]
-tau    = 5 * timeDim;                                % [-]
+tau    = 1000 * timeDim;                             % [-]
 
 if(augmented_st), Nx = 7; Ns = 7; Nm = 6; 
-elseif(bias), Nx = 18; Ns = 6; Nm = 6;
+elseif(bias), Nx = 12; Ns = 6; Nm = 6;
 else, Nx = 6;  Ns = 6; Nm = 6; end
 
+FOMP = 0;
 if(tau == 0)
     Nx  = 12; % constant bias
     q = 0;
-elseif(tau/timeDim >= 1E20 )
-    Nx  = 18; % random-walk bias
-    PHIbd = [1, dt;0, 1];
-    Sbd   = zeros(2,2);
+% %     Nx = 18;
+elseif(tau/timeDim >= 1E8 )
+    PHIbd = 1;
+    Sbd   = q*dt;
+    FOMP = 1;
+    Hb = eye(6,6);
 else
-    PHIbd = compute_STM_FOGM(dt, tau);         
-    Sbd   = compute_PN_FOGM(dt, tau, q);   
+% %     PHIbd = exp(-dt/tau);
+% %     Sbd   = q * tau / 2 * (1 - exp(-2*dt/tau)); 
+% %     Hb = eye(6,6);
+    PHIbd = compute_STM_FOGM(dt, tau);
+    Sbd = compute_PN_FOGM(dt, tau, q);
+    Hb = compute_biasDrift_measPartials();
+    Nx = 18;
+
+    FOMP = 1;
 end
 
 if(augmented_st), X0 = [X0; planetParams(10)]; end
@@ -108,7 +118,7 @@ P0 = diag(repelem(1E3, Nx));
 options = odeset('RelTol',1e-13,'AbsTol',1e-13);
 STM0 = reshape(eye(Ns,Ns), [Ns*Ns, 1]);
 [t, state] = ode113(@(t, x) EOM_navigation(t, x, planetParams, ...
-    poleParams, C_mat, S_mat, system, 0, {0,0}, augmented_st), TIME, ...
+    poleParams, C_mat, S_mat, system, 0, {0,0}, augmented_st, 0), TIME, ...
     [X0; STM0], options);
 
 STM  = state(:, Ns+1:Ns+Ns*Ns);
@@ -137,21 +147,23 @@ for k = 2:Nt
      Gamma = At * [At/2*I;I];
      PHI_inv = inv(PHI);
      Aiprev_plus = reshape(PCRB(k-1, :), [Nx,Nx]);
-     if(Nx == 18) % include bias noise     
+     if(FOMP == 1) % include bias noise     
          F = diag_stack(PHI, PHIbd, PHIbd, PHIbd, PHIbd, PHIbd, PHIbd);
          Qy = diag_stack(Gamma * qs * Gamma', Sbd, Sbd, Sbd, Sbd, Sbd, Sbd);
          M = inv(F)' * Aiprev_plus * inv(F);
          Ai_min = M - M*Qy*inv(eye(Nx, Nx) + M * Qy)*M;
-         Hb = compute_biasDrift_measPartials();
          h = [Ht, Hb];
      else % constant bias or random-walk       
          F = [PHI, zeros(6,6);zeros(6,6), eye(6,6)];
+% %          F = [PHI, zeros(6,12);zeros(6,6), eye(6,6), dt*eye(6,6);zeros(6,12), eye(6,6)];
          Qq = q * dt * eye(6,6);
          Qy = diag_stack(Gamma * qs * Gamma', Qq);
+% %          Qy = diag_stack(Gamma * qs * Gamma', Qq, Qq);
          M = inv(F)' * Aiprev_plus * inv(F);
          Ai_min = M - M*Qy*inv(eye(Nx, Nx) + M * Qy)*M;
          
          h = [Ht, eye(6, 6)];
+% %          h = [Ht, eye(6, 6), zeros(6, 6)];
      end
     if(isnan(vecnorm(Y)))
         Ai_plus = Ai_min;
@@ -202,6 +214,11 @@ if(Nx == 18)
             sigmaP(15, j); sigmaP(17, j)];
         d(:, j) = [sigmaP(8, j); sigmaP(10, j); sigmaP(12, j); sigmaP(14, j);...
             sigmaP(16, j); sigmaP(18, j)];
+
+% %        b(:, j) = [sigmaP(7, j); sigmaP(8, j); sigmaP(9, j); sigmaP(10, j);...
+% %             sigmaP(11, j); sigmaP(12, j)];
+% %         d(:, j) = [sigmaP(13, j); sigmaP(14, j); sigmaP(15, j); sigmaP(16, j);...
+% %             sigmaP(17, j); sigmaP(18, j)];
     end
     figure()
     subplot(1, 2, 1)

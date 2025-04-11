@@ -22,16 +22,16 @@ cspice_furnsh('/Users/sergiocollibars/Documents/MATLAB/kernels/kernels.tm')
 
 % Initial configuration
 system = "CR3BP";    % options: CR3BP, FCR3BP, EPHEM
-solver = "UKF";      % options: CKF, EKF, batch
+solver = "EKF";      % options: CKF, EKF, batch
 plotResults   = 1;   % options: 1 or 0
 consider_cov  = 0;   % options: 1 or 0
-process_noise = "0"; % options: SNC, DMC, 0
+process_noise = "SNC"; % options: SNC, DMC, 0
 augmented_st  = 0;   % options: 1 or 0
-bias          = 0;   % options: 1 or 0
+bias          = 1;   % options: 1 or 0
 
 % time parameters
 tmin = 0*1.4968;
-tmax = 3*1.4968 + tmin;                                 % [rad] 
+tmax = 1*1.4968 + tmin;                                 % [rad] 
 frec = 1/30;                                            % measurement freq. [Hz]
 
 % load universe
@@ -55,21 +55,34 @@ if(augmented_st), X0_true = [X0_true; planetParams(10)]; STM0 = reshape(eye(7,7)
 % integrate trajectory
 options = odeset('RelTol',1e-12,'AbsTol',1e-12);
 [time, ~] = ode113(@(t, x) EOM_navigation(t, x, planetParams, ...
-    poleParams, Cmat_true, Smat_true, system, 0, {0,0}, augmented_st), TIME, ...
+    poleParams, Cmat_true, Smat_true, system, 0, {0,0}, augmented_st, 0), TIME, ...
     [X0_true; STM0], options);
 TIME = unique(cat(2, time', DOM));
 [t, state] = ode113(@(t, x) EOM_navigation(t, x, planetParams, ...
-poleParams, Cmat_true, Smat_true, system, 0, {0,0}, augmented_st), TIME, ...
+poleParams, Cmat_true, Smat_true, system, 0, {0,0}, augmented_st, 0), TIME, ...
 [X0_true; STM0], options);
 
 % compute primaries position
 [posE, posM, posS] = compute_posPrimaries(TIME, planetParams, system);
 
 % compute gradiometer measurements
-noiseSeed = load("noiseSeed_f10_T5.mat"). noise;
-% % noiseSeed = [];
+% % noiseSeed = load("noiseSeed_f10_T5.mat"). noise;
+noiseSeed = [];
 [T, ~, ~] = compute_measurements(TIME, state, planetParams, poleParams, ...
     Cmat_true, Smat_true, 1, 0, augmented_st, noiseSeed, DOM, posE, posM, posS, system);
+
+% include bias
+if(bias)
+    dt = TIME(2) - TIME(1);
+    sigmaQ = 1E-5;                                       % [E / sec]
+    varQ   = sigmaQ^2;                                   % [E^2 / sec^2]
+    qE     = varQ * dt /  planetParams(3);               % [E^2 / sec] assuming it is multiplied by dt
+    q      = qE * 1E-18;                                 % [1 / sec^5]
+    q      = q  / ( planetParams(3)^5);                  % [-]
+    tau    = 1E6 *  planetParams(3);                       % [-]
+    % % tau = 0; q = 0;
+    T = compute_meas_bias(T, q, tau, TIME);
+end
 
 % plot measurements
 if(plotResults), plot_measurements(TIME, T, planetParams, augmented_st, system); end
@@ -85,8 +98,14 @@ if(process_noise == "DMC")
 end
 if(augmented_st == 1)
     Xnot  = zeros(7, 1); Ns = 7;
+elseif(bias)
+    Nb = 6;
+    X0 = [X0; zeros(Nb, 1)]; Xnot = zeros(6 + Nb, 1); Ns = 6;
+    p  = diag(P0);
+    P0 = diag([p', repelem(10*q*tau/2, 6)]);
 else
     Xnot  = zeros(6, 1); Ns = 6; 
+    tau = 0;
 end
 
 % % X0 = load('initState_SRP.mat').s;
@@ -123,7 +142,7 @@ while(abs(error) > epsilon && count < MaxIter)
     elseif(solver == "CKF")
         [X, P, Xhat, XNOT, pref, posf] = CKF_solver(t, X0, Xnot, P0, ...
                     R0, Q0, Bw, T, planetParams, poleParams, ...
-                    Cmat_estim, Smat_estim, system, consider_cov, augmented_st, DOM, posE, posM, posS);
+                    Cmat_estim, Smat_estim, system, consider_cov, augmented_st, DOM, posE, posM, posS, tau);
 
         [Xnot, error, corr_iter, count, prefIter, posIter] = ...
                 check_err_save_post(Xnot, XNOT, corr_iter, count, prefIter, posIter, ...
@@ -134,7 +153,7 @@ while(abs(error) > epsilon && count < MaxIter)
         while(abs(error) > epsilon && count < MaxIter) % first run batch
             [X_B, P_B, Xhat_B, XNOT, pref, posf] = CKF_solver(t_batch, X0, Xnot, P0, ...
                     R0, Q0, Bw,T, planetParams, poleParams, ...
-                    Cmat_estim, Smat_estim, system, consider_cov, augmented_st, DOM, posE, posM, posS);
+                    Cmat_estim, Smat_estim, system, consider_cov, augmented_st, DOM, posE, posM, posS, tau, Qb);
             
             [Xnot, error, corr_iter, count, prefIter, posIter] = ...
                 check_err_save_post(Xnot, XNOT, corr_iter, count, prefIter, posIter, ...

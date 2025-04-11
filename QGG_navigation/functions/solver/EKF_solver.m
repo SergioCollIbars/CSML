@@ -1,6 +1,6 @@
 function [X, Pc, Xhat, Xnot, pref, posf] = EKF_solver(TIME, X0, P0, ...
                     R0, Q0, Bw, T, planetParams, poleParams, Cmat, Smat, ...
-                    system, consider_cov, augmented_st, DOM, posE, posM, posS)
+                    system, consider_cov, augmented_st, DOM, posE, posM, posS, bias)
     %%                    CKF FILTER FUNCTION
     % Description: Process measurements to refine real orbit.
     % Author: Sergio Coll Ibars

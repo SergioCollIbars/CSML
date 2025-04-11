@@ -1,5 +1,5 @@
 function [dx] = EOM_navigation(t, x, planetParams, poleParams,...
-    C_mat, S_mat, enviroment, consider_cov, process_noise, augmented_st)
+    C_mat, S_mat, enviroment, consider_cov, process_noise, augmented_st, bias)
     %%                          EoM FUNCTION
     % ------------------------------------------------------------------- %
     %   Author: Sergio Coll Ibars
@@ -243,6 +243,13 @@ function [dx] = EOM_navigation(t, x, planetParams, poleParams,...
             J = [zeros(3, 3), eye(3,3), zeros(3, 1); ...
                 T+daSRP_dr, zeros(3, 3), daSRP_deta; ...
                 zeros(1,7)];
+        elseif(bias)
+            Ns = 12;
+
+            % compute Jacobian
+            J = [zeros(3, 3), eye(3,3), zeros(3, 6);...
+                T, zeros(3, 3), zeros(3, 6);...
+                zeros(6, 3),zeros(6, 3), (-1/bias)* eye(6,6)];
         else
             % states number
             Ns = 6;
@@ -284,6 +291,9 @@ function [dx] = EOM_navigation(t, x, planetParams, poleParams,...
    else
        if(augmented_st)
         dx = [dx; 0; reshape(PHI_dot, [Ns*Ns, 1])];
+       elseif(bias)
+           bdot = x(7:Ns).*(-1/bias);
+           dx = [dx; bdot; reshape(PHI_dot, [Ns*Ns, 1])];
        else
         dx = [dx; reshape(PHI_dot, [Ns*Ns, 1])];
        end

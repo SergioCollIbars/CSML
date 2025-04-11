@@ -74,7 +74,7 @@ P0 = diag(repelem(1E3, Nx));
 options = odeset('RelTol',1e-13,'AbsTol',1e-13);
 STM0 = reshape(eye(Ns,Ns), [Ns*Ns, 1]);
 [t, state] = ode113(@(t, x) EOM_navigation(t, x, planetParams, ...
-    poleParams, C_mat, S_mat, system, 0, {0,0}, 0), TIME, ...
+    poleParams, C_mat, S_mat, system, 0, {0,0}, 0, 0), TIME, ...
     [X0; STM0], options);
 
 STM  = state(:, Ns+1:Ns+Ns*Ns);
@@ -85,15 +85,14 @@ Nt  = length(TIME);
 
 % random-walk bias process noise (FOGM)
 Nq = 10;
-sigmaQVec = logspace(-8, -4, Nq);                           % [E/ sec]
+sigmaQVec = logspace(-7, -3, Nq);                           % [E/ sqrt(sec)]
 tauVec = linspace(1E3, 5, Nq);                              % [sec]
 obsPercMat = ones(Nq, Nq);
 count = 0;
 for j = 1:Nq
     for i = 1:Nq
-        varQ   = sigmaQVec(j)^2;                             % [E^2 / sec^2]
-        qE     = varQ * dt / timeDim;                        % [E^2 / sec] assuming it is multiplied by dt
-        q      = qE * 1E-18;                                 % [1 / sec^5]
+        varQ   = sigmaQVec(j)^2;                             % [E^2 / sec]
+        q      = varQ * 1E-18;                               % [1 / sec^5]
         q      = q  / (timeDim^5);                           % [-]          
         tau    = tauVec(i) * timeDim;                        % [-]
 
@@ -118,14 +117,17 @@ for j = 1:Nq
              PHI_inv = inv(PHI);
              Aiprev_plus = reshape(PCRB(k-1, :), [Nx,Nx]);
         
-             PHIbd = compute_STM_FOGM(dt, tau);         
-             Sbd   = compute_PN_FOGM(dt, tau, q);        
+% %              PHIbd = exp(-dt/tau);         
+% %              Sbd   = q * tau / 2 * (1 - exp(-2*dt/tau));   
+             PHIbd = compute_STM_FOGM(dt, tau);
+             Sbd = compute_PN_FOGM(dt, tau, q);
              F = diag_stack(PHI, PHIbd, PHIbd, PHIbd, PHIbd, PHIbd, PHIbd);
              Qy = diag_stack(Gamma * qs * Gamma', Sbd, Sbd, Sbd, Sbd, Sbd, Sbd);
              M = inv(F)' * Aiprev_plus * inv(F);
              Ai_min = M - M*Qy*inv(eye(Nx, Nx) + M * Qy)*M;
              
              % measurement partials
+% %              Hb = eye(6,6);
              Hb = compute_biasDrift_measPartials();
              h = [Ht, Hb];
         
@@ -138,7 +140,7 @@ for j = 1:Nq
         end
 
         % compute percentage of full observability
-        obsNum = obs(2:end) == 18;
+        obsNum = obs(2:end) == Nx;
         obsPerc = sum(obsNum) / (Nt -1) * 100;  % [%]
 
         obsPercMat(i, j) = obsPerc;
@@ -162,13 +164,13 @@ if(Nq > 1)
     surf(X, Y, obsPercMat, 'EdgeColor', 'none')
     colormap(parula)                       % Specify colormap
     colorbar                               % Show color scale
-    xlabel('Intensity [E / sec]')
-    ylabel('Correlation [sec]')
+    xlabel('Intensity [E / $\sqrt{sec}$]', 'Interpreter', 'latex')
+    ylabel('Correlation [sec]',  'Interpreter', 'latex')
     set(gca, 'XScale', 'log')              % Set X axis to log scale
     set(gca, 'YScale', 'log')              % Set Y axis to log scale
-    set(gca, 'XTick', [1E-8, 1E-6, 1E-4])  % Specify 3 X tick values
+    set(gca, 'XTick', [1E-7, 1E-6, 1E-4, 1E-3])  % Specify 3 X tick values
     set(gca, 'YTick', [5, 10, 100, 1000])  % Specify 3 Y tick values
-    xlim([1E-8, 1E-4])
+    xlim([1E-7, 1E-3])
     title('Observability percentage along 1 revolution')
 end
 
