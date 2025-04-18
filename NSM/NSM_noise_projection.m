@@ -3,6 +3,7 @@ clc;
 close all;
 format long g;
 
+addpath('../NSM/functions/')
 
 %%      EVALUATE NOISE PROJECTION
 % Description: Undertand and evaluate noise projection in Null space
@@ -53,8 +54,9 @@ Nt = length(t);
 
 % integrate trajectory
 options = odeset('RelTol',1e-13,'AbsTol',1e-13);
+PHI0 = reshape(eye(6,6), [36, 1]);
 [~, state_t] = ode113(@(t, x) EoM(t, x, Cnm, Snm, n_max, GM, Re, normalized, ...
-    W0, W, RA, DEC), t, [r0;v0], options);
+    W0, W, RA, DEC, 0), t, [r0;v0; PHI0], options);
 rn = state_t(:, 1:3)';
 vn = state_t(:, 4:6)';
 
@@ -86,7 +88,7 @@ for k = 1:length(t)
 
     % position partials & null space
     [Hp] = compute_posPartials(n_max, normalized, Cnm, Snm, Re, GM, rn(:, k), ...
-         eye(3,3));
+         eye(3,3), eye(3,3));
     C = null([Hp(1, :);Hp(2,:);Hp(3,:);Hp(5, :);Hp(6, :)]');
     
     % noise projection
