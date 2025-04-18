@@ -8,12 +8,18 @@ function [Hpos] = compute_posPartials(n_max, normalized, Cmat, Smat, Re, GM, r, 
     for j = 1:3
         Ar = zeros(3, 1);
         Ar(j) = eps;
+        
+        rposB = B_ACI * r + Ar./2;
+        rnegB = B_ACI * r - Ar./2;
 
-        rpos = r + Ar./2;       % [ACI]
-        rneg = r - Ar./2;       % [ACI]
+        rpos = B_ACI' * rposB;
+        rneg = B_ACI' * rnegB;
 
-        rposB = B_ACI * rpos;   % [Body]
-        rnegB = B_ACI * rneg;   % [Body]
+% %         rpos = r + Ar./2;       % [ACI]
+% %         rneg = r - Ar./2;       % [ACI]
+% % 
+% %         rposB = B_ACI * rpos;   % [Body]
+% %         rnegB = B_ACI * rneg;   % [Body]
 
         [~, ~, ddUpos] = potentialGradient_nm(Cmat, Smat, n_max, ...
                                                 ACI_ACAF'*rpos, Re, GM, ...

@@ -3,7 +3,7 @@ clc;
 close all;
 format long g;
 addpath('../functions/')
-addpath('../../../QGG_gravEstim/src/')
+addpath('../../QGG_gravEstim/src/')
 set(0,'defaultAxesFontSize',16);
 
 %%              NSM METHODS COMPARISON

@@ -3,9 +3,9 @@ clc;
 close all;
 format long g;
 addpath('../functions/')
-addpath('../../../QGG_gravEstim/src/')
-addpath('../../../QGG_navigation/data/')
-addpath('data/')
+addpath('../../QGG_gravEstim/src/')
+addpath('../../QGG_navigation/data/')
+addpath('../data/')
 set(0,'defaultAxesFontSize',16);
 
 %%            POSITION ERROR EFFECT IN GRAV. ESTIMATION
@@ -15,31 +15,31 @@ set(0,'defaultAxesFontSize',16);
 % Date: 01/18/25
 
 
-% Asteroid parameters.
-savedData = 0;
-path = "HARMCOEFS_BENNU_OSIRIS_1.txt";
-[Cnm, Snm, Re] = readCoeff(path);
-GM = 5.2;
-n_max  = 6;
-normalized = 1;
-W = 4.06130329511851E-4;  % Rotation ang. vel   [rad/s]
-W0 = 0;                   % Initial asteroid longitude
-RA = deg2rad(86.6388);    % Right Ascension     [rad]
-DEC = deg2rad(-65.1086);  % Declination         [rad]
-
-% % % Earth parameters
-% % savedData = 0;                % use saved data. 1 = yes / 0 = no
-% % path = "HARMCOEFS_EARTH_1.txt";
+% % % Asteroid parameters.
+% % savedData = 0;
+% % path = "HARMCOEFS_BENNU_OSIRIS_1.txt";
 % % [Cnm, Snm, Re] = readCoeff(path);
-% % path = "SIGMACOEFS_EARTH_1.txt";
-% % [sigma_Cnm, sigma_Snm, ~] = readCoeff(path);
-% % GM = 3.986004418E14;
-% % n_max  = 120;
+% % GM = 5.2;
+% % n_max  = 6;
 % % normalized = 1;
-% % W = 2 * pi / (24*3600);     % Rotation ang. vel   [rad/s]
-% % W0 = 0;                     % Initial asteroid longitude
-% % RA = -pi/2;                 % Right Ascension     [rad]
-% % DEC = pi/2;                 % Declination         [rad]
+% % W = 4.06130329511851E-4;  % Rotation ang. vel   [rad/s]
+% % W0 = 0;                   % Initial asteroid longitude
+% % RA = deg2rad(86.6388);    % Right Ascension     [rad]
+% % DEC = deg2rad(-65.1086);  % Declination         [rad]
+
+% Earth parameters
+savedData = 0;                % use saved data. 1 = yes / 0 = no
+path = "HARMCOEFS_EARTH_1.txt";
+[Cnm, Snm, Re] = readCoeff(path);
+path = "SIGMACOEFS_EARTH_1.txt";
+[sigma_Cnm, sigma_Snm, ~] = readCoeff(path);
+GM = 3.986004418E14;
+n_max  = 20;
+normalized = 1;
+W = 2 * pi / (24*3600);     % Rotation ang. vel   [rad/s]
+W0 = 0;                     % Initial asteroid longitude
+RA = -pi/2;                 % Right Ascension     [rad]
+DEC = pi/2;                 % Declination         [rad]
 
 % % % Eros parameters
 % % savedData = 0;
@@ -62,9 +62,9 @@ asterParams = [GM, Re, n_max, normalized];
 [X] = mat2list(Cnm, Snm, Nc, Ns);
 
 % Initial conditions
-r      = 1E3;            % [m]
+% % r      = 1E3;            % [m]
 % % r = 24E3;               % [m]
-% % r = Re + 250E3;         % [m] 
+r = Re + 260E3;         % [m] 
 phi    = pi/2;
 lambda = 0;
 theta  = pi/2 - phi;% Orbit colatitude [m]
@@ -77,8 +77,8 @@ v0 = R * [0;0;sqrt(GM/r)];  % [ACI]
 % time vector
 n = sqrt(GM / r^3);    % Mean motion         [rad/s]
 T = (2 * pi / n);
-rev = 10;
-f = 1/30;
+rev = 5*16;
+f = 1/5;
 t = linspace(0, rev*T, rev*T * f);
 Nt = length(t);
 
@@ -95,7 +95,7 @@ else
 % %     Nx = Ncs + 5;
     Nx = 6;
     PHI0 = reshape(eye(Nx,Nx), [Nx*Nx, 1]);
-    [~, state_t] = ode113(@(t, x) EoM(t, x, Cnm, Snm, n_max, GM, Re, normalized, ...
+    [~, state_t] = ode113(@(t, x) EoM(t, x, Cnm, Snm, 3, GM, Re, normalized, ...
         W0, W, RA, DEC, 0), t, [r0;v0;PHI0], options);
     rn = state_t(:, 1:3)';
     vn = state_t(:, 4:6)';
@@ -107,10 +107,10 @@ for j = 1:length(rn(1, :))
         Wt = W0 + W * t(j);
         ACAF_ACI =rotationMatrix(pi/2 + RA, pi/2 - DEC, Wt, [3, 1, 3]);
         rn_ECEF(:, j) = ACAF_ACI * rn(:, j);
-
-        racaf = rn_ECEF(:, j) / vecnorm(rn_ECEF(:, j));
-        lat(j) = atan2(racaf(3), sqrt(racaf(1)^2 + racaf(2)^2));
-        lon(j) = atan2(racaf(2), racaf(1));
+        
+        lla = ecef2lla(rn_ECEF(:, j)');
+        lat(j) = lla(:,1);
+        lon(j) = lla(:,2);
 end
 
 % Create the 2D plot
@@ -129,17 +129,17 @@ ylabel('[km]')
 title('S/C orbital Altitude')
 
 % perturb nominal coefficient
-sigma_n = 1E3 * ones(1, n_max);
-[~, Pp] = perturb_coeff(sigma_n, n_max, X);
-P0 = Pp(2:end, 2:end); 
-S = sqrt(diag(Pp));
+% % sigma_n = 1E3 * ones(1, n_max);
+% % [~, Pp] = perturb_coeff(sigma_n, n_max, X);
+% % P0 = Pp(2:end, 2:end); 
+% % S = sqrt(diag(Pp));
 
-% % [S] = mat2list(sigma_Cnm, sigma_Snm, Nc, Ns);
-% % S = 1.*S;
-% % P0 = diag((S(2:end)).^2);
+[S] = mat2list(sigma_Cnm, sigma_Snm, Nc, Ns);
+S = 100.*S;
+P0 = diag((S(2:end)).^2);
 
 % Consider covariance
-Ar = 1.5E-4;                    % [m]
+Ar = 1.6;                           % [m]
 % % Ar = 0.5 * pi / (180*3600);     % [arcseconds]
 Pxc = zeros(Ncs-1, 3); Pc = zeros(3, 3);
 Pxc_NSM = zeros(Ncs - 1, 6); Pc_NSM = zeros(6, 6);
@@ -149,7 +149,7 @@ end
 for j = 1:length(Pc_NSM)
     Pc_NSM(j, j) = Ar(1)^4;
 end
-c = Ar.*1; % apriori values for the Consider Parameters; 
+c = ones(3, 1)*Ar.*1; % apriori values for the Consider Parameters; 
 c_NSM = ones(6, 1).*Ar(1)^2.*1;
 
 [~, Mxc, Mcc] = get_considerCov_apriori(P0, Pc, Pxc);
@@ -362,7 +362,7 @@ RMS = computeRMS_coeffErr(n_max, Nc, Ns, X, Cnm.*0, Snm.*0);
 figure()
 semilogy(2:n_max, RMS(2:end), 'LineWidth', 2, 'Marker', 'square', 'Color','k')
 hold all;
- semilogy(2:n_max, sigma_RMS(2:end), 'LineWidth', 2, 'Marker', 'square', 'Color','k', 'LineStyle', '--')
+semilogy(2:n_max, sigma_RMS(2:end), 'LineWidth', 2, 'Marker', 'square', 'Color','k', 'LineStyle', '--')
 semilogy(2:n_max, sigma_RMS_LS(2:end), 'LineWidth', 2, 'Marker', 'square', 'Color','g')
 semilogy(2:n_max, sigma_RMS_NSM(2:end), 'LineWidth', 2, 'Marker', 'square', 'Color','b')
 grid on;

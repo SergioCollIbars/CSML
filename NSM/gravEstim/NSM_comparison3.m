@@ -3,7 +3,7 @@ clc;
 close all;
 format long g;
 addpath('../functions/')
-addpath('../../../QGG_gravEstim/src/')
+addpath('../../QGG_gravEstim/src/')
 set(0,'defaultAxesFontSize',16);
 
 %%              NSM METHODS COMPARISON
@@ -98,7 +98,7 @@ noise0 = zeros(9, Nt);
 % % sigma1  = 0.01 * 1E-9 * sqrt(f); % Vxx, Vyy
 % % sigma2  = 0.6  * 1E-9 * sqrt(f); % Vyz, Vyx
 % % sigma3  = 0.02 * 1E-9 * sqrt(f); % Vxz, Vzz
-sigma1 = 1E-12;
+sigma1 = 1E-15;
 sigma2 = sigma1; sigma3 = sigma1;
 
 means    = zeros(1, 9);
