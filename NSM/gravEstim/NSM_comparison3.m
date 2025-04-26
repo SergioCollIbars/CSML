@@ -66,22 +66,13 @@ Nt = length(t);
 Ar = 0*[1;1;1];            % [ACI]
 
 % attitude error
-frec    = 1E-4;                        % [rad/s]
-Amp     = 1E-7;
-
-% % frec    = 1E-4;                        % [rad/s]
-% % Amp     = 1E-5;
-% % At      = Amp*sin(frec*t).*ones(3, Nt).*[1;0.5;0.7];         % [rad] [yaw, pitch, roll]
-% % dA_dt   = Amp*frec*cos(frec*t).*ones(3, Nt).*[1;0.5;0.7];
-% % ddA_ddt = -Amp*frec^2*sin(frec*t).*ones(3, Nt).*[1;0.5;0.7];   
-
-Amp = 1E-11;
+Amp = 2E-9;
 At      = Amp*t.*ones(3, Nt).*[1;0.7;0.5];
 dA_dt   = Amp.*ones(3, Nt).*[1;0.7;0.5];        % [rad/s]
 ddA_ddt = zeros(3, Nt);                         % [rad/s^2]
 
 % attitude nominal value
-Amp = 0;
+Amp = 0; frec = 1;
 attitude  = Amp.*sin(frec.*t).*ones(3, Nt);                         % nominal attitude [rad]
 datt_dt   = Amp.*frec*cos(frec.*t).*ones(3, Nt);
 ddatt_ddt = Amp.*-frec^2*sin(frec.*t).*ones(3, Nt); 
@@ -98,7 +89,7 @@ noise0 = zeros(9, Nt);
 % % sigma1  = 0.01 * 1E-9 * sqrt(f); % Vxx, Vyy
 % % sigma2  = 0.6  * 1E-9 * sqrt(f); % Vyz, Vyx
 % % sigma3  = 0.02 * 1E-9 * sqrt(f); % Vxz, Vzz
-sigma1 = 1E-15;
+sigma1 = 1E-12;
 sigma2 = sigma1; sigma3 = sigma1;
 
 means    = zeros(1, 9);
@@ -133,8 +124,17 @@ P0 = Pp(2:end, 2:end);
 
 % Gravity estimation
 R_NP = diag([sigma1, sigma2, sigma3, sigma1, sigma2].^2);
-R = diag([sigma1, sigma2, sigma3, sigma1, sigma2, sigma1, ...
-    sigma1, sigma1, sigma1].^2);
+R = diag([sigma1, sigma2, sigma3, sigma2, sigma1, sigma2, sigma3, ...
+    sigma2, sigma3].^2);
+
+Pc = zeros(6, 6); Pxc = zeros(Ncs - 1, 6);
+for j = 1:3
+    Pc(j, j) = max(At(j, :))^2;
+end
+for j = 4:6
+    Pc(j, j) = max(dA_dt(j-3, :))^2;
+end
+c = sqrt(diag(Pc)).*1; % apriori values for the Consider Parameters;
 
 % loop
 iterMax = 6;
@@ -146,6 +146,7 @@ Xp_NP = Xp; Xp_N = Xp; Xp_LS = Xp;
 while count < iterMax
     Ax_NP = inv(P0); Ax_N = inv(P0); Ax_LS = inv(P0);
     Nx_NP = -inv(P0) * xnot_NP; Nx_N = -inv(P0) * xnot_N; Nx_LS = -inv(P0) * xnot_LS;
+    [~, Mxc, Mcc] = get_considerCov_apriori(P0, Pc, Pxc);
     for j = 2:Nt
         % RTN rotation matrix
         ACI_RTN = RTN2ECI(rn(:, j), vn(:, j));
@@ -167,7 +168,6 @@ while count < iterMax
         Hrot_dA = Hrot_grad + Hrot_dA_ang;
         Hrot_dAdT = Hrot_dAdT_ang;
         Hrot = [Hrot_dA, Hrot_dAdT];
-% %         [Hpos] = compute_posPartials(n_max, normalized, Cp_N, Sp_N, Re, GM, rn_ACI, ACAF_ACI, ACAF_B);
     
         % Null space method correcting for attitude
         [Yc, ~, Hc_BODY] = gradiometer_meas(t(j) ,asterParams, poleParams, [rn(:, j)', vn(:, j)'], ...
@@ -195,16 +195,23 @@ while count < iterMax
                 noise0, Cp_LS, Sp_LS, B_ACI');
         [Yc] = add_angularComponents(Yc, attitude(:, j), zeros(3, 1), flipud(angVel_nom(:, j)),...
             flipud(angAcc_nom(:, j)));
-        [ax, nx] = LS_method(Y(:, j), Yc, Hc_BODY, R_NP, noise(:, j));
+        [Hrot_grad] = compute_rotPartials(n_max, normalized, Cp_LS, Sp_LS, Re, GM, rn_ACI, ACAF_ACI, ACAF_B);
+        [Hrot_dA_ang, Hrot_dAdT_ang] = compute_angularDyadPartials(flipud(angVel_nom(:, j)), attitude(:, j), datt_dt(:, j), ddatt_ddt(:, j));
+        Hrot_dA = Hrot_grad + Hrot_dA_ang;
+        Hrot_dAdT = Hrot_dAdT_ang;
+        Hrot = [Hrot_dA, Hrot_dAdT];
+        [ax, nx, mxc, mcc] = LS_method(Y(:, j), Yc, Hc_BODY, Hrot, R, noise(:, j));
+        
         Ax_LS  = Ax_LS + ax;
         Nx_LS  = Nx_LS + nx;
-
+        Mxc = Mxc + mxc;
+        Mcc = Mcc + mcc;
     end
 
     % solve LS
     XNOT_NP = Ax_NP\Nx_NP;
     XNOT_N = Ax_N\Nx_N;
-    XNOT_LS = Ax_LS\Nx_LS;
+    XNOT_LS = Ax_LS\Nx_LS - Ax_LS\(Mxc * c);
 
     Xp_NP(2:end) = Xp_NP(2:end) + XNOT_NP;
     Xp_N(2:end) = Xp_N(2:end) + XNOT_N;
@@ -229,9 +236,14 @@ while count < iterMax
     count = count + 1;
 end
 
+Px = inv(Ax_LS);
+Sxc = -Px * Mxc;
+Pxx = Px + Sxc*Pc*Sxc';
+Pxc = Sxc * Pc;
+
 P_N =  inv(Ax_N);
 P_NP =  inv(Ax_NP);
-P_LS =  inv(Ax_LS);
+P_LS =  [Pxx, Pxc;Pxc', Pc];
 sigma_N = sqrt(diag(P_N));
 sigma_NP = sqrt(diag(P_NP));
 sigma_LS = sqrt(diag(P_LS));
@@ -260,8 +272,8 @@ plot_gravField(X, SH_NP, SH_N, n_max, tt1, tt2, ls, mk, llg);
 tt1 = 'Uncertainty SH. Cnm coefficients';
 tt2 = 'Uncertainty SH. Snm coefficients';
 ls  = '-'; mk = 'square'; 
-llg = {'truth','NSM', 'ENSM'};
-plot_gravField(X, 3.*sigma_NP, 3.*sigma_N, n_max, tt1, tt2, ls, mk, llg);
+llg = {'truth','LS', 'ENSM'};
+plot_gravField(X, 3.*sigma_LS(1:45), 3.*sigma_N, n_max, tt1, tt2, ls, mk, llg);
 
 % ploting difference
 tt1 = 'Estimation error. Cnm coefficients';
@@ -331,21 +343,27 @@ function [ax, nx] = nullSpace_method2(Y, Yc, Hc, R, Hpr, noise)
     nx = hc' * inv(r) * y;
 end
 
-function [ax, nx] = LS_method(Y, Yc, Hc, R, noise)
+function [ax, nx, mxc, mcc] = LS_method(Y, Yc, Hc, Hrot, R, noise)
     % add noise
     Y = Y + noise(1:9);
 
-    % select measurements
-    dY = [Y(1)-Yc(1);Y(2)-Yc(2);Y(3)-Yc(3);Y(5)-Yc(5);Y(6)-Yc(6)];
-
-
-    % project measurements
-    hc = [Hc(1, 2:end); Hc(4, 2:end); Hc(7, 2:end);Hc(5, 2:end);...
-        Hc(8, 2:end)];
+% %     % select measurements
+% %     dY = [Y(1)-Yc(1);Y(2)-Yc(2);Y(3)-Yc(3);Y(5)-Yc(5);Y(6)-Yc(6)];
+% % 
+% % 
+% %     % project measurements
+% %     hc = [Hc(1, 2:end); Hc(4, 2:end); Hc(7, 2:end);Hc(5, 2:end);...
+% %         Hc(8, 2:end)];
+    dY = Y - Yc;
+    hc = [Hc(1, 2:end); Hc(4, 2:end); Hc(7, 2:end); Hc(2, 2:end); Hc(5, 2:end);...
+             Hc(8, 2:end);  Hc(3, 2:end); Hc(6, 2:end); Hc(9, 2:end)];
+    hrot = Hrot;
 
     % information and normal matrices
     ax = hc' * inv(R) * hc;
     nx = hc' * inv(R) * dY;
+    mxc = (hc' * inv(R) * hrot);
+    mcc = (hrot' * inv(R) * hrot); 
 end
 
 function [num_C, num_S, str_C, str_S] = SH_xlabel(n_max)    

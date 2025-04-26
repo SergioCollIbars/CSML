@@ -41,7 +41,7 @@ asterParams = [GM, Re, n_max, normalized];
 [Nc, Ns, Ncs] = count_num_coeff(n_max); 
 
 % Initial conditions
-r      = 0.6E3;
+r      = 0.35E3;
 phi    = pi/2;
 lambda = 0;
 theta  = pi/2 - phi;% Orbit colatitude [m]
@@ -55,7 +55,7 @@ v0 = R * [0;0;sqrt(GM/r)];  % [ACI]
 n = sqrt(GM / r^3);    % Mean motion         [rad/s]
 T = (2 * pi / n);
 rev = 3;
-f = 1/60;
+f = 1/10;
 t = linspace(0, rev*T, rev*T * f);
 dt = t(2) - t(1);
 Nt = length(t);
@@ -64,7 +64,7 @@ Nt = length(t);
 Ar = 1E-5*[1;1;1];                                 % [ACI]
 
 % attitude error
-Amp = 1E-11;
+Amp = 2E-9;
 At      = Amp*t.*ones(3, Nt).*[1;0.7;0.5];
 dA_dt   = Amp.*ones(3, Nt).*[1;0.7;0.5];        % [rad/s]
 ddA_ddt = zeros(3, Nt);                         % [rad/s^2]
@@ -87,7 +87,7 @@ noise0 = zeros(9, Nt);
 % % sigma1  = 0.01 * 1E-9 * sqrt(f); % Vxx, Vyy
 % % sigma2  = 0.6  * 1E-9 * sqrt(f); % Vyz, Vyx
 % % sigma3  = 0.02 * 1E-9 * sqrt(f); % Vxz, Vzz
-sigma1 = 1E-15;
+sigma1 = 1E-12;
 sigma2 = sigma1; sigma3 = sigma1;
 
 means    = zeros(1, 9);
@@ -114,11 +114,10 @@ vt = state_t(:, 4:6)';
 
 % perturb nominal coefficient
 [X] = mat2list(Cnm, Snm, Nc, Ns);
-sigma_n = 1E-3*[1E-2;1E-2;1E-2;1E-2;1E-2];
+sigma_n = 1E-3*[1E-4;1E-4;1E-4;1E-2;1E-2];
 % % sigma_n = ones(10, 1).*1E-4;
-[Xp, Pp] = perturb_coeff(sigma_n, n_max, X);
+[Xp, ~] = perturb_coeff(sigma_n, n_max, X);
 [Cp, Sp] = list2mat(n_max, Nc, Ns, Xp);
-P0 = Pp(2:end, 2:end); 
 
 options = odeset('RelTol',1e-13,'AbsTol',1e-13);
 PHI0 = reshape(eye(6,6), [36, 1]);
@@ -128,20 +127,33 @@ rn = state_n(:, 1:3)';
 vn = state_n(:, 4:6)';
 
 % plot position error
+errorP = rt - rn;
 figure()
-plot(t./T, rt - rn, 'LineWidth', 2);
+plot(t./T, errorP, 'LineWidth', 2);
 title('Position error over time')
 ylabel('[m]')
 xlabel('Orbital rev.')
 legend('\Delta x', '\Delta y', '\Delta z')
 
+% intial uncertainty
+sigma_n = [1E0;1E0;1E0;1E0;1E0];
+[~, Pp] = perturb_coeff(sigma_n, n_max, X);
+P0 = Pp(2:end, 2:end); 
+
 % Gravity estimation
 R_NP = diag([sigma1, sigma2, sigma3, sigma1, sigma2].^2);
-R_N = diag([sigma1, sigma2, sigma3, sigma1, sigma2, sigma1, ...
-    sigma1, sigma1, sigma1].^2);
+R_N = diag([sigma1, sigma2, sigma3, sigma2, sigma1, sigma2, sigma3, ...
+    sigma2, sigma3].^2);
+
+Pc = zeros(3, 3); Pxc = zeros(Ncs - 1, 3);
+for j = 1:3
+    Pc(j, j) = 1.3*rms(errorP(j, :))^2;
+end
+
+c = sqrt(diag(Pc)).*1; % apriori values for the Consider Parameters;
 
 % loop
-iterMax = 6;
+iterMax = 10;
 count   = 0;
 iter    = 1;
 xnot_NP = zeros(Ncs-1, 1); xnot_N = xnot_NP; xnot_LS = xnot_NP;
@@ -152,6 +164,7 @@ rn_LS = rn; rn_N = rn; state_n_N = state_n;
 while count < iterMax
     Ax_NP = inv(P0); Ax_N = inv(P0); Ax_LS = inv(P0);
     Nx_NP = -inv(P0) * xnot_NP; Nx_N = -inv(P0) * xnot_N; Nx_LS = -inv(P0) * xnot_LS;
+    [~, Mxc, Mcc] = get_considerCov_apriori(P0, Pc, Pxc);
     for j = 1:Nt
         % Position vector
         rn_ACI_N = rn_N(:, j);
@@ -171,9 +184,7 @@ while count < iterMax
         [Hrot_dA_ang, Hrot_dAdT_ang] = compute_angularDyadPartials(flipud(angVel_nom(:, j)), attitude(:, j), datt_dt(:, j), ddatt_ddt(:, j));
         Hrot_dA = Hrot_grad + Hrot_dA_ang;
         Hrot_dAdT = Hrot_dAdT_ang;
-        Hrot = [Hrot_dA, Hrot_dAdT];
         [Hpos] = compute_posPartials(n_max, normalized, Cp_N, Sp_N, Re, GM, rn_ACI_N, ACAF_ACI, ACAF_B);
-        Hpos2 = compute_posPartials_2ndOrder(GM, rn_ACI_N(1), rn_ACI_N(2), rn_ACI_N(3));
     
         % Null space method correcting for attitude
         [Yc, ~, Hc_BODY] = gradiometer_meas(t(j) ,asterParams, poleParams, [rn_ACI_N', zeros(1, 3)], ...
@@ -187,7 +198,6 @@ while count < iterMax
             dY = Y(:, j) - Yc + noise(:, j);
             Hc = [Hc_BODY(1, 2:end); Hc_BODY(4, 2:end); Hc_BODY(7, 2:end); Hc_BODY(2, 2:end); Hc_BODY(5, 2:end);...
                     Hc_BODY(8, 2:end);  Hc_BODY(3, 2:end); Hc_BODY(6, 2:end); Hc_BODY(9, 2:end)];
-% %             Hap = Hpos2;
 
             % update iter
             iter = 2;
@@ -196,8 +206,8 @@ while count < iterMax
             PHIji = PHIj0/(PHIi0);
             PHI = PHIji(1:3, 1:3);
             Hrot = [Hpos, Hrot_dA, Hrot_dAdT]*[PHI, zeros(3, 6);...
-                zeros(3, 3), eye(3,3), zeros(3,3);...
-                zeros(3, 6), eye(3,3)];
+                zeros(3, 3), eye(3,3),0.*eye(3,3);...
+                zeros(3, 3), zeros(3,3), eye(3,3)];
 
             dy =  Y(:, j) - Yc + noise(:, j);
             dY = [dY; dy];
@@ -209,8 +219,6 @@ while count < iterMax
             hpr = Hrot;
             Hpr = [Hpr; hpr];
 
-% %             Hap = [Hap; Hpos2];
-
             C   = null(Hpr');
             R = blkdiag(R_N, R_N);
             
@@ -218,13 +226,10 @@ while count < iterMax
             r  = C' * R * C;
             y  = C' * dY;
             hc = C' * Hc;
-% %             hap = C' * Hap;
 
             % information and normal matrices
             ax = hc' * inv(r) * hc;
             nx = hc' * inv(r) * y;
-% %             mxc   = (hc' * inv(r) * hap);
-% %             mcc   = (hap' * inv(r) * hap);
 
             Ax_N  = Ax_N + ax;
             Nx_N  = Nx_N + nx;
@@ -238,9 +243,14 @@ while count < iterMax
                 noise0, Cp_LS, Sp_LS, B_ACI');
         [Yc] = add_angularComponents(Yc, attitude(:, j), zeros(3, 1), flipud(angVel_nom(:, j)),...
             flipud(angAcc_nom(:, j)));
-        [ax, nx] = LS_method(Y(:, j), Yc, Hc_BODY, R_NP, noise(:, j));
+
+        [Hpos] = compute_posPartials(n_max, normalized, Cp_LS, Sp_LS, Re, GM, rn_ACI_LS, ACAF_ACI, ACAF_B);
+
+        [ax, nx, mxc, mcc] = LS_method(Y(:, j), Yc, Hc_BODY, Hpos, R_N, noise(:, j));
         Ax_LS  = Ax_LS + ax;
         Nx_LS  = Nx_LS + nx;
+        Mxc = Mxc + mxc;
+        Mcc = Mcc + mcc;
 
     end
 
@@ -276,9 +286,13 @@ while count < iterMax
     % update counter
     count = count + 1;
 end
+Px = inv(Ax_LS);
+Sxc = -Px * Mxc;
+Pxx = Px + Sxc*Pc*Sxc';
+Pxc = Sxc * Pc;
 
 P_N =  inv(Ax_N);
-P_LS =  inv(Ax_LS);
+P_LS =  [Pxx, Pxc;Pxc', Pc];
 sigma_N = sqrt(diag(P_N));
 sigma_LS = sqrt(diag(P_LS));
 
@@ -298,86 +312,39 @@ plot_orbit(state_t, name, t./T ,Re, tt)
 tt1 = 'Uncertainty SH. Cnm coefficients';
 tt2 = 'Uncertainty SH. Snm coefficients';
 ls  = '-'; mk = 'square'; 
-llg = {'truth','NSM', 'ENSM'};
-plot_gravField(X, 3.*sigma_LS, 3.*sigma_N, n_max, tt1, tt2, ls, mk, llg);
+llg = {'truth','LS', 'NSM'};
+plot_gravField(X, 3.*sigma_LS(1:45), 3.*sigma_N, n_max, tt1, tt2, ls, mk, llg);
 
 
 tt1 = 'Estimation error. Cnm coefficients';
 tt2 = 'Estimation error. Snm coefficients';
 ls  = '--'; mk = '*'; 
-llg = {'truth','LS', 'ENSM'};
+llg = {'truth','LS', 'NSM'};
 plot_gravField(X.*NaN, X(2:end) - SH_LS, X(2:end) - SH_N, n_max, tt1, tt2, ls, mk, llg);
 
 %% FUNCTIONS
-function [ax, nx] = nullSpace_method(Y, Yc, Hc, R, Hp, noise)
-    % add noise
-    Y = Y + noise(1:9);
 
-    % select measurements
-    dY = [Y(1)-Yc(1);Y(2)-Yc(2);Y(3)-Yc(3);Y(5)-Yc(5);Y(6)-Yc(6)];
-
-    % look for null space
-    C = null([Hp(1, :);Hp(2,:);Hp(3,:);Hp(5, :);Hp(6, :)]');
-
-    % project measurements
-    y  = C' * dY;
-    hc = C' * [Hc(1, 2:end); Hc(4, 2:end); Hc(7, 2:end);Hc(5, 2:end);...
-        Hc(8, 2:end)];
-    r  = C' * R * C;
-
-    % information and normal matrices
-    ax = hc' * inv(r) * hc;
-    nx = hc' * inv(r) * y;
-end
-
-% NSM accounting for position and attitude errors
-function [ax, nx] = nullSpace_method2(Y, Yc, Hc, R, Hpr, noise)
+function [ax, nx, mxc, mcc] = LS_method(Y, Yc, Hc, Hpos, R, noise)
     % add noise
     Y = Y + noise(1:9);
 
 % %     % select measurements
 % %     dY = [Y(1)-Yc(1);Y(2)-Yc(2);Y(3)-Yc(3);Y(5)-Yc(5);Y(6)-Yc(6)];
 % % 
-% %     % look for null space
-% %     H = Hpr;
-% %     C = null([H(1, :);H(2,:);H(3,:);H(5, :);H(6, :)]');
 % % 
 % %     % project measurements
-% %     y  = C' * dY;
-% %     hc = C' * [Hc(1, 2:end); Hc(4, 2:end); Hc(7, 2:end);Hc(5, 2:end);...
+% %     hc = [Hc(1, 2:end); Hc(4, 2:end); Hc(7, 2:end);Hc(5, 2:end);...
 % %         Hc(8, 2:end)];
-% %     r  = C' * R * C;
-
     dY = Y - Yc;
-    C = null(Hpr');
     hc = [Hc(1, 2:end); Hc(4, 2:end); Hc(7, 2:end); Hc(2, 2:end); Hc(5, 2:end);...
-         Hc(8, 2:end);  Hc(3, 2:end); Hc(6, 2:end); Hc(9, 2:end)];
-
-    % project measurements
-    y  = C' * dY;
-    hc = C' * hc;
-    r  = C' * R * C;
-
-    % information and normal matrices
-    ax = hc' * inv(r) * hc;
-    nx = hc' * inv(r) * y;
-end
-
-function [ax, nx] = LS_method(Y, Yc, Hc, R, noise)
-    % add noise
-    Y = Y + noise(1:9);
-
-    % select measurements
-    dY = [Y(1)-Yc(1);Y(2)-Yc(2);Y(3)-Yc(3);Y(5)-Yc(5);Y(6)-Yc(6)];
-
-
-    % project measurements
-    hc = [Hc(1, 2:end); Hc(4, 2:end); Hc(7, 2:end);Hc(5, 2:end);...
-        Hc(8, 2:end)];
+             Hc(8, 2:end);  Hc(3, 2:end); Hc(6, 2:end); Hc(9, 2:end)];
+    hrp = Hpos;
 
     % information and normal matrices
     ax = hc' * inv(R) * hc;
     nx = hc' * inv(R) * dY;
+    mxc = (hc' * inv(R) * hrp);
+    mcc = (hrp' * inv(R) * hrp); 
 end
 
 function [num_C, num_S, str_C, str_S] = SH_xlabel(n_max)    

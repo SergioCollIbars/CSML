@@ -2,8 +2,8 @@ clear;
 clc;
 close all;
 format long g;
-addpath('../functions/')
-addpath('../../../QGG_gravEstim/src/')
+addpath('functions/')
+addpath('../QGG_gravEstim/src/')
 set(0,'defaultAxesFontSize',16);
 
 %%              NSM VS THE LEAST SQUARES ALGORITHM VS EKF
@@ -107,12 +107,12 @@ title('Position error in time');
 
 % generate measurements
 [Y, ~, ~] = gradiometer_meas(t ,asterParams, poleParams, state_t, ...
-                noise0, Cnm, Snm);
+                noise0, Cnm, Snm, eye(3,3));
 
 % Gravity estimation weight meas. Initial uncertainty
 R_N = diag([sigma1, sigma2, sigma3, sigma1, sigma2].^2);
 
-sigma_n0 = 1E1.*sigma_n;                                                         % apriori uncertanty gra. field
+sigma_n0 = 1E3.*sigma_n;                                                         % apriori uncertanty gra. field
 sigmaPos = [1E1;1E1;1E1;1E-1;1E-1;1E-1];                                                % apriori uncertainty s/c state
 [~, Pp] = perturb_coeff(sigma_n0, n_max, X);
 P0 = Pp(2:end, 2:end); 
@@ -147,9 +147,9 @@ while (count < iterMax) && (err < 1E3)
         ACAF_ACI =rotationMatrix(pi/2 + RA, pi/2 - DEC, Wt, [3, 1, 3]);
 
         % LS method
-        [Hpos] = compute_posPartials(n_max, normalized, Cp_L, Sp_L, Re, GM, state_n(j, 1:3)', ACAF_ACI);
+        [Hpos] = compute_posPartials(n_max, normalized, Cp_L, Sp_L, Re, GM, state_n(j, 1:3)', ACAF_ACI, ACAF_ACI);
         [Yc, HC_ACI, ~] = gradiometer_meas(t(j) ,asterParams, poleParams, state_n(j, 1:6), ...
-                noise0, Cp_L, Sp_L);
+                noise0, Cp_L, Sp_L, eye(3,3));
         [ax, nx] = LS_method(Y(:, j)-Yc, HC_ACI, Hpos, R_N, PHIt, noise(:, j));
 
         Ax_L  = Ax_L + ax;
@@ -209,9 +209,9 @@ while count < iterMax
         ACAF_ACI =rotationMatrix(pi/2 + RA, pi/2 - DEC, Wt, [3, 1, 3]);
 
         % Null space method
-        [Hpos] = compute_posPartials(n_max, normalized, Cp_N, Sp_N, Re, GM, rn_ACI, ACAF_ACI);
+        [Hpos] = compute_posPartials(n_max, normalized, Cp_N, Sp_N, Re, GM, rn_ACI, ACAF_ACI, ACAF_ACI);
         [Yc, HC_ACI, ~] = gradiometer_meas(t(j) ,asterParams, poleParams, [rn_ACI', vn_ACI'], ...
-                noise0, Cp_N, Sp_N);
+                noise0, Cp_N, Sp_N, eye(3,3));
 
         [ax, nx] = nullSpace_method(Y(:, j)-Yc, HC_ACI, R_N, Hpos, eye(3,3), noise(:, j));
         Ax_N  = Ax_N + ax;
@@ -259,9 +259,9 @@ for j = 2:Nt
     ACAF_ACI =rotationMatrix(pi/2 + RA, pi/2 - DEC, Wt, [3, 1, 3]);
 
     % LS method
-    [Hpos] = compute_posPartials(n_max, normalized, Cp_E, Sp_E, Re, GM, rn', ACAF_ACI);
+    [Hpos] = compute_posPartials(n_max, normalized, Cp_E, Sp_E, Re, GM, rn', ACAF_ACI, ACAF_ACI);
     [Yc, HC_ACI, ~] = gradiometer_meas(t(j) ,asterParams, poleParams, [rn, vn], ...
-            noise0, Cp_E, Sp_E);
+            noise0, Cp_E, Sp_E, eye(3,3));
     [Xhat, P] = EKF_method(Y(:, j)-Yc, HC_ACI, Hpos, R_N, PHIt, noise(:, j), P);
     s = [rn,vn]' + Xhat(46:end);
     Xp_E(2:end) = Xp_E(2:end) + Xhat;
@@ -321,7 +321,7 @@ function [X_hat, P] = EKF_method(Y, Hc, Hp, R0, PHI, noise, P)
     hp  = [Hp(1, :);Hp(2,:);Hp(3,:);Hp(5, :);Hp(6, :)];
     hc  = [Hc(1, 2:end); Hc(4, 2:end); Hc(7, 2:end);Hc(5, 2:end);...
         Hc(8, 2:end)];
-    ht  = [hc, hp, zeros(5, 3)] * PHI;
+    ht  = [hc, hp, zeros(5, 3)];
     
     % information and normal matrices
     P_bar = PHI * P * PHI';

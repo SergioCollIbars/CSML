@@ -29,16 +29,16 @@ path = "HARMCOEFS_EARTH_1.txt";
 path = "SIGMACOEFS_EARTH_1.txt";
 [sigma_Cnm, sigma_Snm, ~] = readCoeff(path);
 GM = 3.986004418E14;
-n_max  = 120;
+n_max  = 200;
 normalized = 1;
 
 asterParams = [GM, Re, n_max, normalized];
 
 % SH harmonics
 [Nc, Ns, Ncs] = count_num_coeff(n_max); 
-[X] = mat2list(Cnm, Snm, Nc, Ns);
-X_RMS = computeRMS_coeffErr(n_max, Nc, Ns, ...
-        X, zeros(n_max+1, n_max+1), zeros(n_max+1, n_max+1));
+% % [X] = mat2list(Cnm, Snm, Nc, Ns);
+% % X_RMS = computeRMS_coeffErr(n_max, Nc, Ns, ...
+% %         X, zeros(n_max+1, n_max+1), zeros(n_max+1, n_max+1));
 
 % compute Kaula rule
 % % K = 0.026;
@@ -49,12 +49,12 @@ CS_K_RMS = computeRMS_coeffErr(n_max, Nc, Ns, ...
 
 % Initial conditions
 % % r      = 0.35E3;
-r      = 270E3 + Re; 
+r      = 250E3 + Re; 
 
 % time vector
 n = sqrt(GM / r^3);    % Mean motion         [rad/s]
 T = (2 * pi / n);
-rev = 31*16;
+rev = 1*16;
 f = 1/1;
 Nt = rev*T * f;
 
@@ -63,11 +63,11 @@ S = 1E6;
 
 % weight matrix
 sigmaM  = 1E-12;
-sigmaR  = 1.5/S;
+sigmaR  = 2E-2 / S;
 
 % compute degree variance analytical
 [sigma2] = compute_gravDegreeVar(n_max, sigmaM, GM/(S^3), Re/S, r/S, Nt);
-[sigma2_PE, sigma2_RelErr] = compute_gravDegreeVar_PE(n_max, sigmaM, sigmaR, GM/(S^3), Re/S, r/S, Nt, X);
+[sigma2_PE, sigma2_RelErr] = compute_gravDegreeVar_PE(n_max, sigmaM, sigmaR, GM/(S^3), Re/S, r/S, Nt, CS_K);
 [Sxc] = compute_sensitivity(n_max, sigmaR, GM/(S^3), Re/S, r/S, ones(1, Ncs));
 sigma_PE_RMS = zeros(2, n_max); sigma_Err_RMS = sigma_PE_RMS;
 for j = 1:2

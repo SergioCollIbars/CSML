@@ -3,7 +3,7 @@ clc;
 close all;
 format long g;
 addpath('../functions/')
-addpath('../../../QGG_gravEstim/src/')
+addpath('../../QGG_gravEstim/src/')
 set(0,'defaultAxesFontSize',16);
 
 %%              NSM METHODS COMPARISON
@@ -55,8 +55,8 @@ asterParams = [GM, Re, n_max, normalized];
 [Nc, Ns, Ncs] = count_num_coeff(n_max); 
 
 % Initial conditions
-% % r      = 0.35E3;      % [m]
-r = 1.5*Re;
+r      = 0.35E3;      % [m]
+% % r = 1.5*Re;
 r = 24E3;
 % % r      = Re + 300E3; 
 phi    = pi/2;
@@ -72,21 +72,21 @@ v0 = R * [0;0;sqrt(GM/r)];  % [ACI]
 n = sqrt(GM / r^3);    % Mean motion         [rad/s]
 T = (2 * pi / n);
 rev = 3;
-f = 1/60;
+f = 1/10;
 t = linspace(0, rev*T, rev*T * f);
 Nt = length(t);
 
 % position error
-Ar = 0.5*[1;1;1].*1;            % [ACI]
+Ar = 5E-2*[1;1;1].*1;            % [ACI]
 Ar_gaussian = [normrnd(0, Ar(1), 1, Nt); 
                normrnd(0, Ar(2), 1, Nt); 
                normrnd(0, Ar(3), 1, Nt)];
 
-% noise values from GOCE mission
+% % % noise values from GOCE mission
 noise0 = zeros(9, Nt);
-% % sigma1  = 0.01 * 1E-9 * sqrt(f); % Vxx, Vyy
-% % sigma2  = 0.01  * 1E-9 * sqrt(f); % Vyz, Vyx
-% % sigma3  = 0.02 * 1E-9 * sqrt(f); % Vxz, Vzz
+% % sigma1  = 0.01 * 1E-9 * sqrt(f);  % Vxx, Vyy
+% % sigma2  = 0.6  * 1E-9 * sqrt(f); % Vyz, Vyx
+% % sigma3  = 0.02 * 1E-9 * sqrt(f);  % Vxz, Vzz
 
 sigma1 = 1E-12;
 sigma2 = sigma1; sigma3 = sigma1;
