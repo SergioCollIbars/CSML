@@ -15,30 +15,30 @@ set(0,'defaultAxesFontSize',16);
 % Author: Sergio Coll
 % Date: 10/09/24
 
-% % % Asteroid parameters.
-% % path = "HARMCOEFS_BENNU_OSIRIS_1.txt";
-% % [Cnm, Snm, Re] = readCoeff(path);
-% % GM = 5.2;
-% % n_max  = 6;
-% % normalized = 1;
-% % W = 4.06130329511851E-4;  % Rotation ang. vel   [rad/s]
-% % W0 = 0;                   % Initial asteroid longitude
-% % RA = deg2rad(86.6388);    % Right Ascension     [rad]
-% % DEC = deg2rad(-65.1086);  % Declination         [rad]
-
-% Earth parameters
-savedData = 0;                % use saved data. 1 = yes / 0 = no
-path = "HARMCOEFS_EARTH_1.txt";
+% Asteroid parameters.
+path = "HARMCOEFS_BENNU_OSIRIS_1.txt";
 [Cnm, Snm, Re] = readCoeff(path);
-path = "SIGMACOEFS_EARTH_1.txt";
-[sigma_Cnm, sigma_Snm, ~] = readCoeff(path);
-GM = 3.986004418E14;
-n_max  = 20;
+GM = 5.2;
+n_max  = 0;
 normalized = 1;
-W = 2 * pi / (24*3600);     % Rotation ang. vel   [rad/s]
-W0 = 0;                     % Initial asteroid longitude
-RA = -pi/2;                 % Right Ascension     [rad]
-DEC = pi/2;                 % Declination         [rad]
+W = 4.06130329511851E-4;  % Rotation ang. vel   [rad/s]
+W0 = 0;                   % Initial asteroid longitude
+RA = deg2rad(86.6388);    % Right Ascension     [rad]
+DEC = deg2rad(-65.1086);  % Declination         [rad]
+
+% % % Earth parameters
+% % savedData = 0;                % use saved data. 1 = yes / 0 = no
+% % path = "HARMCOEFS_EARTH_1.txt";
+% % [Cnm, Snm, Re] = readCoeff(path);
+% % path = "SIGMACOEFS_EARTH_1.txt";
+% % [sigma_Cnm, sigma_Snm, ~] = readCoeff(path);
+% % GM = 3.986004418E14;
+% % n_max  = 20;
+% % normalized = 1;
+% % W = 2 * pi / (24*3600);     % Rotation ang. vel   [rad/s]
+% % W0 = 0;                     % Initial asteroid longitude
+% % RA = -pi/2;                 % Right Ascension     [rad]
+% % DEC = pi/2;                 % Declination         [rad]
 
 poleParams = [W, W0, RA, DEC];
 asterParams = [GM, Re, n_max, normalized];
@@ -52,8 +52,8 @@ K = 0.026;
 [CS_K] = compute_Kaula(n_max, K);
 
 % Initial conditions
-% % r      = 1E3;
-r      = 250E3 + Re; 
+r      = 0.4E3;
+% % r      = 250E3 + Re; 
 phi    = pi/2;
 lambda = 0;
 theta  = pi/2 - phi;% Orbit colatitude [m]
@@ -66,16 +66,16 @@ v0 = R * [0;0;sqrt(GM/r)];  % [ACI]
 % time vector
 n = sqrt(GM / r^3);    % Mean motion         [rad/s]
 T = (2 * pi / n);
-rev = 400;
-f = 1/30;
+rev = 6;
+f = 1/10;
 t = linspace(0, rev*T, rev*T * f);
 Nt = length(t);
 
 % weight matrix
 noise0 = zeros(9, Nt);
-sigmam  = 1E-12;
+sigmam  = 1E-15;
 sigmar = 1;
-R  = diag([sigmam].^2);
+R  = diag([sigmam, sigmam].^2);
 
 % Integrate trajectory
 options = odeset('RelTol',1e-13,'AbsTol',1e-13);
@@ -119,8 +119,13 @@ for j = 1:Nt
      % compute Point mass approx error
     [Hp] = compute_posPartials(n_max, normalized, Cnm, Snm, Re, GM, rn_ACI, ACAF_ACI, ENU_ACAF');
     
-    hc = Hc_RTN(9, 1:end);
+    % % hc = Hc_RTN(9, 1:end);
     hx = Hp(9, 3);
+
+    Z1 = Hc_RTN(9, 1:end);
+    Z2 = [Hc_RTN(8, 1:end);Hc_RTN(7, 1:end)];
+
+    hc = Z2;
 
     % compute information matrix
     Ax = Ax + hc' * inv(R) * hc;
@@ -184,6 +189,15 @@ legend('numerical', 'analytical')
 title('RMS Relative error coefficients variance')
 
 % FUNCTIONS
+function [sigma] = compute_DV(GM, Re, r, Nt, sigmaM, n)
+    sigma = zeros(1, n);
+    for j = 2:n
+        %  %Z = (j+1) * (j+2);
+        Z = (j+2) * sqrt(j * (j+1));
+        sigma(j) = r^(3+j) / (Re^j) * 1 / GM * sigmaM / sqrt(Nt) * 1/ Z;
+    end
+end
+
 function [sigma2] = compute_gravDegreeVar(n_max, sigmaM, GM, Re, r, Nt)
     % define output
     [Nc, Ns, Ncs] = count_num_coeff(n_max); 

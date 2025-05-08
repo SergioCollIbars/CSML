@@ -85,18 +85,18 @@ Nt  = length(TIME);
 
 % random-walk bias process noise (FOGM)
 Nq = 10;
-sigmaQVec = logspace(-7, -3, Nq);                           % [E/ sqrt(sec)]
-sigmaBNorm = logspace(-5, 0, Nq);                           % [-]
-tauVec = linspace(1E3, 5, Nq);                              % [sec]
+sigmaQVec = logspace(-7, -2, Nq);                            % [E/ sqrt(sec)]
+% % sigmaB    = logspace(-9, -4, Nq);                           % [E]
+tauVec = linspace(1E3, 2, Nq);                              % [sec]
 obsPercMat = ones(Nq, Nq);
 count = 0;
 for j = 1:Nq
     for i = 1:Nq
-        varQ   = sigmaQVec(j)^2;                                 % [E^2 / sec]
+        varQ   = sigmaQVec(j)^2;                             % [E^2 / sec]
         q      = varQ * 1E-18;                               % [1 / sec^5]
         q      = q  / (timeDim^5);                           % [-] 
-% %         qNorm = 2 * sigmaBNorm(j) / tauVec(i);                   % [1/sec]
-% %         q     = qNorm /timeDim;                                  % [-]
+% %         qNorm = 2 * sigmaB(j) / tauVec(i) * 1E-9;                % [1/sec^3]
+% %         q     = qNorm /(timeDim^3);                              % [-]
         tau   = tauVec(i) * timeDim;                             % [-]
 
         % compute PCRB
@@ -164,7 +164,7 @@ if(Nq > 1)
     % surface plot
     figure()
     [X, Y] = meshgrid(sigmaQVec, tauVec); 
-% %     [X, Y] = meshgrid(sigmaBNorm, tauVec); 
+% %     [X, Y] = meshgrid(sigmaB, tauVec); 
     surf(X, Y, obsPercMat, 'EdgeColor', 'none')
     colormap(parula)                       % Specify colormap
     colorbar                               % Show color scale
@@ -175,7 +175,7 @@ if(Nq > 1)
     set(gca, 'XTick', [1E-7, 1E-6, 1E-4, 1E-3])  % Specify 3 X tick values
     set(gca, 'YTick', [5, 10, 100, 1000])  % Specify 3 Y tick values
     xlim([1E-7, 1E-3])
-% %     xlim([1E-5, 1])
+    xlim([1E-5, 1])
     title('Observability percentage along 1 revolution')
 end
 

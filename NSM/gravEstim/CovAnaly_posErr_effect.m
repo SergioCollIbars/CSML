@@ -15,7 +15,7 @@ set(0,'defaultAxesFontSize',16);
 % Date: 01/18/25
 
 
-% % % Asteroid parameters.
+% Asteroid parameters.
 % % savedData = 0;
 % % path = "HARMCOEFS_BENNU_OSIRIS_1.txt";
 % % [Cnm, Snm, Re] = readCoeff(path);
@@ -27,36 +27,36 @@ set(0,'defaultAxesFontSize',16);
 % % RA = deg2rad(86.6388);    % Right Ascension     [rad]
 % % DEC = deg2rad(-65.1086);  % Declination         [rad]
 
-% Earth parameters
-savedData = 1;                % use saved data. 1 = yes / 0 = no
-path = "HARMCOEFS_EARTH_1.txt";
-[Cnm, Snm, Re] = readCoeff(path);
-path = "SIGMACOEFS_EARTH_1.txt";
-[sigma_Cnm, sigma_Snm, ~] = readCoeff(path);
-GM = 3.986004418E14;
-n_max  = 30;
-normalized = 1;
-W = 2 * pi / (24*3600);     % Rotation ang. vel   [rad/s]
-W0 = 0;                     % Initial asteroid longitude
-RA = deg2rad(15);           % Right Ascension     [rad]
-DEC = 0;                    % Declination         [rad]
-
-RA = -pi/2;                 % Right Ascension     [rad]
-DEC = pi/2;                 % Declination         [rad]
-W = 0;
+% % % Earth parameters
+% % savedData = 1;                % use saved data. 1 = yes / 0 = no
+% % path = "HARMCOEFS_EARTH_1.txt";
+% % [Cnm, Snm, Re] = readCoeff(path);
+% % path = "SIGMACOEFS_EARTH_1.txt";
+% % [sigma_Cnm, sigma_Snm, ~] = readCoeff(path);
+% % GM = 3.986004418E14;
+% % n_max  = 30;
+% % normalized = 1;
+% % W = 2 * pi / (24*3600);     % Rotation ang. vel   [rad/s]
+% % W0 = 0;                     % Initial asteroid longitude
+% % RA = deg2rad(15);           % Right Ascension     [rad]
+% % DEC = 0;                    % Declination         [rad]
+% % 
+% % RA = -pi/2;                 % Right Ascension     [rad]
+% % DEC = pi/2;                 % Declination         [rad]
+% % W = 0;
 
 % % % Eros parameters
-% % savedData = 0;
-% % path = "HARMCOEFS_EROS_CD_1.txt";
-% % name = "EROS";
-% % [Cnm, Snm, Re] = readCoeff(path);
-% % n_max  = 10;
-% % normalized = 1;
-% % GM =  459604.431484721;          % Point mass value    [m^3/s^2]
-% % W = 1639.38928 * pi/180 /86400;  % Rotation ang. vel   [rad/s]
-% % W0 = 0;                          % Initial asteroid longitude
-% % RA = deg2rad(11.363);            % Right Ascension     [rad]
-% % DEC = deg2rad(17.232);           % Declination         [rad]
+savedData = 0;
+path = "HARMCOEFS_EROS_CD_1.txt";
+name = "EROS";
+[Cnm, Snm, Re] = readCoeff(path);
+n_max  = 10;
+normalized = 1;
+GM =  459604.431484721;          % Point mass value    [m^3/s^2]
+W = 1639.38928 * pi/180 /86400;  % Rotation ang. vel   [rad/s]
+W0 = 0;                          % Initial asteroid longitude
+RA = deg2rad(11.363);            % Right Ascension     [rad]
+DEC = deg2rad(17.232);           % Declination         [rad]
 
 poleParams = [W, W0, RA, DEC];
 asterParams = [GM, Re, n_max, normalized];
@@ -66,16 +66,16 @@ asterParams = [GM, Re, n_max, normalized];
 [X] = mat2list(Cnm, Snm, Nc, Ns);
 
 % Initial conditions
-% % r      = 1E3;            % [m]
-% % r = 24E3;               % [m]
-r = Re + 250E3;         % [m] 
+% % r      = 1E3;               % [m]
+r = 24E3;               % [m]
+% % r = Re + 250E3;         % [m] 
 r0 = [r;0;0];           % [ACI]
 v0 = [0;0;sqrt(GM/r)];  % [ACI]
 
 % time vector
 n = sqrt(GM / r^3);    % Mean motion         [rad/s]
 T = (2 * pi / n);
-rev = 20;
+rev = 1;
 f = 1/30;
 t = linspace(0, rev*T, rev*T * f);
 Nt = length(t);
@@ -115,10 +115,10 @@ for j = 1:length(rn(1, :))
         lon(j) = lla(:,2);
 end
 
-% Create the 2D plot
-figure;
-geoplot(lat, lon, '.b') 
-geobasemap('landcover')
+% % % Create the 2D plot
+% % figure;
+% % geoplot(lat, lon, '.b') 
+% % geobasemap('landcover')
 
 figure()
 plot(t./86400, (vecnorm(rn) - Re)./1E3, 'LineWidth', 2)
@@ -127,14 +127,14 @@ ylabel('[km]')
 title('S/C orbital Altitude')
 
 % perturb nominal coefficient
-% % sigma_n = 1E3 * ones(1, n_max);
-% % [~, Pp] = perturb_coeff(sigma_n, n_max, X);
-% % P0 = Pp(2:end, 2:end); 
-% % S = sqrt(diag(Pp));
+sigma_n = 1E3 * ones(1, n_max);
+[~, Pp] = perturb_coeff(sigma_n, n_max, X);
+P0 = Pp(2:end, 2:end); 
+S = sqrt(diag(Pp));
 
-[S] = mat2list(sigma_Cnm, sigma_Snm, Nc, Ns);
-S = 100.*S;
-P0 = diag((S(2:end)).^2);
+% % [S] = mat2list(sigma_Cnm, sigma_Snm, Nc, Ns);
+% % S = 100.*S;
+% % P0 = diag((S(2:end)).^2);
 
 % Consider covariance
 Ar = 2E-2;                           % [m]

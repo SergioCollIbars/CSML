@@ -53,7 +53,7 @@ r0 = R * [r;0;0];           % [ACI]
 v0 = R * [0;0;sqrt(GM/r)];  % [ACI]
 
 % position error
-Ar = 1*[1;1;1];            % [ACI]
+Ar = 10E-5*[1;1;1];            % [ACI]
 
 % time vector
 n = sqrt(GM / r^3);    % Mean motion         [rad/s]
@@ -73,7 +73,8 @@ options = odeset('RelTol',1e-13,'AbsTol',1e-13);
 PHI0 = reshape(eye(6,6), [36, 1]);
 [~, state_t] = ode113(@(t, x) EoM(t, x, Cnm, Snm, n_max, GM, Re, normalized, ...
     W0, W, RA, DEC, 0), t, [r0;v0;PHI0], options);
-rn = state_t(:, 1:3)' + ones(3, Nt).*Ar;
+% % rn = state_t(:, 1:3)' + ones(3, Nt).*Ar;
+rn = state_t(:, 1:3)';
 vn = state_t(:, 4:6)';
 
 % generate measurements
@@ -99,8 +100,8 @@ for j = 1:Nt
     ACAF_ACI =rotationMatrix(pi/2 + RA, pi/2 - DEC, Wt, [3, 1, 3]);
 
      % compute Point mass approx error
-    [Hp] = compute_posPartials(n_max, normalized, Cnm, Snm, Re, GM, rn_ACI, ACAF_ACI, ACAF_ACI);
-% %     [Hp] = compute_rotPartials(n_max, normalized, Cnm, Snm, Re, GM, rn_ACI, ACAF_ACI, ACAF_ACI);
+    % % [Hp] = compute_posPartials(n_max, normalized, Cnm, Snm, Re, GM, rn_ACI, ACAF_ACI, ACAF_ACI);
+    [Hp] = compute_rotPartials(n_max, normalized, Cnm, Snm, Re, GM, rn_ACI, ACAF_ACI, ACAF_ACI);
 
     % Rummel's method
     [ax, nx] = rummels_method(Y(:, j), Hc_ACI, R_R, eye(3,3), noise(:, j));
@@ -139,7 +140,18 @@ semilogy(1:Nc-1, abs(X(2:Nc)), 'Marker','square', 'LineStyle','-', 'LineWidth', 
 hold all;
 semilogy(1:Nc-1, abs(X(2:Nc) - Xhat(2:Nc)), 'Marker','square', 'LineStyle','--', 'LineWidth', 2, 'Color', 'r', 'MarkerFaceColor', 'r')
 semilogy(1:Nc-1, abs(Ac_err(2:Nc)), 'Marker','diamond', 'LineStyle','-', 'LineWidth', 2, 'Color', 'b', 'MarkerFaceColor', 'b')
-title('Estimation error. Cnm coefficients')
+title('Estimation error. C_{nm} coefficients')
+xticks(num_C);
+xticklabels(str_C);
+grid on;
+legend('truth', 'Est. error', 'Pred. error')
+
+figure()
+semilogy(Nc:Ncs-1, abs(X(Nc+1:end)), 'Marker','square', 'LineStyle','-', 'LineWidth', 2, 'Color', 'k', 'MarkerFaceColor', 'k')
+hold all;
+semilogy(Nc:Ncs-1, abs(X(Nc+1:end) - Xhat(Nc+1:end)), 'Marker','square', 'LineStyle','--', 'LineWidth', 2, 'Color', 'r', 'MarkerFaceColor', 'r')
+semilogy(Nc:Ncs-1, abs(Ac_err(Nc+1:end)), 'Marker','diamond', 'LineStyle','-', 'LineWidth', 2, 'Color', 'b', 'MarkerFaceColor', 'b')
+title('Estimation error. S_{nm} coefficients')
 xticks(num_C);
 xticklabels(str_C);
 grid on;

@@ -18,12 +18,12 @@ val = 2 * GM /r^3 * Pnm;
 Hc(1, 1) = val;
 
 % n = 2 to n = 5
-n = 2;
+n = 2; m = 1;
 for j = 2:5
-    Pnm = assocLegendre(n, 0);
-    Pnm = NormFactor(n, 0) * Pnm;
-    dPlm = Diff_assocLegendre(n,0);
-    dPlm =  NormFactor(n, 0) * dPlm;
+    Pnm = assocLegendre(n, m);
+    Pnm = NormFactor(n, m) * Pnm;
+    dPlm = Diff_assocLegendre(n,m);
+    dPlm =  NormFactor(n, m) * dPlm;
     val = (2+n)*(1+n)*GM*R^n/(r^(3+n)) * Pnm;
     Hc(1, j) = val;
     n = n + 1;

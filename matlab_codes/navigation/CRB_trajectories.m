@@ -29,13 +29,14 @@ Rm_ND = Rm / D;                     % [-]
     load_universe("CR3BP", [0, pi], 1);
 
 % load initial condition and trajectory
-data = load('EM_NHalo_L3_Family.mat');
+% % data = load('EM_NHalo_L2_Family.mat');
+data = load('EM_Lyap_L2_Family.mat');
 % % data = load('EM_DRO_Family.mat');
 % % data = load('EM_LoPO_Family.mat');
 % % data = load('EM_31_Res_Family.mat');
 Nd =length(data.trajFam);
 index = 1:40:Nd;
-periapsis = 0;  % starting @ periapsis? 1 yes / 0 no
+periapsis = 1;  % starting @ periapsis? 1 yes / 0 no
 insidePlanet = zeros(1, length(index));
 
 % trajectories struct
@@ -66,7 +67,7 @@ for j = 1:length(index)
         system = "CR3BP_inertial";
         STM0 = reshape(eye(6,6), [36, 1]);
         [t, state] = ode113(@(t, x) EOM_3BP(t, x, planetParams, ...
-            poleParams, Cmat, Smat, system), [0, P], [X0; STM0], options);
+            poleParams, Cmat, Smat, system), [0, 1*P], [X0; STM0], options);
         Nt = length(t);
         X0 = state(round(Nt/2), 1:6)';
         tmin = t(round(Nt/2));   % [-]
@@ -75,7 +76,7 @@ for j = 1:length(index)
     end
     
     % Simulation parameters
-    tmax = 1*P + tmin;         % [-]
+    tmax = 2*P + tmin;         % [-]
     frec = 1/30;             % [Hz]
     TIME = linspace(tmin, tmax, round(tmax*frec/n));
     meas = "QGG";            % QGG / DSN
@@ -131,11 +132,15 @@ maxVal = ones(1, length(index)) * NaN;
 minVal = maxVal;
 for j = 1:length(index)
     if(insidePlanet(j) == 0)
+        Nt = length(dataOrbit(j).time);
+        init = round(Nt/2);
+% %         init = 1;
+        final = Nt; 
         [rB] = rotate2BodyFrame(dataOrbit(j).time,  dataOrbit(j).traj');
         scalarValues = dataCRB_pos(j).value;
         maxVal(j) = max(scalarValues);
         minVal(j) = min(scalarValues);
-        scatter3(rB(1, :), rB(2, :), rB(3, :), 20, log10(scalarValues), 'filled');
+        scatter3(rB(1, init:final), rB(2, init:final), rB(3, init:final), 20, log10(scalarValues(init:final)), 'filled');
         axis equal;
         hold on;
     end
@@ -157,11 +162,15 @@ maxVal = ones(1, length(index)) * NaN;
 minVal = maxVal;
 for j = 1:length(index)
     if(insidePlanet(j) == 0)
+        Nt = length(dataOrbit(j).time);
+        init = round(Nt/2);
+% %         init = 1;
+        final = Nt; 
         [rB] = rotate2BodyFrame(dataOrbit(j).time,  dataOrbit(j).traj');
         scalarValues = dataCRB_vel(j).value;
         maxVal(j) = max(scalarValues);
         minVal(j) = min(scalarValues);
-        scatter3(rB(1, :), rB(2, :), rB(3, :), 20, log10(scalarValues), 'filled');
+        scatter3(rB(1, init:final), rB(2, init:final), rB(3, init:final), 20, log10(scalarValues(init:final)), 'filled');
         axis equal;
         hold on;
     end

@@ -4,7 +4,7 @@ close all
 %%          LEGENDRE POLINOMIALS TEST
 
 syms lambda phi 
-n_max = 10;
+n_max = 4;
 normalized = 1;
 
 grid_ddP_ddP = meshgrid(1:n_max, 1:n_max)*0;
@@ -63,7 +63,7 @@ for j = 1:n_max % n1
         output(p, 4) = double(solution);
         
         % special expression
-        expression = ddY1 * Y2 * cos(phi);
+        expression = dY1 * Y2 * cos(phi);
         
         solution = int(expression, phi, -pi/2, pi/2);
         output(p, 5) = double(solution);
