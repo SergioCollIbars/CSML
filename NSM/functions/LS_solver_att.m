@@ -1,0 +1,86 @@
+function [SH_N, sigma_N] = LS_solver_att(planetParams, poleParams, R, P0, Pc, Pxc, Xp, t ,...
+    attitude, datt_dt, ddatt_ddt, angVel, angAcc, Y, rn, vn)
+    % pole & planet variables
+    GM  = planetParams(1); Re = planetParams(2); n_max = planetParams(3);
+    normalized = planetParams(4);  
+    
+    W = poleParams(1); W0 = poleParams(2); RA = poleParams(3); 
+    DEC = poleParams(4);
+    
+    % variables number
+    [Nc, Ns, Ncs] = count_num_coeff(n_max); 
+     Nt          = length(t);
+    
+     % a-priori coefficients
+    [Cp, Sp] = list2mat(n_max, Nc, Ns, Xp);
+
+    % loop
+    iterMax = 3;
+    count   = 0;
+    xnot_N = zeros(Ncs-1, 1);
+    while count < iterMax
+        Ax_N = inv(P0); Nx_N = -inv(P0) * xnot_N;
+        [~, Mxc, Mcc] = get_considerCov_apriori(P0, Pc, Pxc);
+        for j = 1:Nt
+            % position vector
+            rn_ACI = rn(:, j);
+            
+            % ACAF to ACI rotation matrix
+            Wt = W0 + W * t(j);
+            ACAF_ACI =rotationMatrix(pi/2 + RA, pi/2 - DEC, Wt, [3, 1, 3]);
+    
+            % from ACI to Nominal body frame
+            B_ACI =rotationMatrix(attitude(1, j), attitude(2, j), attitude(3, j), ...
+              [1, 2, 3]);   
+            ACAF_B = ACAF_ACI * B_ACI';
+        
+             % compute attitude partials. Nominal body frame
+            [Hrot_grad] = compute_rotPartials(n_max, normalized, Cp, Sp, Re, GM, rn_ACI, ACAF_ACI, ACAF_B);
+            [Hrot_dA_ang, Hrot_dAdT_ang] = compute_angularDyadPartials(flipud(angVel(:, j)), attitude(:, j), datt_dt(:, j), ddatt_ddt(:, j));
+            Hrot_dA = Hrot_grad + Hrot_dA_ang;
+            Hrot_dAdT = Hrot_dAdT_ang;
+            Hrot = [Hrot_dA, Hrot_dAdT];
+        
+            % Null space method correcting for attitude
+            [Yc, ~, Hc_BODY] = gradiometer_meas(t(j) ,planetParams, poleParams, [rn(:, j)', vn(:, j)'], ...
+                    zeros(9, Nt), Cp, Sp, B_ACI');
+            [Yc] = add_angularComponents(Yc, attitude(:, j), zeros(3, Nt), flipud(angVel(:, j)),...
+                flipud(angAcc(:, j)));
+    
+            [ax, nx, mxc, mcc] = LS_method(Y(:,j), Yc, Hc_BODY, Hrot, R);
+
+            Ax_N  = Ax_N + ax;
+            Nx_N  = Nx_N + nx;
+            Mxc = Mxc + mxc;
+            Mcc = Mcc + mcc;
+        end
+    
+        % solve LS
+        XNOT_N = Ax_N\Nx_N;
+    
+        Xp(2:end) = Xp(2:end) + XNOT_N;
+    
+        [Cp, Sp] = list2mat(n_max, Nc, Ns, Xp);
+    
+        % update corrections
+        xnot_N = xnot_N + XNOT_N;
+    
+        % show error
+        disp('Least Squares update   '       + string(vecnorm(XNOT_N)));
+        disp('--------------------------------------------------------'); 
+        
+        % update counter
+        count = count + 1;
+    end
+
+    Px = inv(Ax_N);
+    Sxc = -Px * Mxc;
+    Pxx = Px + Sxc*Pc*Sxc';
+    Pxc = Sxc * Pc;
+    P_N =  [Pxx, Pxc;Pxc', Pc];
+    sigma_N = sqrt(diag(P_N));
+    
+    [Xp_N] = mat2list(Cp, Sp, Nc, Ns);
+    SH_N = Xp_N(2:end);
+end
+

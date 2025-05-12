@@ -30,11 +30,6 @@ saveData = 1;
 
 % trajectory data
 date = "16_Nov_2012";
-% % var = ["pos","vel","posCov","velCov", "time"];
-% % for j = 1:5
-% % file = var(j)+"_"+date+".mat";
-% % load(file);
-% % end
 load(date + "_L2position.mat");
 [commonTimes, idx1, idx2] = intersect(TT_GPS_PVT_final, positions(:, 1));
 pos_L1 = POS_PVT_FINAL(idx1, :);
