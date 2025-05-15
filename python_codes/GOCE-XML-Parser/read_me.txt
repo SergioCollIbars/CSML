@@ -1,0 +1,40 @@
+This package contains HPF's GOCE XML Parser.
+Package Version: 1.2.1 (10 March 2011)
+
+Read the manual (GO-TN-HPF-GS-0192_2.7_GOCE_XML_Parser.pdf) for more 
+information. Follow the installation instructions in section 4 before
+running the GOCE XML Parser.
+
+This package should contain the following files:
+read_me.txt
+GO-TN-HPF-GS-0192_2.7_GOCE_XML_Parser.pdf
+hpf_eef_transform.pl
+hpf_eef_transform.cfg
+eef2txt_data_block_EGG_NOM_1b.xsl
+eef2txt_data_block_EGG_NOM_2.xsl
+eef2txt_data_block_EGG_TRF_2.xsl
+eef2txt_data_block_EGM_GOC_2.xsl
+eef2txt_data_block_SST_AUX_2.xsl
+eef2txt_data_block_SST_NOM_1b.xsl
+eef2txt_data_block_SST_PSO_2.xsl
+eef2txt_data_block_STR_VC2_1b.xsl
+eef2txt_data_block_STR_VC3_1b.xsl
+eef2txt_data_header_EGG_NOM_2.xsl
+eef2txt_data_header_EGG_TRF_2.xsl
+eef2txt_data_header_EGM_GOC_2.xsl
+eef2txt_data_header_SST_AUX_2.xsl
+eef2txt_data_header_SST_PSO_2.xsl
+eef2txt_data_records_EGG_NOM_1b.xsl
+eef2txt_data_records_EGG_NOM_2.xsl
+eef2txt_data_records_EGG_TRF_2.xsl
+eef2txt_data_records_EGM_GOC_2.xsl
+eef2txt_data_records_SST_AUX_2.xsl
+eef2txt_data_records_SST_NOM_1b.xsl
+eef2txt_data_records_SST_PSO_2.xsl
+eef2txt_data_records_STR_VC__1b.xsl
+eef2txt_defaults.xsl
+eef2txt_header_dsd_records_L1b.xsl
+eef2txt_header_dsd_records.xsl
+eef2txt_header_L1b.xsl
+eef2txt_header_product_record.xsl
+eef2txt_header.xsl

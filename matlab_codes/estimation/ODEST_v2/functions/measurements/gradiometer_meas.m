@@ -1,4 +1,4 @@
-function [ddU_ACI, H_ACI, H_BODY] = gradiometer_meas(time ,asterParams, poleParams, state, ...
+function [ddU_ACI, H_ACI, H_BODY] = gradiometer_meas(time ,asterParams, RotPlanet, state, ...
                 noise, Cnm, Snm, ACI_BODY)
     % GRADIOMETER_MEAS generate gradiometer measurement
     % Given the set of Cnm and Snm coefficient, the asteroid pole
@@ -11,11 +11,6 @@ function [ddU_ACI, H_ACI, H_BODY] = gradiometer_meas(time ,asterParams, polePara
     Re         = asterParams(2);
     n_max      = asterParams(3);
     normalized = asterParams(4);
-    
-    W   = poleParams(1);
-    W0  = poleParams(2);
-    RA  = poleParams(3);
-    DEC = poleParams(4);
 
     % output value 
     Nt  = length(time);
@@ -24,8 +19,10 @@ function [ddU_ACI, H_ACI, H_BODY] = gradiometer_meas(time ,asterParams, polePara
     % time loop
     for j = 1:Nt
         rt_ACI = state(j, 1:3)';
-        Wt = W0 + W * time(j);
-        ACAF_ACI =rotationMatrix(pi/2 + RA, pi/2 - DEC, Wt, [3, 1, 3]);
+        
+        % rotation matrix
+        maxPos = 3* j; minPos = maxPos -2;
+        ACAF_ACI = RotPlanet(minPos:maxPos, :);
         rt_ACAF = ACAF_ACI * rt_ACI;
 
         [~, ~, T_ACAF] = potentialGradient_nm(Cnm, Snm, n_max, ...

@@ -1,11 +1,8 @@
-function [SH_N, sigma_N] = NSM_solver_att(planetParams, poleParams, R, P0, Xp, t ,...
+function [SH_N, sigma_N] = NSM_solver_att(planetParams, RotPlanet, R, P0, Xp, t ,...
     attitude, datt_dt, ddatt_ddt, angVel, angAcc, Y, rn, vn)
     % pole & planet variables
     GM  = planetParams(1); Re = planetParams(2); n_max = planetParams(3);
     normalized = planetParams(4);  
-    
-    W = poleParams(1); W0 = poleParams(2); RA = poleParams(3); 
-    DEC = poleParams(4);
     
     % variables number
     [Nc, Ns, Ncs] = count_num_coeff(n_max); 
@@ -24,9 +21,9 @@ function [SH_N, sigma_N] = NSM_solver_att(planetParams, poleParams, R, P0, Xp, t
             % position vector
             rn_ACI = rn(:, j);
             
-            % ACAF to ACI rotation matrix
-            Wt = W0 + W * t(j);
-            ACAF_ACI =rotationMatrix(pi/2 + RA, pi/2 - DEC, Wt, [3, 1, 3]);
+            % Planet orientation
+            maxPos = 3*j; minPos = maxPos - 2;
+            ACAF_ACI = RotPlanet(minPos:maxPos, :);
     
             % from ACI to Nominal body frame
             B_ACI =rotationMatrix(attitude(1, j), attitude(2, j), attitude(3, j), ...
@@ -41,13 +38,12 @@ function [SH_N, sigma_N] = NSM_solver_att(planetParams, poleParams, R, P0, Xp, t
             Hrot = [Hrot_dA, Hrot_dAdT];
         
             % Null space method correcting for attitude
-            [Yc, ~, Hc_BODY] = gradiometer_meas(t(j) ,planetParams, poleParams, [rn(:, j)', vn(:, j)'], ...
+            [Yc, ~, Hc_BODY] = gradiometer_meas(t(j) ,planetParams, ACAF_ACI, [rn(:, j)', vn(:, j)'], ...
                     zeros(9, Nt), Cp, Sp, B_ACI');
             [Yc] = add_angularComponents(Yc, attitude(:, j), zeros(3, Nt), flipud(angVel(:, j)),...
                 flipud(angAcc(:, j)));
     
             [ax, nx] = NSM_method(Y(:,j), Yc, Hc_BODY, R, Hrot);
-
 
             Ax_N  = Ax_N + ax;
             Nx_N  = Nx_N + nx;
@@ -76,5 +72,21 @@ function [SH_N, sigma_N] = NSM_solver_att(planetParams, poleParams, R, P0, Xp, t
     
     [Xp_N] = mat2list(Cp, Sp, Nc, Ns);
     SH_N = Xp_N(2:end);
+end
+
+
+function [Hrot] = compute_rotPartials_analy(Y)
+    Yxx = Y(1); Yxy = Y(2); Yxz = Y(3);
+    Yyy = Y(5); Yyz = Y(6); Yzz = Y(9);
+
+    Hrot = -[0, 2*Yxz, -2*Yxy;...
+           -Yxz, Yyz, Yxx - Yyy;...
+        Yxy, Yzz - Yxx, -Yyz;...
+        -Yxz, Yyz, Yxx - Yyy;...
+        -2*Yyz, 0, 2*Yxy;...
+        Yyy - Yzz, -Yxy, Yxz;...
+        Yxy, Yzz - Yxx, -Yyz;...
+        Yyy - Yzz, -Yxy, Yxz;...
+        2*Yyz, -2*Yxz, 0];
 end
 
