@@ -22,7 +22,8 @@ function [Y] = add_angularComponents(Y, attitude, At, angVel, angAcc)
           [1, 2, 3]);   % from ACI to Nominal body frame
       AB =rotationMatrix(At(1, j), At(2, j), At(3, j), ...
           [3, 2, 1]);   % from Nominal body frame to actual frame (A)
-      AN = AB * BN; 
+      AN = AB * BN;
+
       jN = [Y(1, j), Y(2, j), Y(3, j);Y(4, j), Y(5, j), Y(6, j);...
           Y(7, j), Y(8, j), Y(9, j)];
       jB = AN * jN * AN';

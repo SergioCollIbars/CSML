@@ -19,10 +19,12 @@ dA_dt   = Amp*ones(3, Nt).*[1;0.5;0.7];
 ddA_ddt = zeros(3, Nt);   
 
 % attitude nominal value
-Amp = 0;                                            % [rad]
-attitude  = Amp.*t.*ones(3, Nt).*[0;1;0];           % nominal attitude [rad]
-datt_dt   = Amp.*ones(3, Nt).*[0;1;0];
+Amp = 1;                                            % [rad]
+attitude  = Amp.*t.*ones(3, Nt).*[1;1;1];           % nominal attitude [rad]
+datt_dt   = 2*Amp.*ones(3, Nt).*[1;1;1];
 ddatt_ddt = zeros(3, Nt); 
+
+
 
 [angVel_true, angAcc_true] = compute_angularVals(attitude + At, datt_dt + dA_dt, ddatt_ddt + ddA_ddt);
 [angVel_nom, angAcc_nom]   = compute_angularVals(attitude, datt_dt, ddatt_ddt);

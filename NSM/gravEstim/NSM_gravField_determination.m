@@ -18,10 +18,10 @@ addpath('../../matlab_codes/GOCE_products/GOCE_L2b_MatlabReaders/data/')
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % Input parameters
-Planet   = "Earth";       % options: Earth / Bennu / Eros
-Solver   = "Both";        % options: NSM / LS / Both
+Planet   = "Bennu";       % options: Earth / Bennu / Eros
+Solver   = "NSM";        % options: NSM / LS / Both
 Errors   = "attitude";    % options: position / attitude / both
-saveData = 1;             % options: 0 / 1
+saveData = 0;             % options: 0 / 1
 
 [planetParams, poleParams, Kaula, r, Xtrue] = loadPlanet(Planet);
 GM  = planetParams(1); Re = planetParams(2); n_max = planetParams(3);
@@ -40,7 +40,7 @@ Nt  = length(t);
 
 % Estimation parameters
 P0  = diag(Kaula(2:end).^2);  
-S   = normrnd(0, 1E-2 * Kaula);
+S   = normrnd(0, 1E-40 * Kaula);
 Xp  = Xtrue + S'; 
 [Cnm, Snm] = list2mat(n_max, Nc, Ns, Xtrue);
 
@@ -96,7 +96,7 @@ thetaDdot= zeros(3, Nt);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 disp('Generating measurements ... ')
 % mesurement noise & weight
-sigma    = 1E-12;                   % [1/s^2]
+sigma    = 1E-30;                   % [1/s^2]
 means    = zeros(1, 9);
 std_devs = sigma * ones(1, 9); 
 num_realizations = length(t);       % Number of realizations
