@@ -8,6 +8,8 @@ addpath('../../QGG_gravEstim/src/')
 addpath('../../QGG_navigation/data/')
 addpath('../data/')
 addpath('../../matlab_codes/GOCE_products/GOCE_L2b_MatlabReaders/data/')
+addpath('../../QGG_gravEstim/data_files/')
+addpath('../../QGG_gravEstim/src/')
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %                  GRAVITY FIELD DETERMINATION WITH NSM                 %
@@ -19,7 +21,7 @@ addpath('../../matlab_codes/GOCE_products/GOCE_L2b_MatlabReaders/data/')
 
 % Input parameters
 Planet   = "Bennu";       % options: Earth / Bennu / Eros
-Solver   = "NSM";        % options: NSM / LS / Both
+Solver   = "Both";        % options: NSM / LS / Both
 Errors   = "attitude";    % options: position / attitude / both
 saveData = 0;             % options: 0 / 1
 
@@ -40,7 +42,7 @@ Nt  = length(t);
 
 % Estimation parameters
 P0  = diag(Kaula(2:end).^2);  
-S   = normrnd(0, 1E-40 * Kaula);
+S   = normrnd(0, 1E-1 * Kaula);
 Xp  = Xtrue + S'; 
 [Cnm, Snm] = list2mat(n_max, Nc, Ns, Xtrue);
 
@@ -96,7 +98,7 @@ thetaDdot= zeros(3, Nt);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 disp('Generating measurements ... ')
 % mesurement noise & weight
-sigma    = 1E-30;                   % [1/s^2]
+sigma    = 1E-12;                   % [1/s^2]
 means    = zeros(1, 9);
 std_devs = sigma * ones(1, 9); 
 num_realizations = length(t);       % Number of realizations
@@ -171,7 +173,7 @@ if(Solver == "Both")
     mk = 'square';  tt = "NSM estimation error "; llg = {'truth','NSM', 'error'};
     plot_gravField(Xtrue, sigma_N, Xtrue(2:end) - SH_N, n_max, tt, mk, llg);
 
-    mk = 'square';  tt = "LS estimation error "; llg = {'truth','NSM', 'error'};
+    mk = 'square';  tt = "LS estimation error "; llg = {'truth','LS', 'error'};
     plot_gravField(Xtrue, sigma_LS, Xtrue(2:end) - SH_LS, n_max, tt, mk, llg);
 
     figure()
