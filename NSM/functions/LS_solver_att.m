@@ -18,7 +18,7 @@ function [SH_N, sigma_N] = LS_solver_att(planetParams, RotPlanet, R, P0, Pc, Pxc
     while count < iterMax
         Ax_N = inv(P0); Nx_N = -inv(P0) * xnot_N;
         [~, Mxc, Mcc] = get_considerCov_apriori(P0, Pc, Pxc);
-        for j = 2:Nt-1
+        for j = 3:Nt-2
             % position vector
             rn_ACI = rn(:, j);
             

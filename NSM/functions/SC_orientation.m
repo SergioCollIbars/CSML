@@ -52,11 +52,6 @@ function [theta] = SC_orientation(t, state_t, type)
             theta(4:6, j) = A' * w(:, j);
         end 
         
-        dtheta = zeros(3, Nt);
-        for j = 2:Nt-1
-            dt = t(j+1) - t(j-1);
-            dtheta(:, j) = (theta(1:3, j+1) - theta(1:3, j-1))./dt;
-        end
         % get angular acceleration (finite differnces)
         wd = ones(3, Nt) * NaN;
         for j = 2:Nt-1

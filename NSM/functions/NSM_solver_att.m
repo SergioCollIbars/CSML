@@ -17,7 +17,7 @@ function [SH_N, sigma_N] = NSM_solver_att(planetParams, RotPlanet, R, P0, Xp, t 
     xnot_N = zeros(Ncs-1, 1);
     while count < iterMax
         Ax_N = inv(P0); Nx_N = -inv(P0) * xnot_N;
-        for j = 2:Nt-1
+        for j = 3:Nt-2
             % position vector
             rn_ACI = rn(:, j);
             
