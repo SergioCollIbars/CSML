@@ -22,10 +22,10 @@ set(0,'defaultAxesFontSize',16);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % Input parameters
-Planet   = "Bennu";       % options: Earth / Bennu / Eros
+Planet   = "Earth";       % options: Earth / Bennu / Eros
 Solver   = "Both";        % options: NSM / LS / Both
 Errors   = "attitude";    % options: position / attitude / both
-saveData = 0;             % options: 0 / 1
+saveData = 1;             % options: 0 / 1
 
 [planetParams, poleParams, Kaula, r, Xtrue] = loadPlanet(Planet);
 GM  = planetParams(1); Re = planetParams(2); n_max = planetParams(3);
@@ -225,7 +225,7 @@ function [ACAF_ACI] = compute_planetAtt(poleParams , t, saveData, ACI_ECEF)
 end
 
 function [output] = check_outliers(t, input)
-    ths = 5E-7; 
+    ths = E-7; 
     for j = 1:length(t)
         if(rms(input(:, j)) > ths)
             input(:, j) = zeros(3, 1);

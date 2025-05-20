@@ -70,7 +70,9 @@ function [theta] = SC_orientation(t, state_t, type)
              A_dot = [-cos(th)*thetaDot, 0, 0;...
             cos(phi)*cos(th)*phiDot-sin(phi)*sin(th)*thetaDot, -sin(phi)*phiDot, 0;...
             -sin(phi)*cos(th)*phiDot-cos(phi)*sin(th)*thetaDot, -cos(phi)*phiDot, 0];
-
+            
+             dt = t(j+1) - t(j-1);
+             if(dt > )
             theta(7:9, j) = A' * (wd(:, j) - A_dot * theta(4:6, j));
         end
     end
