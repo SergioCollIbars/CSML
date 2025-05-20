@@ -33,7 +33,8 @@ function [theta] = SC_orientation(t, state_t, type)
             N_hat_dot = 1/vecnorm(h) * (cross(r, a) - N_hat * (dot(N_hat, cross(r, a))));
             T_hat_dot = cross(N_hat_dot, R_hat) + cross(N_hat, R_hat_dot);
 
-            w(:, j) = [dot(N_hat,T_hat_dot);dot(R_hat, N_hat_dot);dot(T_hat, R_hat_dot)];
+            % % w(:, j) = [dot(N_hat,T_hat_dot);dot(R_hat, N_hat_dot);dot(T_hat, R_hat_dot)];
+            w(:, j) = [dot(T_hat,N_hat_dot);dot(N_hat, R_hat_dot);dot(T_hat, R_hat_dot)];
 
             % compute yaw, pith, roll
             yaw   = atan2(C_I_to_RTN(1,2), C_I_to_RTN(1,1)); % psi
@@ -52,6 +53,11 @@ function [theta] = SC_orientation(t, state_t, type)
             theta(4:6, j) = A' * w(:, j);
         end 
         
+        dtheta = zeros(3, Nt);
+        for j = 2:Nt-1
+            dt = t(j+1) - t(j-1);
+            dtheta(:, j) = (theta(1:3, j+1) - theta(1:3, j-1))./dt;
+        end
         % get angular acceleration (finite differnces)
         wd = ones(3, Nt) * NaN;
         for j = 2:Nt-1
@@ -70,9 +76,7 @@ function [theta] = SC_orientation(t, state_t, type)
              A_dot = [-cos(th)*thetaDot, 0, 0;...
             cos(phi)*cos(th)*phiDot-sin(phi)*sin(th)*thetaDot, -sin(phi)*phiDot, 0;...
             -sin(phi)*cos(th)*phiDot-cos(phi)*sin(th)*thetaDot, -cos(phi)*phiDot, 0];
-            
-             dt = t(j+1) - t(j-1);
-             if(dt > )
+
             theta(7:9, j) = A' * (wd(:, j) - A_dot * theta(4:6, j));
         end
     end
