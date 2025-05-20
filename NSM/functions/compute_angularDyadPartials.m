@@ -13,7 +13,7 @@ function [Hrot_dA_ang, Hrot_dAdT_ang, H_omega_dA, H_omegaDot_dA, H_omega_dAdt, H
     B = [0, -cos(theta)*psiDot, 0;...
          0, -sin(phi)*sin(theta)*psiDot, cos(phi)*cos(theta)*psiDot-sin(phi)*thetaDot;...
          0, -cos(phi)*sin(theta)*psiDot, -sin(phi)*cos(theta)*psiDot-cos(phi)*thetaDot];
-    H_omega = flipud(B);  H_omega_dA = B;
+    H_omega = B;  H_omega_dA = B;
 
     dw11_dt = -2*omega(2)*H_omega(2, :) - 2*omega(3)*H_omega(3, :);
     dw12_dt = omega(2)*H_omega(1, :) + omega(1)*H_omega(2, :);
@@ -41,19 +41,18 @@ function [Hrot_dA_ang, Hrot_dAdT_ang, H_omega_dA, H_omegaDot_dA, H_omega_dAdt, H
          0, -sin(phi)*sin(theta)*psiDdot, cos(phi)*cos(theta)*psiDdot-sin(phi)*thetaDdot;...
          0, -cos(phi)*sin(theta)*psiDdot, -sin(phi)*cos(theta)*psiDdot-cos(phi)*thetaDdot];
 
-    H_omegaDot = flipud(C + D);   H_omegaDot_dA = C + D;
+    H_omegaDot = C + D;   H_omegaDot_dA = C + D;
     H_dA_omegaDot = [zeros(1, 3); - H_omegaDot(3, :); H_omegaDot(2, :); ...
         H_omegaDot(3, :); zeros(1, 3); - H_omegaDot(1, :); ...
         -H_omegaDot(2, :); H_omegaDot(1, :); zeros(1, 3)];
 
-    Hrot_dA_ang = H_dA_omega + H_dA_omegaDot;
-
+    Hrot_dA_ang = H_dA_omega + H_dA_omegaDot; % Dyad partial w.r.t Euler angle
     %%%%%%%%%%%%%%%%%%%%%% PARTIALS EULER RATE %%%%%%%%%%%%%%%%%%%%%%%
     % partials w.r.t angular velocity. For a (3-2-1) rotation
     A = [-sin(theta), 0, 1;...
             sin(phi)*cos(theta), cos(phi), 0;...
             cos(phi)*cos(theta), -sin(phi), 0];
-    H_omega = flipud(A);   H_omega_dAdt =A;
+    H_omega = A;   H_omega_dAdt =A;
 
     dw11_dt = -2*omega(2)*H_omega(2, :) - 2*omega(3)*H_omega(3, :);
     dw12_dt = omega(2)*H_omega(1, :) + omega(1)*H_omega(2, :);
@@ -76,11 +75,11 @@ function [Hrot_dA_ang, Hrot_dAdT_ang, H_omega_dA, H_omegaDot_dA, H_omega_dAdt, H
     H33 = -sin(phi)*cos(theta)*psiDot - cos(phi)*thetaDot;
     H = [0,H12,0;0,H22,H23;0,H32,H33];
     
-    H_omegaDot = flipud(A_dot + H); H_omegaDot_dAdt = A_dot + H;
+    H_omegaDot = A_dot + H; H_omegaDot_dAdt = A_dot + H;
     H_dAdT_omegaDot = [zeros(1, 3); - H_omegaDot(3, :); H_omegaDot(2, :); ...
         H_omegaDot(3, :); zeros(1, 3); - H_omegaDot(1, :); ...
         -H_omegaDot(2, :); H_omegaDot(1, :); zeros(1, 3)];
 
-    Hrot_dAdT_ang = H_dAdT_omega + H_dAdT_omegaDot;
+    Hrot_dAdT_ang = H_dAdT_omega + H_dAdT_omegaDot; % Dyad partials w.r.t Euler angle rate
 end
 

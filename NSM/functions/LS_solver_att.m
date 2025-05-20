@@ -33,7 +33,7 @@ function [SH_N, sigma_N] = LS_solver_att(planetParams, RotPlanet, R, P0, Pc, Pxc
         
              % compute attitude partials. Nominal body frame
             [Hrot_grad] = compute_rotPartials(n_max, normalized, Cp, Sp, Re, GM, rn_ACI, ACAF_ACI, ACAF_B);
-            [Hrot_dA_ang, Hrot_dAdT_ang] = compute_angularDyadPartials(flipud(angVel(:, j)), attitude(:, j), datt_dt(:, j), ddatt_ddt(:, j));
+            [Hrot_dA_ang, Hrot_dAdT_ang] = compute_angularDyadPartials(angVel(:, j), attitude(:, j), datt_dt(:, j), ddatt_ddt(:, j));
             Hrot_dA = Hrot_grad + Hrot_dA_ang;
             Hrot_dAdT = Hrot_dAdT_ang;
             Hrot = [Hrot_dA, Hrot_dAdT];
@@ -41,8 +41,8 @@ function [SH_N, sigma_N] = LS_solver_att(planetParams, RotPlanet, R, P0, Pc, Pxc
             % Null space method correcting for attitude
             [Yc, ~, Hc_BODY] = gradiometer_meas(t(j) ,planetParams, ACAF_ACI, [rn(:, j)', vn(:, j)'], ...
                     zeros(9, Nt), Cp, Sp, B_ACI');
-            [Yc] = add_angularComponents(Yc, attitude(:, j), zeros(3, Nt), flipud(angVel(:, j)),...
-                flipud(angAcc(:, j)));
+            [Yc] = add_angularComponents(Yc, attitude(:, j), zeros(3, Nt), angVel(:, j),...
+                angAcc(:, j));
     
             [ax, nx, mxc, mcc] = LS_method(Y(:,j), Yc, Hc_BODY, Hrot, R);
 

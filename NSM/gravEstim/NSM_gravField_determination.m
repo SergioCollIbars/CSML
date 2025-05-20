@@ -22,10 +22,10 @@ set(0,'defaultAxesFontSize',16);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % Input parameters
-Planet   = "Bennu";       % options: Earth / Bennu / Eros
+Planet   = "Earth";       % options: Earth / Bennu / Eros
 Solver   = "Both";        % options: NSM / LS / Both
 Errors   = "attitude";    % options: position / attitude / both
-saveData = 0;             % options: 0 / 1
+saveData = 1;             % options: 0 / 1
 
 [planetParams, poleParams, Kaula, r, Xtrue] = loadPlanet(Planet);
 GM  = planetParams(1); Re = planetParams(2); n_max = planetParams(3);
@@ -72,6 +72,9 @@ else
     t = positions(:, 1)';
     Nt = length(t);
 
+    t  = t(1:Nt/5);
+    Nt = length(t);
+
     rn_ACI = rotate2ECI(rn_ECEF, ACI_ECEF, t);
     vn_ACI = rotate2ECI(vn_ECEF, ACI_ECEF, t);
     state_t = zeros(Nt, 6);
@@ -103,8 +106,8 @@ Amp  = 0.*[1;0.7;0.5];          % [m]
 [Ar] = generate_posErrors(t, type, Amp, T);
 
 % Attitude error
-type = "constant";              % options: constant / periodic
-Amp  = 4.85E-5.*[1;0.7;0.5];    % [rad] 
+type = "linear";              % options: constant / periodic / linear
+Amp  = 4.85E-10.*[1;0.7;0.5];    % [rad] 
 [att_Err] = generate_attErrors(t, type, Planet, Amp, T);
 
 % include position errors
@@ -135,8 +138,8 @@ R = diag(std_devs.^2);
 % compute measurements
 [Ytrue, ~, ~] = gradiometer_meas(t ,planetParams, ACAF_ACI, state_t, ...
                 zeros(9, Nt), Cnm, Snm, eye(3,3));
-[Ytrue] = add_angularComponents(Ytrue, theta, att_Err(1:3, :), flipud(angVel_true),...
-    flipud(angAcc_true));  
+[Ytrue] = add_angularComponents(Ytrue, theta, att_Err(1:3, :), angVel_true,...
+    angAcc_true);  
 Ytrue  = Ytrue + noise;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

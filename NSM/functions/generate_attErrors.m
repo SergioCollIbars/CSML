@@ -11,6 +11,11 @@ function [att_Err] = generate_attErrors(t, type, planet, Amp, T)
         att_Err(1:3, :) = Amp.*sin(w.*t);
         att_Err(4:6, :) = w*Amp.*cos(w.*t);
         att_Err(7:9, :) = -w^2*Amp.*sin(w.*t);
+    elseif(type == "linear")
+        time = t - t(1);
+        att_Err(1:3, :) = Amp.*time;
+        att_Err(4:6, :) = Amp.*ones(3, length(t));
+        att_Err(7:9, :) = zeros(3, length(t));
     end
 
     % plot attitude error

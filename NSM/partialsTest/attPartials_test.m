@@ -14,17 +14,15 @@ Nt = length(t);
 
 % attitude error. Linear
 Amp     = 1E-11;                                     % [rad]
-At      = Amp.*t.*ones(3, Nt).*[1;0.5;0.7];         % [rad] [yaw, pitch, roll]
+At      = Amp.*t.*ones(3, Nt).*[1;0.5;0.7];          % [rad] [yaw, pitch, roll]
 dA_dt   = Amp*ones(3, Nt).*[1;0.5;0.7];
-ddA_ddt = zeros(3, Nt);   
+ddA_ddt = zeros(3, Nt).*[1;0.5;0.7];  
 
 % attitude nominal value
 Amp = 1;                                            % [rad]
 attitude  = Amp.*t.*ones(3, Nt).*[1;1;1];           % nominal attitude [rad]
 datt_dt   = 2*Amp.*ones(3, Nt).*[1;1;1];
-ddatt_ddt = zeros(3, Nt); 
-
-
+ddatt_ddt = ones(3, Nt).*[1;1;1]; 
 
 [angVel_true, angAcc_true] = compute_angularVals(attitude + At, datt_dt + dA_dt, ddatt_ddt + ddA_ddt);
 [angVel_nom, angAcc_nom]   = compute_angularVals(attitude, datt_dt, ddatt_ddt);
@@ -33,7 +31,7 @@ ddatt_ddt = zeros(3, Nt);
 for j = 1:Nt
     % first order partials
    [~, ~, H_omega_dA, H_omegaDot_dA, H_omega_dAdt, H_omegaDot_dAdt] = ...
-       compute_angularDyadPartials(flipud(angVel_nom(:, j)), ...
+       compute_angularDyadPartials(angVel_nom(:, j), ...
         attitude(:, j), datt_dt(:, j), ddatt_ddt(:, j));
 
     % error angular velocity
