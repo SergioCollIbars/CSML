@@ -72,9 +72,6 @@ else
     t = positions(:, 1)';
     Nt = length(t);
 
-    t  = t(1:Nt/5);
-    Nt = length(t);
-
     rn_ACI = rotate2ECI(rn_ECEF, ACI_ECEF, t);
     vn_ACI = rotate2ECI(vn_ECEF, ACI_ECEF, t);
     state_t = zeros(Nt, 6);
