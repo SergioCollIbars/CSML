@@ -11,8 +11,8 @@ function [Hpos] = compute_rotPartials(n_max, normalized, Cmat, Smat, Re, GM, r, 
         Atpos = At./2;
         Atneg = - At./2; 
 
-        [Rpos] = rotationMatrix(Atpos(1), Atpos(2), Atpos(3), [1, 2, 3]);
-        [Rneg] = rotationMatrix(Atneg(1), Atneg(2), Atneg(3), [1, 2, 3]);
+        [Rpos] = rotationMatrix(Atpos(1), Atpos(2), Atpos(3), [3, 2, 1]);
+        [Rneg] = rotationMatrix(Atneg(1), Atneg(2), Atneg(3), [3, 2, 1]);
 
         [~, ~, ddUpos] = potentialGradient_nm(Cmat, Smat, n_max, ...
                                                 ACI_ACAF'*r, Re, GM, ...

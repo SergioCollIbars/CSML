@@ -18,7 +18,7 @@ function [SH_N, sigma_N] = LS_solver_att(planetParams, RotPlanet, R, P0, Pc, Pxc
     while count < iterMax
         Ax_N = inv(P0); Nx_N = -inv(P0) * xnot_N;
         [~, Mxc, Mcc] = get_considerCov_apriori(P0, Pc, Pxc);
-        for j = 1:Nt
+        for j = 2:Nt-1
             % position vector
             rn_ACI = rn(:, j);
             
@@ -28,7 +28,7 @@ function [SH_N, sigma_N] = LS_solver_att(planetParams, RotPlanet, R, P0, Pc, Pxc
     
             % from ACI to Nominal body frame
             B_ACI =rotationMatrix(attitude(1, j), attitude(2, j), attitude(3, j), ...
-              [1, 2, 3]);   
+              [3, 2, 1]);   
             ACAF_B = ACAF_ACI * B_ACI';
         
              % compute attitude partials. Nominal body frame

@@ -8,7 +8,7 @@ folderPath = 'input_data';  % ← Replace with your folder
 edfFiles = dir(fullfile(folderPath, '*.EDF'));
 
 % Initialize output arrays
-positions = [];
+positions = []; velocity = [];
 
 for k = 1:length(edfFiles)
     filename = fullfile(folderPath, edfFiles(k).name);
@@ -50,6 +50,17 @@ for k = 1:length(edfFiles)
             
             % Save the data
             positions(end+1,:) = [gpsSeconds X Y Z];
+
+        elseif startsWith(line, 'V')  % Velocity line
+             % Satellite PRN = line(2:4); % optional
+            tokens = regexp(line, '[\+\-]\d+\.\d+', 'match');
+            numbers = str2double(tokens);
+            X = numbers(1) * 0.1; % decimeter /sec to meters /sec
+            Y = numbers(2) * 0.1;
+            Z = numbers(3) * 0.1;
+            
+            % Save the data
+            velocity(end+1,:) = [gpsSeconds X Y Z];
         end
     end
 
@@ -60,3 +71,6 @@ end
 % save data into arrays 
 name ="Nov_L2position.mat";
 save("data/"+name, "positions");
+
+name ="Nov_L2velocity.mat";
+save("data/"+name, "velocity");

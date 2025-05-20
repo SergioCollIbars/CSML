@@ -17,7 +17,7 @@ function [SH_N, sigma_N] = NSM_solver_att(planetParams, RotPlanet, R, P0, Xp, t 
     xnot_N = zeros(Ncs-1, 1);
     while count < iterMax
         Ax_N = inv(P0); Nx_N = -inv(P0) * xnot_N;
-        for j = 1:Nt
+        for j = 2:Nt-1
             % position vector
             rn_ACI = rn(:, j);
             
@@ -27,7 +27,7 @@ function [SH_N, sigma_N] = NSM_solver_att(planetParams, RotPlanet, R, P0, Xp, t 
     
             % from ACI to Nominal body frame
             B_ACI =rotationMatrix(attitude(1, j), attitude(2, j), attitude(3, j), ...
-              [1, 2, 3]);   
+              [3, 2, 1]);   
             ACAF_B = ACAF_ACI * B_ACI';
         
              % compute attitude partials. Nominal body frame
