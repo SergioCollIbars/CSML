@@ -25,8 +25,8 @@ function [theta] = SC_orientation(t, state_t, type)
             N_hat = N_hat / norm(N_hat);
             T_hat = cross(N_hat, R_hat);
         
-            C_I_to_RTN = [R_hat'; T_hat'; N_hat'];
-            
+            BN = [R_hat'; T_hat'; N_hat'];
+
             % compute RTN frame derivatives
             h = cross(r, v);
             R_hat_dot = v/vecnorm(r) - r/(vecnorm(r)^3) * dot(r, v);
@@ -36,20 +36,26 @@ function [theta] = SC_orientation(t, state_t, type)
             w(:, j) = [dot(N_hat,T_hat_dot);dot(R_hat, N_hat_dot);dot(T_hat, R_hat_dot)];
 
             % compute yaw, pith, roll
-            yaw   = atan2(C_I_to_RTN(1,2), C_I_to_RTN(1,1)); % psi
-            pitch = -asin(C_I_to_RTN(1,3));                  % theta
-            roll  = atan2(C_I_to_RTN(2,3), C_I_to_RTN(3,3)); % phi
+            yaw   = atan2(BN(1,2), BN(1,1)); % psi
+            pitch = -asin(BN(1,3));          % theta
+            roll  = atan2(BN(2,3), BN(3,3)); % phi
+            
+            tol = 1E-4;
+            if(abs(BN(1,3)) >= 1 - tol)
+                roll = 0;
+                yaw  = atan2(-BN(2,1), BN(2,2));
+            end
 
             % store attitude angle
             theta(1:3, j) = [yaw;pitch;roll];
 
             % compute and store angle rate
-             th = theta(2, j); phi = theta(3, j);
-            A = [-sin(th), 0, 1;...
-            sin(phi)*cos(th), cos(phi), 0;...
-            cos(phi)*cos(th), -sin(phi), 0];
+            th = theta(2, j); phi = theta(3, j);
+            T = (1/cos(th)).*[0, sin(phi), cos(phi);...
+                0, cos(phi)*cos(th), -sin(phi)*cos(th);...
+                cos(th), sin(phi)*sin(th), cos(phi)*sin(th)];
 
-            theta(4:6, j) = A' * w(:, j);
+            theta(4:6, j) = T * w(:, j);
         end 
         
         % get angular acceleration (finite differnces)
@@ -71,7 +77,7 @@ function [theta] = SC_orientation(t, state_t, type)
             cos(phi)*cos(th)*phiDot-sin(phi)*sin(th)*thetaDot, -sin(phi)*phiDot, 0;...
             -sin(phi)*cos(th)*phiDot-cos(phi)*sin(th)*thetaDot, -cos(phi)*phiDot, 0];
 
-            theta(7:9, j) = A' * (wd(:, j) - A_dot * theta(4:6, j));
+            theta(7:9, j) = A\(wd(:, j) - A_dot * theta(4:6, j));
         end
     end
 end

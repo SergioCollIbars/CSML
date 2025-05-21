@@ -88,7 +88,7 @@ type = "RTN";
 [orientation] = SC_orientation(t, state_t, type);
 
 % check for outliers
-[orientation(7:9, :)] = check_outliers(t, orientation(7:9, :));
+% % [orientation(7:9, :)] = check_outliers(t, orientation(7:9, :));
 
 % attitude nominal value
 theta    = orientation(1:3, :);  % [rad]
@@ -103,7 +103,7 @@ Amp  = 0.*[1;0.7;0.5];          % [m]
 [Ar] = generate_posErrors(t, type, Amp, T);
 
 % Attitude error
-type = "linear";              % options: constant / periodic / linear
+type = "periodic";              % options: constant / periodic / linear
 Amp  = 4.85E-10.*[1;0.7;0.5];    % [rad] 
 [att_Err] = generate_attErrors(t, type, Planet, Amp, T);
 
