@@ -69,14 +69,19 @@ noise0 = zeros(9, Nt);
 Earth_case = 0;
 if savedData
     load('Nov_L2position.mat');   % ECEF coordinates
+    load('Nov_L2velocity.mat');   % ECEF coordinates
     load('Nov_L2ECEF2ITRF.mat');  % rotation matrix ECEF 2 ITRF
     rn_ECEF = positions(:, 2:end)';
+    vn_ECEF = velocity(:, 2:end)';
     t = positions(:, 1);
     Nt = length(t);
 
     % get rotation matrix
     ACI_ECEF = compute_ECEF2ITRF(outPut);
+
+    % rotate to ACI frame
     rn = rotate2ECI(rn_ECEF, ACI_ECEF, t);
+    vn = rotate2ECI(vn_ECEF, ACI_ECEF, t);
     
     Earth_case = 1;
     t_UTC = convertGPSsc2UTC(t);

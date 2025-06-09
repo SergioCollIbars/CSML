@@ -18,13 +18,15 @@ val = 2 * GM /r^3 * Pnm;
 Hc(1, 1) = val;
 
 % n = 2 to n = 5
-n = 3; m = 1;
+n = 2; m = 1;
 for j = 2:5
     Pnm = assocLegendre(n, m);
-    Pnm = NormFactor(n, m) * Pnm;
-    
+% %     Pnm = NormFactor(n, m) * Pnm;
+
     dPlm = Diff_assocLegendre(n,m);
-    dPlm =  NormFactor(n, m) * dPlm;
+    % % dPlm =  NormFactor(n, m) * dPlm;
+
+    dPlm2 = Diff_assocLegendre2(n,m);
 
     val = (2+n)*(1+n)*GM*R^n/(r^(3+n)) * Pnm;
     Hc(1, j) = val;
@@ -113,6 +115,25 @@ function dPlm = Diff_assocLegendre(l,m)
 
     plm = subs(plm, x, sin(phi));
     dPlm = diff(plm, phi);
+end
+
+function dPlm = Diff_assocLegendre2(l,m)
+    % get symbolic associated legendre function P_lm(x) based on
+    % legendre function P_l(x)
+    
+    syms x phi;
+    
+    % get symbolic form of Legendre function P_l(x)
+    leg = legendreP(l,x);
+
+    % differentiate it m times
+    legDiff = diff(leg,x,m);
+
+    % calculate associated legendre function P_lm(x)
+    plm = ((1 - x^2)^(m/2))*legDiff;
+
+    plm = subs(plm, x, sin(phi));
+    dPlm = diff(plm^2, phi);
 end
 
 function ddPlm = Diff2_assocLegendre(l,m)

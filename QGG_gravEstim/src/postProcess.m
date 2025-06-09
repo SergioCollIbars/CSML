@@ -22,7 +22,7 @@ set(0,'defaultAxesFontSize',16);
 plotOrbit = 1;                                       % plot orbit boolean
 plotAttitude = 0;                                    % plot Attitude boolean
 plotAcc = 1;                                         % plot acc boolean
-plotEstim = 1;                                       % plot estimation
+plotEstim = 0;                                       % plot estimation
 
 test = false;                                        % show test plots
 
@@ -524,9 +524,9 @@ if(plotEstim == true)
         legend(txt)
 
         % error in the estimation
-        BT = [-282,8.88,16.42,-636,-19500,-113] * 1E-9 /2;
+        BT = [-282,8.88,16.42,-636,-19500,-113] * 1E-9 * 2;
         B = [X0e(1), X0e(3), X0e(5), X0e(7), X0e(9), X0e(11)];
-        DT = [0.0065, 0.0103, 0.0001, 0.195,0.9374,0.0033] * 1E-9/(2*86400);
+        DT = [0.0065, 0.0103, 0.0001, 0.195,0.9374,0.0033] * 1E-9/(86400)*2;
         D = [X0e(2), X0e(4), X0e(6), X0e(8), X0e(10), X0e(12)];
 
         figure()
@@ -618,9 +618,9 @@ function AccP(t, ad, Ub, d)
     
     lw = 1.5;
     colorval = "#D95319";   % phase B
-    %colorval = "#EDB120";   % phase A
+% %     colorval = "#EDB120";   % phase A
     subplot(3, 3, 1);
-    scale = 1;
+    scale = 1E9;
     y(:, :) = ad(1, 1, :) * scale;
     plot(t, y, 'LineWidth',lw, 'Color',colorval);
     xlabel('time [days]')
@@ -682,7 +682,7 @@ function AccP(t, ad, Ub, d)
     xlabel('time [days]')
     ylabel('\Gamma_{zz}')
     grid on;
-    sgtitle('Phase A. Gravity tensor components over time. Units [1/s^2]') 
+    sgtitle('Phase B. Gradiometer components in Eotvos') 
 
     % Potential gradient plot. Body frame
     figure();
@@ -1055,8 +1055,8 @@ function plotKaula(n_max, Cnm_Bennu, Snm_Bennu, varZ, varST, normalized)
             [N_sectorial] = NormFactor(n, 1);
         end
 
-        Kaula(1, n) = (KaulaN_z/n^alphaN_z) * N_zonal;
-        Kaula(2, n) = (KaulaN_s/n^alphaN_s) * N_sectorial;
+        Kaula(1, n) = (KaulaN_z/(n^alphaN_z)) * N_zonal;
+        Kaula(2, n) = (KaulaN_s/(n^alphaN_s)) * N_sectorial;
     end
 
     % plot harmonics bounding

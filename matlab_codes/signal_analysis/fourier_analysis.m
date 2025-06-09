@@ -24,6 +24,7 @@ T_xy = detrend(phaseB_data.ad_xy);
 T_xz = detrend(phaseB_data.ad_xz);
 T_yy = detrend(phaseB_data.ad_yy);
 T_yz = detrend(phaseB_data.ad_yz);
+T_zz = detrend(phaseB_data.ad_zz);
 N = length(T_xx);
 
 % fourier espectra
@@ -32,6 +33,7 @@ FFT_xy = fft(T_xy, nfft);
 FFT_xz = fft(T_xz, nfft);
 FFT_yy = fft(T_yy, nfft);
 FFT_yz = fft(T_yz, nfft);
+FFT_zz = fft(T_zz, nfft);
 
 % compute periodogram
 [P_xx] = compute_periodogram(FFT_xx, Fs, N, nfft);
@@ -39,6 +41,7 @@ FFT_yz = fft(T_yz, nfft);
 [P_xz] = compute_periodogram(FFT_xz, Fs, N, nfft);
 [P_yy] = compute_periodogram(FFT_yy, Fs, N, nfft);
 [P_yz] = compute_periodogram(FFT_yz, Fs, N, nfft);
+[P_zz] = compute_periodogram(FFT_zz, Fs, N, nfft);
 
 % signal noise
 noise_ii = zeros(1, length(f));
@@ -62,7 +65,7 @@ elseif(mission == "GOCE")
         end
     end
 end
-MB = linspace(1E-2, 1E4, length(f));
+MB = linspace(1E-4, 1E4, length(f));
 
 % plot noise 
 figure()
@@ -77,7 +80,7 @@ title('GRACE FO accelerometers noise profile');
 % plot periodogram
 figure();
 subplot(2, 1, 1)
-loglog(f, sqrt(P_xx)/1E-9, f, sqrt(P_yy)/1E-9, 'LineWidth', 1.5)
+loglog(f, sqrt(P_xx)/1E-9, f, sqrt(P_yy)/1E-9, f, sqrt(P_zz)/1E-9, 'LineWidth', 1.5)
 hold all;
 plot(f, noise_ii, '--', 'color', 'k', 'LineWidth', 1.5)
 if(mission == "GRACE_FO")
@@ -89,7 +92,12 @@ end
 xlabel('frequency [Hz]')
 ylabel('PSD^{1/2} [E / √HZ]')
 title('Diagonal components')
-legend('\Gamma_{xx}', '\Gamma_{yy}')
+legend('\Gamma_{xx}', '\Gamma_{yy}', '\Gamma_{zz}', 'noise PSD')
+xlim([5E-7, 0.2])
+ylim([1E-4, 1E4])
+yticks([1e-4 1e0 1e4]);
+yticklabels({'10^{-4}','10^0','10^4'});
+grid on;
 
 subplot(2, 1, 2)
 loglog(f, sqrt(P_xy)/1E-9, f, sqrt(P_xz)/1E-9, f, sqrt(P_yz)/1E-9, ...
@@ -106,6 +114,11 @@ xlabel('frequency [Hz]')
 ylabel('PSD^{1/2} [E / √HZ]')
 title('Non diagonal components')
 legend('\Gamma_{xy}', '\Gamma_{xz}', '\Gamma_{yz}')
+grid on;
+xlim([5E-7, 0.2])
+ylim([1E-4, 1E4])
+yticks([1e-4 1e0 1e4]);
+yticklabels({'10^{-4}','10^0','10^4'});
 sgtitle("Signal frequency analysis. Phase A")
 
 % plot periodogram. All signals together

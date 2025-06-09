@@ -17,6 +17,6 @@ function [num_C, num_S, str_C, str_S] = SH_xlabel(n_max)
 
     for j = 2:n_max
         str_C{j - 1} = "C_{" + string(j) + "0}";
-        str_S{j - 1} = "S_{" + string(j) + string(j) + "}";
+        str_S{j - 1} = "S_{" + string(j) + "1}";
     end 
 end
