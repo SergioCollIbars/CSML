@@ -6,6 +6,7 @@ format long g;
 addpath('functions/')
 addpath('../QGG_gravEstim/src/')
 addpath('../QGG_navigation/data/')
+set(0,'defaultAxesFontSize',16);
 
 %%      EVALUATE NOISE PROJECTION
 % Description: Undertand and evaluate noise projection in Null space
@@ -63,8 +64,8 @@ vn = state_t(:, 4:6)';
 plot_trajectory(state_t, "BENNU");
 
 % compute noise sensitivity
-% % Hmat  = ones(length(t), 6) * NaN;
-% % [Hmat] = compute_Noise_Sensitivity(t, rn, vn, RA, DEC, W0, W, Cnm, Snm, Re, GM, n_max, normalized);
+Hmat  = ones(length(t), 6) * NaN;
+% % [Hmat] = compute_Noise_Sensitivity(t, rn, vn, RA, DEC, W0, W, Cnm, Snm, Re, GM, n_max, normalized, error);
 
 %  compute residual projecction
 [coeffs_vals, terms] = compute_coeff_proj(t, rn, vn, RA, DEC, W0, W, Cnm, Snm, Re, GM, n_max, normalized, error);
@@ -118,7 +119,7 @@ for j = 1:length(coeffs_vals(1, 1, :))
     if(length(terms) == 6)
         legend('dY_{RR}','dY_{RT}', 'dY_{RN}', 'dY_{TT}', 'dY_{TN}', 'dY_{NN}')
     else
-        legend('dY_{RR}', 'dY_{RT}', 'dY_{RN}', 'dY_{TT}', 'dY_{TN}', 'dY_{NN}')
+        legend('dY_{RT}', 'dY_{RN}', 'dY_{TT}', 'dY_{TN}', 'dY_{NN}')
     end
     
     title('$dY \cdot \vec{v}_{' + string(j) + '}$', 'Interpreter','latex');
@@ -126,13 +127,18 @@ end
 
 for j = 1:3
     figure()
-    % % y = smoothdata(Hmat, 1, 'movmean', 20);
-    y = Hmat(:, :, j);
+% %     y = Hmat(:, :, j);
+    y = smoothdata(Hmat(:, :, j), 1, 'movmean', 10);
     plot(t, real(y), 'LineWidth', 2)
-    legend('S_{\sigma^2_{RR}}', 'S_{\sigma^2_{RT}}', 'S_{\sigma^2_{RN}}',...
-        'S_{\sigma^2_{TT}}', 'S_{\sigma^2_{TN}}', 'S_{\sigma^2_{NN}}');
+    if(error == "position")
+        legend('', 'S_{\sigma^2_{RT}}', 'S_{\sigma^2_{RN}}',...
+            'S_{\sigma^2_{TT}}', 'S_{\sigma^2_{TN}}', 'S_{\sigma^2_{NN}}');
+    else
+        legend('S_{\sigma^2_{RR}}', 'S_{\sigma^2_{RT}}', 'S_{\sigma^2_{RN}}',...
+            'S_{\sigma^2_{TT}}', 'S_{\sigma^2_{TN}}', 'S_{\sigma^2_{NN}}');
+    end
 end
-% % legend('S_{\sigma^2_{xx}}', 'S_{\sigma^2_{xy}}', 'S_{\sigma^2_{xz}}',...
+% % legend('','S_{\sigma^2_{xy}}', 'S_{\sigma^2_{xz}}',...
 % %     'S_{\sigma^2_{yy}}', 'S_{\sigma^2_{yz}}', 'S_{\sigma^2_{zz}}');
 
 
@@ -161,11 +167,11 @@ function [coeffs_vals, terms] = compute_coeff_proj(t, rn, vn, RA, DEC, W0, W, Cn
         if(error == "position")
             [Hp] = compute_posPartials(n_max, normalized, Cnm, Snm, Re, GM, rn(:, k), ...
                  ACAF_ACI, ACAF_BODY);
-% %              C = null([Hp(2,:);Hp(3,:);Hp(5, :);Hp(6, :); Hp(9, :)]');
-% %              dY = [y12 y13 y22 y23 y33]';
+             C = null([Hp(2,:);Hp(3,:);Hp(5, :);Hp(6, :); Hp(9, :)]');
+             dY = [y12 y13 y22 y23 y33]';
 
-             C = null([Hp(1,:);Hp(2,:);Hp(3,:);Hp(5, :);Hp(6, :); Hp(9, :)]');
-             dY = [y11 y12 y13 y22 y23 y33]';
+% %              C = null([Hp(1,:);Hp(2,:);Hp(3,:);Hp(5, :);Hp(6, :); Hp(9, :)]');
+% %              dY = [y11 y12 y13 y22 y23 y33]';
         elseif(error == "attitude")
             [Hp] = compute_rotPartials(n_max, normalized, Cnm, Snm, Re, GM, rn(:, k), ACAF_ACI, ACAF_BODY);
             C = null([Hp(1,:); Hp(2,:);Hp(3,:);Hp(5, :); Hp(6, :); Hp(9, :)]');
@@ -187,7 +193,7 @@ function [coeffs_vals, terms] = compute_coeff_proj(t, rn, vn, RA, DEC, W0, W, Cn
     end
 end
 
-function [Hmat] = compute_Noise_Sensitivity(t, rn, vn, RA, DEC, W0, W, Cnm, Snm, Re, GM, n_max, normalized)
+function [Hmat] = compute_Noise_Sensitivity(t, rn, vn, RA, DEC, W0, W, Cnm, Snm, Re, GM, n_max, normalized, error)
     % noise values
     Hmat = ones(length(t), 6 , 3) * NaN;
     
@@ -210,14 +216,19 @@ function [Hmat] = compute_Noise_Sensitivity(t, rn, vn, RA, DEC, W0, W, Cnm, Snm,
     
         % rotation to body frame
         ACAF_RTN = ACAF_ACI * ACI_RTN;
-    % %     ACAF_RTN = ACAF_ACI;
-    
-        % position partials & null space
-        [Hp] = compute_posPartials(n_max, normalized, Cnm, Snm, Re, GM, rn(:, k), ...
-             ACAF_ACI, ACAF_RTN);
-% %         [Hp] = compute_rotPartials(n_max, normalized, Cnm, Snm, Re, GM, rn(:, k), ACAF_ACI, ACAF_RTN);
-        C = null([Hp(1, :);Hp(2,:);Hp(3,:);Hp(5, :);Hp(6, :); Hp(9, :)]');
-        
+% %         ACAF_RTN = ACAF_ACI;
+        if(error == "position")
+            [Hp] = compute_posPartials(n_max, normalized, Cnm, Snm, Re, GM, rn(:, k), ...
+            ACAF_ACI, ACAF_RTN); 
+            C = null([Hp(2,:);Hp(3,:);Hp(5, :);Hp(6, :); Hp(9, :)]');
+            R = diag([v12,v13,v22,v23,v33]);
+        elseif(error == "attitude")
+            [Hp] = compute_rotPartials(n_max, normalized, Cnm, Snm, Re, GM, rn(:, k), ACAF_ACI, ACAF_RTN);
+            C = null([Hp(1, :); Hp(2,:);Hp(3,:);Hp(5, :);Hp(6, :); Hp(9, :)]');
+            R = diag([v11, v12,v13,v22,v23,v33]);
+        else
+            warning('Select a correct error mode...');
+        end
         % noise projection
         r = C' * R * C;
     
@@ -279,28 +290,50 @@ function [I_proj, I_org, I_proj_ideal] = compute_Inf_loss(t, rn, vn, RA, DEC, W0
         if(error == "position")
             [Hp] = compute_posPartials(n_max, normalized, Cnm, Snm, Re, GM, rn(:, k), ...
                  ACAF_ACI, ACAF_BODY);
-             C = null([Hp(2,:);Hp(3,:);Hp(5, :);Hp(6, :); Hp(9, :)]');
-             R = diag([sigma_RT, sigma_RN, sigma_TT, sigma_TN, sigma_NN].^2);
+             C = null([Hp(2,:);Hp(3,:);Hp(5,:);Hp(6, :);Hp(9, :)]');
+             R = diag([sigma_RT, sigma_RN, sigma_TT,sigma_TN,sigma_NN].^2);
              R_id = eye(5,5);
-             h_org = [H(4,:);H(7,:);H(5, :);H(8, :); H(9, :)];
+             h = [H(4,:);H(7,:);H(5,:);H(8, :);H(9,:)];
+             
+% %              C  = null([Hp(3,:);Hp(5,:);Hp(6,:);Hp(9, :)]');
+% %              R = diag([sigma_RN,sigma_TT, sigma_TN,sigma_NN].^2);
+% %              R_id = eye(4,4);
+% %              h = [H(7,:);H(5,:);H(8,:);H(9, :)];
+
+             h_org = [H(1, :);H(4,:);H(7,:);H(5, :);H(8, :);H(9, :)];
+             R_org = diag([sigma_RR,sigma_RT, sigma_RN, sigma_TT, sigma_TN, sigma_NN].^2);
+% %              h_org = h;
+% %              R_org = R;
+             
         elseif(error == "attitude")
             [Hp] = compute_rotPartials(n_max, normalized, Cnm, Snm, Re, GM, rn(:, k), ACAF_ACI, ACAF_BODY);
             C = null([Hp(1,:); Hp(2,:);Hp(3,:);Hp(5, :); Hp(6, :); Hp(9, :)]');
             R = diag([sigma_RR, sigma_RT, sigma_RN, sigma_TT, sigma_TN, sigma_NN].^2);
             R_id = eye(6,6);
+            h = [H(1, :);H(4,:);H(7,:);H(5, :);H(8, :); H(9, :)];
+
+
+% %             C = null([Hp(1,:);Hp(5,:);Hp(6, :);Hp(9,:)]');
+% %             R = diag([sigma_RR,sigma_TT,sigma_TN, sigma_NN].^2);
+% %             R_id = eye(4,4);
+% %             h = [H(1,:);H(5,:);H(8,:);H(9, :)];
+% % 
             h_org = [H(1, :);H(4,:);H(7,:);H(5, :);H(8, :); H(9, :)];
+            R_org = diag([sigma_RR,sigma_RT, sigma_RN, sigma_TT, sigma_TN, sigma_NN].^2);
+% %             h_org = h;
+% %             R_org = R;
         else
             warning('Select a correct mode for the error type')
             break;
         end
 
         % project matrices
-        h_proj = C' * h_org;
+        h_proj = C' * h;
         r = C' * R * C;
         r_ideal = C' * R_id * C;
 
         % compute information
-        I_org = I_org + h_org' * inv(R) * h_org;
+        I_org = I_org + h_org' * inv(R_org) * h_org;
         I_proj = I_proj + h_proj' * inv(r) * h_proj;
         I_proj_ideal = I_proj_ideal + h_proj' * inv(r_ideal) * h_proj;
     end
