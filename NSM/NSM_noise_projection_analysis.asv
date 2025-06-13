@@ -7,8 +7,6 @@ addpath('functions/')
 addpath('../QGG_gravEstim/src/')
 addpath('../QGG_navigation/data/')
 addpath('../QGG_gravEstim/data_files/')
-addpath('../matlab_codes/GOCE_products/GOCE_L2b_MatlabReaders/data/')
-
 set(0,'defaultAxesFontSize',16);
 
 %%      EVALUATE NOISE PROJECTION
@@ -18,9 +16,9 @@ set(0,'defaultAxesFontSize',16);
 % Date: 05/21/25
 
 % select error type
-Planet   = "Earth";       % options: Earth / Bennu / Eros
-error    = "attitude";    % options: position / attitude
-saveData = 1;             % options: 0 / 1
+Planet   = "Bennu";       % options: Earth / Bennu / Eros
+error    = "position";    % options: position / attitude
+saveData = 0;             % options: 0 / 1
 
 sensitivity_analysis = 0;   % options: 0 /1
 residuals_projection = 0;   % options: 0 /1
@@ -72,9 +70,6 @@ else
     state_t = zeros(Nt, 6);
     state_t(:, 1:3) = rn_ACI';
     state_t(:, 4:6) = vn_ACI';
-
-    rn = state_t(:, 1:3)';
-    vn = state_t(:, 4:6)';
 end
 
 % compute planet orientation parameters
@@ -128,8 +123,8 @@ if(information_loss)
         plot_information_lowGravField(I_proj, I_org, I_proj_ideal, ...
             n_max, Nc, Ns, Ncs);
     else
-        plot_information_highGravField(I_proj, I_org,...
-            n_max, Nc, Ns)
+        plot_information_highGravField(I_proj, I_org, I_proj_ideal,...
+            n_max, Nc, Ns, Ncs)
     end
 end
 
@@ -137,10 +132,9 @@ end
 
 %% FUNCTIONS
 
-function [] = plot_information_highGravField(I_proj, I_org, n_max, Nc, Ns)
-    ratio = (1 - diag(I_proj./I_org)) * 100;
+function [] = plot_information_highGravField(I_proj, I_org, I_proj_ideal, n_max, Nc, Ns, Ncs)
+    ratio = diag(I_proj./I_org);
     [A, B] = list2mat(n_max, Nc, Ns, ratio);
-    A(1,1) = ratio(1);
 
     J = ones(n_max+1, (n_max+1)*2) * NaN; S = fliplr(B);
     J(:, 1:n_max+1) = S;
@@ -149,25 +143,10 @@ function [] = plot_information_highGravField(I_proj, I_org, n_max, Nc, Ns)
     figure;
     cmap = turbo(256);  % Original colormap with 256 colors
     im = imagesc(J);
-    clim([1 100]);  % Force color scaling between 1% and 100%
     colormap(cmap);
     set(im, 'AlphaData', ~isnan(J)); % Make NaNs transparent
     hold on;
 
-    c = colorbar;
-    c.Ticks = [1, 20, 40, 60, 80, 100]; 
-    c.TickLabels = {'1', '20', '40', '60', '80', '100 %'};
-   
-    % Set axis properties
-    yticks(linspace(1, n_max + 1, 7));
-    yticklabels(compose('%i', linspace(0, n_max, 7)));
-    xticks(linspace(1, 2*n_max + 2, 7));
-    xticklabels(compose('%i', linspace(-n_max, n_max, 7)));
-    
-    xlabel('Order');
-    ylabel('Degree');
-    hold off;
-    title('Information loss due to projection');
 end
 
 function [] = plot_information_lowGravField(I_proj, I_org, I_proj_ideal, n_max, Nc, Ns, Ncs)
