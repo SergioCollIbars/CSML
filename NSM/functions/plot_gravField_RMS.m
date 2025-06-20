@@ -1,4 +1,4 @@
-function [] = plot_gravField_RMS(X, sigma_N, SH_N, n_max, tt, llg)
+function [] = plot_gravField_RMS(X, sigma_N, error, n_max, tt, llg)
     [Nc, Ns, ~] = count_num_coeff(n_max); 
 
     % compute RMS value true
@@ -7,7 +7,7 @@ function [] = plot_gravField_RMS(X, sigma_N, SH_N, n_max, tt, llg)
 
      % compute error RMS
      err_RMS  = computeRMS_coeffErr(n_max, Nc, Ns, ...
-                X - [1;SH_N], zeros(n_max+1, n_max+1), ...
+                error, zeros(n_max+1, n_max+1), ...
                 zeros(n_max+1, n_max+1)); 
 
      % compute uncertaity RMS (3 sigma)

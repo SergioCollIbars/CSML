@@ -1,15 +1,18 @@
 function [Hrot_dA_ang, Hrot_dAdT_ang, H_omega_dA, H_omegaDot_dA, H_omega_dAdt, H_omegaDot_dAdt] = ...
-    compute_angularDyadPartials(omega, att, datt_dt, ddatt_ddt)
+    compute_angularDyadPartials(omega, att, datt_dt, ddatt_ddt, I)
     % Description: Using the partials of the angular velocity and
     % acceleration w.r.t the Euler angles, compute the Dyad partials w.r.t
     % the Euler angles.
     
+    Iner = I;    % inertia matrix
+
     % Euler angles
     psi = att(1); theta = att(2); phi = att(3);
     psiDot = datt_dt(1); thetaDot = datt_dt(2); phiDot = datt_dt(3);
-    psiDdot = ddatt_ddt(1); thetaDdot = ddatt_ddt(2); phiDdot = ddatt_ddt(3);
+% %     psiDdot = ddatt_ddt(1); thetaDdot = ddatt_ddt(2); phiDdot = ddatt_ddt(3);
     %%%%%%%%%%%%%%%%%%%%%% PARTIALS EULER ANGLE %%%%%%%%%%%%%%%%%%%%%%%
     % partials w.r.t angular velocity. For a (3-2-1) rotation
+
     B = [0, -cos(theta)*psiDot, 0;...
          0, -sin(phi)*sin(theta)*psiDot, cos(phi)*cos(theta)*psiDot-sin(phi)*thetaDot;...
          0, -cos(phi)*sin(theta)*psiDot, -sin(phi)*cos(theta)*psiDot-cos(phi)*thetaDot];
@@ -26,22 +29,28 @@ function [Hrot_dA_ang, Hrot_dAdT_ang, H_omega_dA, H_omegaDot_dA, H_omega_dAdt, H
         dw13_dt; dw23_dt; dw33_dt];
 
     % partials w.r.t angular acceleration
-    C12 = (sin(theta)*thetaDot)*psiDot;
-    C22 = (-cos(phi)*sin(theta)*phiDot - sin(phi)*cos(theta)*thetaDot)*psiDot;
-    C31 = (sin(phi)*sin(theta)*phiDot -cos(phi)*cos(theta)*thetaDot)*psiDot;
-    C23 = (-sin(phi)*cos(theta)*phiDot - cos(phi)*sin(theta)*thetaDot)*psiDot + ...
-        (-cos(phi)*phiDot)*thetaDot;
-    C33 = (-cos(phi)*cos(theta)*phiDot + sin(phi)*sin(theta)*thetaDot)*psiDot + ...
-        (sin(phi)*phiDot)*thetaDot;
-    C = [0,C12,0;...
-         0,C22,C23;...
-         0,C31,C33];
+% %     C12 = (sin(theta)*thetaDot)*psiDot;
+% %     C22 = (-cos(phi)*sin(theta)*phiDot - sin(phi)*cos(theta)*thetaDot)*psiDot;
+% %     C31 = (sin(phi)*sin(theta)*phiDot -cos(phi)*cos(theta)*thetaDot)*psiDot;
+% %     C23 = (-sin(phi)*cos(theta)*phiDot - cos(phi)*sin(theta)*thetaDot)*psiDot + ...
+% %         (-cos(phi)*phiDot)*thetaDot;
+% %     C33 = (-cos(phi)*cos(theta)*phiDot + sin(phi)*sin(theta)*thetaDot)*psiDot + ...
+% %         (sin(phi)*phiDot)*thetaDot;
+% %     C = [0,C12,0;...
+% %          0,C22,C23;...
+% %          0,C31,C33];
+% % 
+% %     D = [0, -cos(theta)*psiDdot, 0;...
+% %          0, -sin(phi)*sin(theta)*psiDdot, cos(phi)*cos(theta)*psiDdot-sin(phi)*thetaDdot;...
+% %          0, -cos(phi)*sin(theta)*psiDdot, -sin(phi)*cos(theta)*psiDdot-cos(phi)*thetaDdot];
+% % 
+% %     H_omegaDot = C + D;   H_omegaDot_dA = C + D;
+    
+    [t1] = compute_skewMat(omega);
+    [t2] = compute_skewMat(Iner * omega);
+    H_omegaDot = (-inv(Iner) * (t1 * Iner - t2)) * B;
+    H_omegaDot_dA = H_omegaDot;
 
-    D = [0, -cos(theta)*psiDdot, 0;...
-         0, -sin(phi)*sin(theta)*psiDdot, cos(phi)*cos(theta)*psiDdot-sin(phi)*thetaDdot;...
-         0, -cos(phi)*sin(theta)*psiDdot, -sin(phi)*cos(theta)*psiDdot-cos(phi)*thetaDdot];
-
-    H_omegaDot = C + D;   H_omegaDot_dA = C + D;
     H_dA_omegaDot = [zeros(1, 3); - H_omegaDot(3, :); H_omegaDot(2, :); ...
         H_omegaDot(3, :); zeros(1, 3); - H_omegaDot(1, :); ...
         -H_omegaDot(2, :); H_omegaDot(1, :); zeros(1, 3)];
@@ -65,17 +74,24 @@ function [Hrot_dA_ang, Hrot_dAdT_ang, H_omega_dA, H_omegaDot_dA, H_omega_dAdt, H
         dw13_dt; dw23_dt; dw33_dt];
 
     % partials w.r.t angular acceleration
-     A_dot = [-cos(theta)*thetaDot, 0, 0;...
-            cos(phi)*cos(theta)*phiDot-sin(phi)*sin(theta)*thetaDot, -sin(phi)*phiDot, 0;...
-            -sin(phi)*cos(theta)*phiDot-cos(phi)*sin(theta)*thetaDot, -cos(phi)*phiDot, 0];
-    H12 = -cos(theta)*psiDot;
-    H22 = -sin(phi)*sin(theta)*psiDot;
-    H23 = cos(phi)*cos(theta)*psiDot - sin(phi)*thetaDot;
-    H32 = -cos(phi)*sin(theta)*psiDot;
-    H33 = -sin(phi)*cos(theta)*psiDot - cos(phi)*thetaDot;
-    H = [0,H12,0;0,H22,H23;0,H32,H33];
-    
-    H_omegaDot = A_dot + H; H_omegaDot_dAdt = A_dot + H;
+% %      A_dot = [-cos(theta)*thetaDot, 0, 0;...
+% %             cos(phi)*cos(theta)*phiDot-sin(phi)*sin(theta)*thetaDot, -sin(phi)*phiDot, 0;...
+% %             -sin(phi)*cos(theta)*phiDot-cos(phi)*sin(theta)*thetaDot, -cos(phi)*phiDot, 0];
+% %     H12 = -cos(theta)*psiDot;
+% %     H22 = -sin(phi)*sin(theta)*psiDot;
+% %     H23 = cos(phi)*cos(theta)*psiDot - sin(phi)*thetaDot;
+% %     H32 = -cos(phi)*sin(theta)*psiDot;
+% %     H33 = -sin(phi)*cos(theta)*psiDot - cos(phi)*thetaDot;
+% %     H = [0,H12,0;0,H22,H23;0,H32,H33];
+% %     
+% %     H_omegaDot = A_dot + H; H_omegaDot_dAdt = A_dot + H;
+
+
+    [t1] = compute_skewMat(omega);
+    [t2] = compute_skewMat(Iner * omega);
+    H_omegaDot = (-inv(Iner) * (t1 * Iner - t2)) * A;
+    H_omegaDot_dAdt = H_omegaDot;
+
     H_dAdT_omegaDot = [zeros(1, 3); - H_omegaDot(3, :); H_omegaDot(2, :); ...
         H_omegaDot(3, :); zeros(1, 3); - H_omegaDot(1, :); ...
         -H_omegaDot(2, :); H_omegaDot(1, :); zeros(1, 3)];
@@ -83,3 +99,9 @@ function [Hrot_dA_ang, Hrot_dAdT_ang, H_omega_dA, H_omegaDot_dA, H_omega_dAdt, H
     Hrot_dAdT_ang = H_dAdT_omega + H_dAdT_omegaDot; % Dyad partials w.r.t Euler angle rate
 end
 
+
+function [skw] = compute_skewMat(vec)
+    skw = [0, -vec(3), vec(2);...
+           vec(3), 0, -vec(1);...
+          -vec(2), vec(1), 0];
+end

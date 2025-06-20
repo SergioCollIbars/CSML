@@ -8,7 +8,7 @@ function [theta] = SC_orientation(t, state_t, type)
     theta = ones(9, Nt) * NaN; % [theta; thetaDot; thetaDdot]
     if(type == "inertial")
         theta = zeros(9, Nt);
-    elseif(type == "RTN") % WARNING: TBD
+    elseif(type == "RTN")
         w = ones(3, Nt) * NaN;
         acc = ones(3, Nt) * NaN;
         for j = 2:Nt-1

@@ -5,10 +5,10 @@ close all
 
 syms lambda phi n
 n1 = 2;
-m1 = 0;
+m1 = 1;
 
-n2 = 2;
-m2 = 0;
+n2 = 4;
+m2 = 3;
 
 normalized = 1;
 

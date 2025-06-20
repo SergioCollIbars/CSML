@@ -14,21 +14,21 @@ addpath('../../QGG_gravEstim/src/')
 set(0,'defaultAxesFontSize',16);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%                  GRAVITY FIELD DETERMINATION WITH NSM                 %
+%            GRAVITY FIELD COVARIANCE ANALYSIS WITH NSM                 %
 % Author: Sergio Coll Ibars                                             %
-% Date: 05/09/2025                                                      %
-% Description: Do gravity field estimation accounting for positon and   %
-% attitude errors and use the NSM, LS or a comparison of both           %
+% Date: 06/18/2025                                                      %
+% Description: Do gravity field covariance analysis accounting for      %
+% positon and attitude errors and use the NSM, LS or a                  %
+% comparison of both                                                    %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % Input parameters
-Planet   = "Earth";       % options: Earth / Bennu / Eros
+Planet   = "Bennu";       % options: Earth / Bennu / Eros
 Solver   = "Both";        % options: NSM / LS / Both
 Errors   = "attitude";    % options: position / attitude / both
-measMode = "2";           % options 1 = GG + SST + GYRO / 2 = GG + SST 
 saveData = 0;             % options: 0 / 1
 
-[planetParams, poleParams, Kaula, r, Xtrue, Iner] = loadPlanet(Planet);
+[planetParams, poleParams, Kaula, r, Xtrue] = loadPlanet(Planet);
 GM  = planetParams(1); Re = planetParams(2); n_max = planetParams(3);
 normalized = planetParams(4); [Nc, Ns, Ncs] = count_num_coeff(n_max); 
 
@@ -46,7 +46,7 @@ Nt  = length(t);
 % Estimation parameters
 P0  = diag(Kaula(2:end).^2);  
 S   = normrnd(0, 1E-1 * Kaula);
-Xp  = Xtrue + S'; 
+Xp  = Xtrue; 
 [Cnm, Snm] = list2mat(n_max, Nc, Ns, Xtrue);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -73,9 +73,6 @@ else
     t = positions(:, 1)';
     Nt = length(t);
 
-    t = t(1:Nt/3);
-    Nt = length(t);
-
     rn_ACI = rotate2ECI(rn_ECEF, ACI_ECEF, t);
     vn_ACI = rotate2ECI(vn_ECEF, ACI_ECEF, t);
     state_t = zeros(Nt, 6);
@@ -95,8 +92,9 @@ type = "RTN";
 % % [orientation(7:9, :)] = check_outliers(t, orientation(7:9, :));
 
 % attitude nominal value
-theta    = orientation(1:3, :);  % Euler angle      [rad]
-thetaDot = orientation(4:6, :);  % Euler angle rate [rad /s]
+theta    = orientation(1:3, :);  % [rad]
+thetaDot = orientation(4:6, :);  % [rad /s]
+thetaDdot= orientation(7:9, :);  % [rad / s^2]
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 disp('Generating state errors ... ')
@@ -106,27 +104,27 @@ Amp  = 0.*[1;0.7;0.5];          % [m]
 [Ar] = generate_posErrors(t, type, Amp, T);
 
 % Attitude error
-type = "linear";              % options: constant / periodic / linear
-Amp  = 4.85E-9.*[1;0.7;0.5];  % [rad] 
-[att_Err] = generate_attErrors(t, type, Planet, Amp, T, measMode);
+type = "random";              % options: constant / periodic / linear
+Amp  = 4.85E-6.*[1;0.7;0.5];    % [rad] 
+Amp = 0.1E-6 * sqrt(f) * ones(3, 1);
+[att_Err] = generate_attErrors(t, type, Planet, Amp, T);
 
 % include position errors
 rn = state_t(:, 1:3)' + Ar;
 vn = state_t(:, 4:6)';
 
 % include attitude errors
-[angVel_true, angAcc_true] = compute_angularVals(theta, thetaDot, Iner,...
-    measMode, att_Err);
-[angVel_nom, angAcc_nom]   = compute_angularVals(theta, thetaDot, Iner,...
-    measMode, zeros(6, Nt));
+[angVel_true, angAcc_true] = compute_angularVals(theta + att_Err(1:3, :), ...
+    thetaDot + att_Err(4:6, :), thetaDdot + att_Err(7:9, :));
+[angVel_nom, angAcc_nom]   = compute_angularVals(theta, thetaDot, thetaDdot);
 
 % plot S/C state
 plot_SC_state(t, Planet, state_t, orientation);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-disp('Generating measurements ... ')
+disp('Generating measurements weigths ... ')
 % mesurement noise & weight
-sigma    = 1E-12;                   % [1/s^2]
+sigma    = 1E-15;                   % [1/s^2]
 means    = zeros(1, 9);
 std_devs = sigma * ones(1, 9); 
 num_realizations = length(t);       % Number of realizations
@@ -136,23 +134,15 @@ noise = normrnd(repmat(means', 1, num_realizations), ...
 
 R = diag(std_devs.^2);
 
-% compute measurements
-[Ytrue, ~, ~] = gradiometer_meas(t ,planetParams, ACAF_ACI, state_t, ...
-                zeros(9, Nt), Cnm, Snm, eye(3,3));
-[Ytrue] = add_angularComponents(Ytrue, theta, att_Err(1:3, :), angVel_true,...
-    angAcc_true); 
-Ytrue  = Ytrue + noise;
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 disp('Running gravity determination ... ')
 if(Errors == "attitude")
-    err = [att_Err(1:3, :);angVel_true - angVel_nom];
     Pc = zeros(6, 6); Pxc = zeros(Ncs - 1, 6);
     for j = 1:3
-        Pc(j, j) = max(err(j, :))^2;
+        Pc(j, j) = max(att_Err(j, :))^2;
     end
     for j = 4:6
-        Pc(j, j) = max(err(j-3, :)*1E-3)^2;
+        Pc(j, j) = max(att_Err(j-3, :)*1E-3)^2;
     end
 else
     % TBD
@@ -161,51 +151,44 @@ end
 % run estimation
 if(Solver == "NSM")         % run NSM only
     if(Errors == "attitude")
-        [SH_N, sigma_N] = NSM_solver_att(planetParams, ACAF_ACI, R, P0, Xp, t ,...
-        theta, thetaDot, thetaDdot, angVel_nom, angAcc_nom, Ytrue, rn, vn, Iner);
+        [sigma_N] = NSM_covSolver_att(planetParams, ACAF_ACI, R, P0, Xp, t ,...
+        theta, thetaDot, thetaDdot, angVel_nom, rn, vn);
     else
         % TBD
     end
 elseif(Solver == "LS")      % run standard LS only
     if(Errors == "attitude")
-        [SH_N, sigma_N] = LS_solver_att(planetParams, ACAF_ACI, R, P0, Pc, Pxc, Xp, t ,...
-            theta, thetaDot, zeros(3, Nt), angVel_nom, angAcc_nom, Ytrue, rn, vn, Iner);
+        [sigma_N] = LS_covSolver_att(planetParams, ACAF_ACI, R, P0, Pc, Pxc, Xp, t ,...
+            theta, thetaDot, thetaDdot, angVel_nom, rn, vn);
     else
         % TBD
     end
 elseif(Solver == "Both")    % run NSM & LS
     disp(' Solving with NSM .....')
-    [SH_N, sigma_N] = NSM_solver_att(planetParams, ACAF_ACI, R, P0, Xp, t ,...
-        theta, thetaDot, zeros(3, Nt), angVel_nom, angAcc_nom, Ytrue, rn, vn, Iner);
+    [sigma_N] = NSM_covSolver_att(planetParams, ACAF_ACI, R, P0, Xp, t ,...
+        theta, thetaDot, thetaDdot, angVel_nom, rn, vn);
 
     disp(' Solving with LS .....')
-    [SH_LS, sigma_LS] = LS_solver_att(planetParams, ACAF_ACI, R, P0, Pc, Pxc, Xp, t ,...
-        theta, thetaDot, zeros(3, Nt), angVel_nom, angAcc_nom, Ytrue, rn, vn, Iner);
+    [sigma_LS, Sensitivity] = LS_covSolver_att(planetParams, ACAF_ACI, R, P0, Pc, Pxc, Xp, t ,...
+        theta, thetaDot, thetaDdot, angVel_nom, rn, vn, att_Err);
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 disp('Displaying results ...')
 % plot resutls
 if(Solver == "Both")
-    % plot gravity field error per SH coefficient
-    mk = 'square';  tt = "NSM estimation error "; llg = {'truth','NSM', 'error'};
-    plot_gravField(Xtrue, sigma_N, Xtrue(2:end) - SH_N, n_max, tt, mk, llg);
-
-    mk = 'square';  tt = "LS estimation error "; llg = {'truth','LS', 'error'};
-    plot_gravField(Xtrue, sigma_LS, Xtrue(2:end) - SH_LS, n_max, tt, mk, llg);
-
     % plot gravity field error per RMS value
-    tt = "RMS error using NSM"; llg = {'truth', '3 \sigma NSM', 'NSM error'};
-    error = Xtrue - [1;SH_N];
+    tt = "RMS error using NSM"; llg = {'truth', '3 \sigma NSM', ''};
+    error = Xtrue - Xtrue(1:end);
     plot_gravField_RMS(Xtrue, sigma_N, error, n_max, tt, llg);
 
-    tt = "RMS error using LS"; llg = {'truth', '3 \sigma LS', 'LS error'};
-    error = Xtrue - [1;SH_LS];
+    tt = "RMS error using LS"; llg = {'truth', '3 \sigma LS', 'LS Sensitivity'};
+    error = [1;Sensitivity];
     plot_gravField_RMS(Xtrue, sigma_LS, error, n_max, tt, llg);
 
 else
     mk = 'square';  tt = "Estimation error "; llg = {'truth','NSM', 'error'};
-    plot_gravField(Xtrue, sigma_N, Xtrue(2:end) - SH_N, n_max, tt, mk, llg);
+    plot_gravField(Xtrue, sigma_N, Xtrue(2:end), n_max, tt, mk, llg);
 end
 
 

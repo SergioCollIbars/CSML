@@ -1,5 +1,5 @@
 function [SH_N, sigma_N] = NSM_solver_att(planetParams, RotPlanet, R, P0, Xp, t ,...
-    attitude, datt_dt, ddatt_ddt, angVel, angAcc, Y, rn, vn)
+    attitude, datt_dt, ddatt_ddt, angVel, angAcc, Y, rn, vn, Iner)
     % pole & planet variables
     GM  = planetParams(1); Re = planetParams(2); n_max = planetParams(3);
     normalized = planetParams(4);  
@@ -32,10 +32,13 @@ function [SH_N, sigma_N] = NSM_solver_att(planetParams, RotPlanet, R, P0, Xp, t 
         
              % compute attitude partials. Nominal body frame
             [Hrot_grad] = compute_rotPartials(n_max, normalized, Cp, Sp, Re, GM, rn_ACI, ACAF_ACI, ACAF_B);
-            [Hrot_dA_ang, Hrot_dAdT_ang] = compute_angularDyadPartials(angVel(:, j), attitude(:, j), datt_dt(:, j), ddatt_ddt(:, j));
-            Hrot_dA = Hrot_grad + Hrot_dA_ang;
-            Hrot_dAdT = Hrot_dAdT_ang;
-            Hrot = [Hrot_dA, Hrot_dAdT];
+% %             [Hrot_dA_ang, Hrot_dAdT_ang] = compute_angularDyadPartials(angVel(:, j), attitude(:, j), datt_dt(:, j), ddatt_ddt(:, j));
+% %             Hrot_dA = Hrot_grad + Hrot_dA_ang;
+% %             Hrot_dAdT = Hrot_dAdT_ang;
+% %             Hrot = [Hrot_dA, Hrot_dAdT];
+
+            [Hrot_omega_dyad, H_omegaDot_dyad, ~, ~] = compute_angularDyadPartials_v2(angVel(:, j), Iner);
+            Hrot = [Hrot_grad, Hrot_omega_dyad+H_omegaDot_dyad];
         
             % Null space method correcting for attitude
             [Yc, ~, Hc_BODY] = gradiometer_meas(t(j) ,planetParams, ACAF_ACI, [rn(:, j)', vn(:, j)'], ...

@@ -25,7 +25,7 @@ set(0,'defaultAxesFontSize',16);
 Planet   = "Earth";       % options: Earth / Bennu / Eros
 Solver   = "Both";        % options: NSM / LS / Both
 Errors   = "attitude";    % options: position / attitude / both
-measMode = "2";           % options 1 = GG + SST + GYRO / 2 = GG + SST 
+measMode = "1";           % options 1 = GG + SST + GYRO / 2 = GG + SST 
 saveData = 0;             % options: 0 / 1
 
 [planetParams, poleParams, Kaula, r, Xtrue, Iner] = loadPlanet(Planet);
@@ -73,9 +73,6 @@ else
     t = positions(:, 1)';
     Nt = length(t);
 
-    t = t(1:Nt/3);
-    Nt = length(t);
-
     rn_ACI = rotate2ECI(rn_ECEF, ACI_ECEF, t);
     vn_ACI = rotate2ECI(vn_ECEF, ACI_ECEF, t);
     state_t = zeros(Nt, 6);
@@ -106,8 +103,8 @@ Amp  = 0.*[1;0.7;0.5];          % [m]
 [Ar] = generate_posErrors(t, type, Amp, T);
 
 % Attitude error
-type = "linear";              % options: constant / periodic / linear
-Amp  = 4.85E-9.*[1;0.7;0.5];  % [rad] 
+type = "periodic";              % options: constant / periodic / linear
+Amp  = 4.85E-6.*[1;0.7;0.5];  % [rad] 
 [att_Err] = generate_attErrors(t, type, Planet, Amp, T, measMode);
 
 % include position errors
@@ -119,6 +116,7 @@ vn = state_t(:, 4:6)';
     measMode, att_Err);
 [angVel_nom, angAcc_nom]   = compute_angularVals(theta, thetaDot, Iner,...
     measMode, zeros(6, Nt));
+% % load("angAcc_true.mat"); load("angVel_true.mat");
 
 % plot S/C state
 plot_SC_state(t, Planet, state_t, orientation);
@@ -152,7 +150,7 @@ if(Errors == "attitude")
         Pc(j, j) = max(err(j, :))^2;
     end
     for j = 4:6
-        Pc(j, j) = max(err(j-3, :)*1E-3)^2;
+        Pc(j, j) = max(err(j-3, :))^2;
     end
 else
     % TBD

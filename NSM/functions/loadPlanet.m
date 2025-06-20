@@ -1,10 +1,10 @@
-function [planetParams, poleParams, Kaula, r, coeffs] = loadPlanet(option)
+function [planetParams, poleParams, Kaula, r, coeffs, I] = loadPlanet(option)
     if(option == "Earth") % select Earth
         path = "HARMCOEFS_EARTH_1.txt";
         [Cnm, Snm, Re] = readCoeff(path);
         path = "SIGMACOEFS_EARTH_1.txt";
         GM = 3.986004418E14;
-        n_max  = 120;
+        n_max  = 20;
         normalized = 1;
         W = 2 * pi / (24*3600);     % Rotation ang. vel   [rad/s]
         W0 = 0;                     % Initial asteroid longitude
@@ -16,6 +16,9 @@ function [planetParams, poleParams, Kaula, r, coeffs] = loadPlanet(option)
 
         % Kaula rule
         [Kaula] = compute_Kaula(n_max, 1E-5);
+
+        % Inertia matrix
+        I = [153,-23,-6;-23,2691,1;-6,1,2653];
     elseif(option == "Bennu")   % select Bennu
         path = "HARMCOEFS_BENNU_OSIRIS_1.txt";
         [Cnm, Snm, Re] = readCoeff(path);
@@ -31,6 +34,9 @@ function [planetParams, poleParams, Kaula, r, coeffs] = loadPlanet(option)
         r = 0.35E3;         % [m] 
 
         Kaula = compute_Kaula(n_max, 0.813);
+
+        % Inertia matrix
+        I = [153,-23,-6;-23,2691,1;-6,1,2653];
     end
 
     [Nc, Ns, ~] = count_num_coeff(n_max); 

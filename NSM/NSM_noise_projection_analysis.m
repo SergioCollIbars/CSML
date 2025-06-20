@@ -20,11 +20,11 @@ set(0,'defaultAxesFontSize',16);
 % select error type
 Planet   = "Earth";       % options: Earth / Bennu / Eros
 error    = "attitude";    % options: position / attitude
-saveData = 1;             % options: 0 / 1
+saveData = 0;             % options: 0 / 1
 
 sensitivity_analysis = 0;   % options: 0 /1
-residuals_projection = 0;   % options: 0 /1
-information_loss     = 1;   % options: 0 /1
+residuals_projection = 1;   % options: 0 /1
+information_loss     = 0;   % options: 0 /1
 
 [planetParams, poleParams, Kaula, r, Xtrue] = loadPlanet(Planet);
 GM  = planetParams(1); Re = planetParams(2); n_max = planetParams(3);
@@ -36,7 +36,7 @@ DEC = poleParams(4);
 % Time options
 n   = sqrt(GM / r^3);    % Mean motion         [rad/s]
 T   = (2 * pi / n);
-rev = 1/2;
+rev = 1;
 f   = 1/60;
 t   = linspace(0, rev*T, rev*T * f);
 Nt  = length(t);
@@ -84,7 +84,7 @@ end
 if(sensitivity_analysis)
     [Hmat] = compute_Noise_Sensitivity(t, rn, vn, ACAF_ACI, Cnm,...
         Snm, Re, GM, n_max, normalized, error);
-    for j = 1:3
+    for j = 1:1
         figure()
         y = smoothdata(Hmat(:, :, j), 1, 'movmean', 1);
         z = mean(Hmat(:, :, j));
@@ -300,9 +300,6 @@ function [Hmat] = compute_Noise_Sensitivity(t, rn, vn, Rot, Cnm, Snm, Re, GM, n_
         end
         % noise projection
         r = C' * R * C;
-    
-% %         [~, D] = eig(r);
-% %         d = diag(D);
         d = det(r);
 
         for i = 1:length(d)
