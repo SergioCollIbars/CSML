@@ -72,9 +72,9 @@ else
     vn_ECEF = velocity(:, 2:end)';
     t = positions(:, 1)';
     Nt = length(t);
-
-    t = t(1:Nt/3);
-    Nt = length(t);
+    
+    % WARNING: Check time-points to make sure that all files are at the
+    % same time.
 
     rn_ACI = rotate2ECI(rn_ECEF, ACI_ECEF, t);
     vn_ACI = rotate2ECI(vn_ECEF, ACI_ECEF, t);
@@ -106,8 +106,8 @@ Amp  = 0.*[1;0.7;0.5];          % [m]
 [Ar] = generate_posErrors(t, type, Amp, T);
 
 % Attitude error
-type = "linear";              % options: constant / periodic / linear
-Amp  = 4.85E-9.*[1;0.7;0.5];  % [rad] 
+type = "constant";              % options: constant / periodic / linear
+Amp  = 4.85E-5.*[1;0.7;0.5];  % [rad] 
 [att_Err] = generate_attErrors(t, type, Planet, Amp, T, measMode);
 
 % include position errors
@@ -187,12 +187,21 @@ end
 disp('Displaying results ...')
 % plot resutls
 if(Solver == "Both")
-    % plot gravity field error per SH coefficient
-    mk = 'square';  tt = "NSM estimation error "; llg = {'truth','NSM', 'error'};
-    plot_gravField(Xtrue, sigma_N, Xtrue(2:end) - SH_N, n_max, tt, mk, llg);
+    if(n_max > 10)
+        % plot gravity field error pr SH coefficient. Pyramide plot
+        tt = "NSM estimation error "; error = (abs(Xtrue - [1;SH_N])./abs(Xtrue)).* 100;
+        plot_high_gravField(n_max, Nc, Ns, error, tt);
 
-    mk = 'square';  tt = "LS estimation error "; llg = {'truth','LS', 'error'};
-    plot_gravField(Xtrue, sigma_LS, Xtrue(2:end) - SH_LS, n_max, tt, mk, llg);
+        tt = "LS estimation error "; error = (abs(Xtrue - [1;SH_LS])./abs(Xtrue)).* 100;
+        plot_high_gravField(n_max, Nc, Ns, error, tt);
+    else
+        % plot gravity field error per SH coefficient
+        mk = 'square';  tt = "NSM estimation error "; llg = {'truth','NSM', 'error'};
+        plot_gravField(Xtrue, sigma_N, Xtrue(2:end) - SH_N, n_max, tt, mk, llg);
+    
+        mk = 'square';  tt = "LS estimation error "; llg = {'truth','LS', 'error'};
+        plot_gravField(Xtrue, sigma_LS, Xtrue(2:end) - SH_LS, n_max, tt, mk, llg);
+    end
 
     % plot gravity field error per RMS value
     tt = "RMS error using NSM"; llg = {'truth', '3 \sigma NSM', 'NSM error'};
@@ -204,8 +213,14 @@ if(Solver == "Both")
     plot_gravField_RMS(Xtrue, sigma_LS, error, n_max, tt, llg);
 
 else
-    mk = 'square';  tt = "Estimation error "; llg = {'truth','NSM', 'error'};
-    plot_gravField(Xtrue, sigma_N, Xtrue(2:end) - SH_N, n_max, tt, mk, llg);
+    if(n_max > 10)
+        % plot gravity field error pr SH coefficient. Pyramide plot
+        tt = Solver +  " estimation error "; error = Xtrue(2:end) - SH_N;
+        plot_high_gravField(n_max, Nc, Ns, error, tt);
+    else
+        mk = 'square';  tt = "Estimation error "; llg = {'truth','NSM', 'error'};
+        plot_gravField(Xtrue, sigma_N, Xtrue(2:end) - SH_N, n_max, tt, mk, llg);
+    end
 end
 
 
