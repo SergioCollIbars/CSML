@@ -1,5 +1,6 @@
-function [ACI_ECEF] = read_ECEF2ITRF_mat(R)
+function [ACI_ECEF, time] = read_ECEF2ITRF_mat(R)
     Nt = length(R(:, 1));
+    time = R(:, 1);
    
     % output matrix
     ACI_ECEF  = ones(3*Nt, 3) * NaN;

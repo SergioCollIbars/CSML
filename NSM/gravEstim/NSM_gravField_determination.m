@@ -26,7 +26,7 @@ Planet   = "Earth";       % options: Earth / Bennu / Eros
 Solver   = "Both";        % options: NSM / LS / Both
 Errors   = "attitude";    % options: position / attitude / both
 measMode = "2";           % options 1 = GG + SST + GYRO / 2 = GG + SST 
-saveData = 0;             % options: 0 / 1
+saveData = 1;             % options: 0 / 1
 
 [planetParams, poleParams, Kaula, r, Xtrue, Iner] = loadPlanet(Planet);
 GM  = planetParams(1); Re = planetParams(2); n_max = planetParams(3);
@@ -65,16 +65,27 @@ else
     load('Nov_L2position.mat');   % ECEF coordinates
     load('Nov_L2velocity.mat');   % ECEF coordinates
     load('Nov_L2ECEF2ITRF.mat');  % rotation matrix ECEF 2 ITRF
+    load('Nov_L2ITRF2GRF.mat');   % rotation matrix ITRF 2 GRF
     
-    [ACI_ECEF] = read_ECEF2ITRF_mat(outPut);
-
-    rn_ECEF = positions(:, 2:end)';
-    vn_ECEF = velocity(:, 2:end)';
-    t = positions(:, 1)';
-    Nt = length(t);
+    [~, t2] = read_ECEF2ITRF_mat(outPut);
+    [~, t3]  = read_ECEF2ITRF_mat(outPut2);
     
     % WARNING: Check time-points to make sure that all files are at the
     % same time.
+    t1 = positions(:, 1);
+    commonTimes = intersect(intersect(t1, t2), t3);
+    
+    [~, idx1] = ismember(commonTimes, t1);
+    [~, idx2] = ismember(commonTimes, t2);
+    [~, idx3] = ismember(commonTimes, t3);
+
+    t = t1(idx1)';
+    Nt = length(t);
+
+    rn_ECEF = positions(idx1, 2:end)';
+    vn_ECEF = velocity(idx1, 2:end)';
+    ACI_ECEF = read_ECEF2ITRF_mat(outPut(idx2, :));
+    GRF_ACI  = read_ECEF2ITRF_mat(outPut2(idx3, :));
 
     rn_ACI = rotate2ECI(rn_ECEF, ACI_ECEF, t);
     vn_ACI = rotate2ECI(vn_ECEF, ACI_ECEF, t);
