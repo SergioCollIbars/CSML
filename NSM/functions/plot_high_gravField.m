@@ -10,18 +10,20 @@ function [] = plot_high_gravField(n_max, Nc, Ns, value, tt)
     J = ones(n_max+1, (n_max+1)*2) * NaN; S = fliplr(B);
     J(:, 1:n_max+1) = S;
     J(:, n_max+2:end) = A;
+    J(J == 0) = NaN;    % set 0's to NaNs
 
     figure;
     cmap = turbo(256);  % Original colormap with 256 colors
     im = imagesc(J);
-    clim([0 100]);  % Force color scaling between 1% and 100%
+    clim([1E-2 50]);      % Force color scaling between 1% and 100%
     colormap(cmap);
     set(im, 'AlphaData', ~isnan(J)); % Make NaNs transparent
     hold on;
+    set(gca, 'ColorScale', 'log')
 
     c = colorbar;
-    c.Ticks = [0, 20, 40, 60, 80, 100]; 
-    c.TickLabels = {'1', '20', '40', '60', '80', '100 %'};
+    c.Ticks = [1E-2, 1E-1, 1, 5, 20, 50]; 
+    c.TickLabels = {'0.01', '0.1', '1', '5', '20', '50 %'};
    
     % Set axis properties
     yticks(linspace(1, n_max + 1, 7));

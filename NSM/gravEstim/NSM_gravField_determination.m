@@ -26,7 +26,7 @@ Planet   = "Earth";       % options: Earth / Bennu / Eros
 Solver   = "Both";        % options: NSM / LS / Both
 Errors   = "attitude";    % options: position / attitude / both
 measMode = "2";           % options 1 = GG + SST + GYRO / 2 = GG + SST 
-saveData = 1;             % options: 0 / 1
+saveData = 0;             % options: 0 / 1
 
 [planetParams, poleParams, Kaula, r, Xtrue, Iner] = loadPlanet(Planet);
 GM  = planetParams(1); Re = planetParams(2); n_max = planetParams(3);
@@ -60,17 +60,17 @@ if(saveData == 0)
     PHI0 = reshape(eye(6,6), [36, 1]);
     [~, state_t] = ode113(@(t, x) EoM(t, x, Cnm, Snm, 4, GM, Re, normalized, ...
         W0, W, RA, DEC, 0), t, [r0;v0;PHI0], options);
-    ACI_ECEF = 0;
+    ACI_ECEF = 0; GRF_ACI = 0;
 else
     load('Nov_L2position.mat');   % ECEF coordinates
     load('Nov_L2velocity.mat');   % ECEF coordinates
     load('Nov_L2ECEF2ITRF.mat');  % rotation matrix ECEF 2 ITRF
     load('Nov_L2ITRF2GRF.mat');   % rotation matrix ITRF 2 GRF
     
-    [~, t2] = read_ECEF2ITRF_mat(outPut);
-    [~, t3]  = read_ECEF2ITRF_mat(outPut2);
+    [~, t2]  = quaternion2CDM(outPut);
+    [~, t3]  = quaternion2CDM(outPut2);
     
-    % WARNING: Check time-points to make sure that all files are at the
+    % Check time-points to make sure that all files are at the
     % same time.
     t1 = positions(:, 1);
     commonTimes = intersect(intersect(t1, t2), t3);
@@ -81,17 +81,19 @@ else
 
     t = t1(idx1)';
     Nt = length(t);
+    
+    % WARNING: reducing data set
+    t = t(1:round(Nt/10));
+    Nt = length(t);
 
     rn_ECEF = positions(idx1, 2:end)';
     vn_ECEF = velocity(idx1, 2:end)';
-    ACI_ECEF = read_ECEF2ITRF_mat(outPut(idx2, :));
-    GRF_ACI  = read_ECEF2ITRF_mat(outPut2(idx3, :));
+    ACI_ECEF = quaternion2CDM(outPut(idx2, :));
+    GRF_ACI  = quaternion2CDM(outPut2(idx3, :));
 
-    rn_ACI = rotate2ECI(rn_ECEF, ACI_ECEF, t);
-    vn_ACI = rotate2ECI(vn_ECEF, ACI_ECEF, t);
-    state_t = zeros(Nt, 6);
-    state_t(:, 1:3) = rn_ACI';
-    state_t(:, 4:6) = vn_ACI';
+    state_ACI = rotate2ECI([rn_ECEF; vn_ECEF], ACI_ECEF, t);
+    state_t(:, 1:3) = state_ACI(1:3, :)';
+    state_t(:, 4:6) = state_ACI(4:6, :)';
 end
 
 % compute planet orientation parameters
@@ -99,8 +101,8 @@ end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 disp('Computing attitude ... ')
-type = "RTN";
-[orientation] = SC_orientation(t, state_t, type);
+type = "inertial";
+[orientation] = SC_orientation(t, state_t, type, GRF_ACI);
 
 % check for outliers
 % % [orientation(7:9, :)] = check_outliers(t, orientation(7:9, :));
@@ -117,8 +119,8 @@ Amp  = 0.*[1;0.7;0.5];          % [m]
 [Ar] = generate_posErrors(t, type, Amp, T);
 
 % Attitude error
-type = "constant";              % options: constant / periodic / linear
-Amp  = 4.85E-5.*[1;0.7;0.5];  % [rad] 
+type = "random";              % options: constant / periodic / linear
+Amp  = 4.85E-6.*[1;0.7;0.5];  % [rad] 
 [att_Err] = generate_attErrors(t, type, Planet, Amp, T, measMode);
 
 % include position errors
@@ -132,7 +134,8 @@ vn = state_t(:, 4:6)';
     measMode, zeros(6, Nt));
 
 % plot S/C state
-plot_SC_state(t, Planet, state_t, orientation);
+plot_SC_state(t, saveData, Planet, state_t, orientation, ...
+    angVel_nom, angAcc_nom);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 disp('Generating measurements ... ')
@@ -173,7 +176,7 @@ end
 if(Solver == "NSM")         % run NSM only
     if(Errors == "attitude")
         [SH_N, sigma_N] = NSM_solver_att(planetParams, ACAF_ACI, R, P0, Xp, t ,...
-        theta, thetaDot, thetaDdot, angVel_nom, angAcc_nom, Ytrue, rn, vn, Iner);
+        theta, thetaDot, zeros(3, Nt), angVel_nom, angAcc_nom, Ytrue, rn, vn, Iner);
     else
         % TBD
     end
@@ -200,17 +203,21 @@ disp('Displaying results ...')
 if(Solver == "Both")
     if(n_max > 10)
         % plot gravity field error pr SH coefficient. Pyramide plot
-        tt = "NSM estimation error "; error = (abs(Xtrue - [1;SH_N])./abs(Xtrue)).* 100;
+        tt = "NSM estimation error "; 
+        error = (abs(Xtrue - [1;SH_N])./abs(Xtrue)).* 100;
         plot_high_gravField(n_max, Nc, Ns, error, tt);
 
-        tt = "LS estimation error "; error = (abs(Xtrue - [1;SH_LS])./abs(Xtrue)).* 100;
+        tt = "LS estimation error "; 
+        error = (abs(Xtrue - [1;SH_LS])./abs(Xtrue)).* 100;
         plot_high_gravField(n_max, Nc, Ns, error, tt);
     else
         % plot gravity field error per SH coefficient
-        mk = 'square';  tt = "NSM estimation error "; llg = {'truth','NSM', 'error'};
+        mk = 'square';  tt = "NSM estimation error "; 
+        llg = {'truth','NSM', 'error'};
         plot_gravField(Xtrue, sigma_N, Xtrue(2:end) - SH_N, n_max, tt, mk, llg);
     
-        mk = 'square';  tt = "LS estimation error "; llg = {'truth','LS', 'error'};
+        mk = 'square';  tt = "LS estimation error "; 
+        llg = {'truth','LS', 'error'};
         plot_gravField(Xtrue, sigma_LS, Xtrue(2:end) - SH_LS, n_max, tt, mk, llg);
     end
 
@@ -226,10 +233,12 @@ if(Solver == "Both")
 else
     if(n_max > 10)
         % plot gravity field error pr SH coefficient. Pyramide plot
-        tt = Solver +  " estimation error "; error = Xtrue(2:end) - SH_N;
+        tt = Solver +  " estimation error "; 
+        error = (abs(Xtrue - [1;SH_N])./abs(Xtrue)).* 100;
         plot_high_gravField(n_max, Nc, Ns, error, tt);
     else
-        mk = 'square';  tt = "Estimation error "; llg = {'truth','NSM', 'error'};
+        mk = 'square';  tt = "Estimation error "; 
+        llg = {'truth','NSM', 'error'};
         plot_gravField(Xtrue, sigma_N, Xtrue(2:end) - SH_N, n_max, tt, mk, llg);
     end
 end

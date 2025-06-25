@@ -1,9 +1,9 @@
-function [ACI_ECEF, time] = read_ECEF2ITRF_mat(R)
+function [ROT, time] = quaternion2CDM(R)
     Nt = length(R(:, 1));
     time = R(:, 1);
    
     % output matrix
-    ACI_ECEF  = ones(3*Nt, 3) * NaN;
+    ROT  = ones(3*Nt, 3) * NaN;
     for j = 1:Nt
         b1 = R(j, 2); b2 = R(j, 3); b3 = R(j, 4); b0 = R(j, 5);
        
@@ -20,7 +20,7 @@ function [ACI_ECEF, time] = read_ECEF2ITRF_mat(R)
 
         % ensamble matrix
         maxPos = 3 * j; minPos = maxPos - 2;
-        ACI_ECEF(minPos:maxPos, :) = [mat11, mat12, mat13;mat21, mat22, mat23;...
+        ROT(minPos:maxPos, :) = [mat11, mat12, mat13;mat21, mat22, mat23;...
             mat31, mat32, mat33];
     end
 end

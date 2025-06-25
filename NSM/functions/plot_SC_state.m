@@ -1,9 +1,10 @@
-function [] = plot_SC_state(t, planet, state_t, orientation)
+function [] = plot_SC_state(t, saveData, planet, state_t, orientation, ...
+    omega, omegaDot)
     % Description: plot the position and attitude orientation of the
     % spacecraft over time. 
     
     % plot for Earth
-    if(planet == "Earth")
+    if(planet == "Earth" && saveData)
         % convert GPS time to UTC
         gps_epoch = datetime(1980,1,6,0,0,0); % GPS epoch
         t_UTC = gps_epoch + seconds(t);        % date time 
@@ -20,6 +21,11 @@ function [] = plot_SC_state(t, planet, state_t, orientation)
         plot_EulerAngles(t_UTC, orientation)
         xlim_limits = [datetime(2012,11,02,0,0,0), datetime(2012,11,02,3,0,0)];
         set(findall(gcf, 'Type', 'axes'), 'XLim', xlim_limits)
+
+        % plot angular values
+        plot_angularVals(t_UTC, omega, omegaDot)
+        xlim_limits = [datetime(2012,11,02,0,0,0), datetime(2012,11,02,3,0,0)];
+        set(findall(gcf, 'Type', 'axes'), 'XLim', xlim_limits)
     
     else
         % plot position
@@ -30,6 +36,9 @@ function [] = plot_SC_state(t, planet, state_t, orientation)
 
         % plot attitude
         plot_EulerAngles(t, orientation)
+
+        % plot angular values
+        plot_angularVals(t, omega, omegaDot)
     end
 end
 
@@ -59,7 +68,7 @@ end
 % plot attitude (Euler angles)
 function [] = plot_EulerAngles(t, orientation)
     figure()
-    subplot(1, 3, 1)
+    subplot(1, 2, 1)
     plot(t, orientation(1:3, :), 'LineWidth', 2)
     xlabel('Time')
     ylabel('[rad]')
@@ -67,7 +76,7 @@ function [] = plot_EulerAngles(t, orientation)
     legend({'$\Psi, yaw$', '$\theta, pitch$', '$\phi, roll$'}, ...
         'Interpreter', 'latex')
 
-    subplot(1, 3, 2)
+    subplot(1, 2, 2)
     plot(t, orientation(4:6, :), 'LineWidth', 2)
     xlabel('Time')
     ylabel('[rad / s]')
@@ -75,13 +84,28 @@ function [] = plot_EulerAngles(t, orientation)
     legend({'$\dot{\Psi}, yaw$', '$\dot{\theta}, pitch$', '$\dot{\phi}, roll$'}, ...
         'Interpreter', 'latex')
 
-    subplot(1, 3, 3)
-    plot(t, orientation(7:9, :), 'LineWidth', 2)
+    sgtitle('S/C orientation')
+end
+
+
+% plot angular values (angular velocity & acceleration)
+function [] = plot_angularVals(t, omega, omegaDot)
+    figure()
+    subplot(1, 2, 1)
+    plot(t, omega, 'LineWidth', 2)
+    xlabel('Time')
+    ylabel('[rad/s]')
+    grid on;
+    legend({'$\omega_1$', '$\omega_2$', '$\omega_3$'}, ...
+        'Interpreter', 'latex')
+
+    subplot(1, 2, 2)
+    plot(t, omegaDot, 'LineWidth', 2)
     xlabel('Time')
     ylabel('[rad / s^2]')
     grid on;
-    legend({'$\ddot{\Psi}, yaw$', '$\ddot{\theta}, pitch$', '$\ddot{\phi}, roll$'}, ...
+    legend({'$\dot{\omega}_1$', '$\dot{\omega}_2$', '$\dot{\omega}_3$'}, ...
         'Interpreter', 'latex')
 
-    sgtitle('S/C orientation')
+    sgtitle('S/C angular values')
 end
