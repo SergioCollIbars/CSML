@@ -22,15 +22,12 @@ function [att_Err] = generate_attErrors(t, type, planet, saveData, Amp, T, measM
         elseif(type == "FOGMP")
             % Parameters
             dt = t(2) -t(1);      % time step [s]
-            tau = 1*86400;           % correlation time [s]
-            sigma_b = Amp(1);       % steady-state std dev of bias
+            tau = 100;            % correlation time [s]
+            sigma_b = 0.01;       % steady-state std dev of bias
             
             % Discrete GM parameters
             phi = exp(-dt / tau);
             sigma_eta = sigma_b * sqrt(1 - phi^2);
-            
-            time = t - t(1);
-            pt = mod(time, 3*T);
             
             % Simulate
             b = zeros(3, Nt);

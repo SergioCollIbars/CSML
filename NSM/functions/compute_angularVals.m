@@ -1,4 +1,4 @@
-function [angVel, angAcc] = compute_angularVals(theta, thetaDot, I, measMode, att_Err)
+function [angVel, angAcc] = compute_angularVals(theta, thetaDot, I, measMode, att_Err, Mext)
     % Description: given the Euler angles in a (3-2-1) rotation and the
     % Euler angles rate (velocity and acceleration) compute the angular
     % velocity and acceleration in the body frame. 
@@ -45,6 +45,6 @@ function [angVel, angAcc] = compute_angularVals(theta, thetaDot, I, measMode, at
 
         % angular acceleration
         w = angVel(:, j);
-        angAcc(:, j) = inv(I) * (-cross(w, I*w));
+        angAcc(:, j) = inv(I) * Mext(:, j) + inv(I) * (-cross(w, I*w));
     end
 end

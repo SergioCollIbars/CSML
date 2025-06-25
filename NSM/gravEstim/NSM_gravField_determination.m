@@ -25,7 +25,7 @@ set(0,'defaultAxesFontSize',16);
 Planet   = "Earth";       % options: Earth / Bennu / Eros
 Solver   = "Both";        % options: NSM / LS / Both
 Errors   = "attitude";    % options: position / attitude / both
-measMode = "2";           % options 1 = GG + SST + GYRO / 2 = GG + SST 
+measMode = "2";           % options 1 = GG + ST + GYRO / 2 = GG + ST 
 saveData = 0;             % options: 0 / 1
 
 [planetParams, poleParams, Kaula, r, Xtrue, Iner] = loadPlanet(Planet);
@@ -82,9 +82,9 @@ else
     t = t1(idx1)';
     Nt = length(t);
     
-    % WARNING: reducing data set
-    t = t(1:round(Nt/10));
-    Nt = length(t);
+% %     % WARNING: reducing data set
+% %     t = t(1:round(Nt/10));
+% %     Nt = length(t);
 
     rn_ECEF = positions(idx1, 2:end)';
     vn_ECEF = velocity(idx1, 2:end)';
@@ -101,8 +101,8 @@ end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 disp('Computing attitude ... ')
-type = "inertial";
-[orientation] = SC_orientation(t, state_t, type, GRF_ACI);
+type = "GRF";
+[orientation, Mext] = SC_orientation(t, state_t, type, GRF_ACI, Iner);
 
 % check for outliers
 % % [orientation(7:9, :)] = check_outliers(t, orientation(7:9, :));
@@ -119,9 +119,9 @@ Amp  = 0.*[1;0.7;0.5];          % [m]
 [Ar] = generate_posErrors(t, type, Amp, T);
 
 % Attitude error
-type = "random";              % options: constant / periodic / linear
-Amp  = 4.85E-6.*[1;0.7;0.5];  % [rad] 
-[att_Err] = generate_attErrors(t, type, Planet, Amp, T, measMode);
+type = "FOGMP";              % options: constant / periodic / linear
+Amp  = 4.85E-10.*[1;0.7;0.5];  % [rad] 
+[att_Err] = generate_attErrors(t, type, Planet, saveData, Amp, T, measMode);
 
 % include position errors
 rn = state_t(:, 1:3)' + Ar;
@@ -129,13 +129,15 @@ vn = state_t(:, 4:6)';
 
 % include attitude errors
 [angVel_true, angAcc_true] = compute_angularVals(theta, thetaDot, Iner,...
-    measMode, att_Err);
+    measMode, att_Err, Mext);
 [angVel_nom, angAcc_nom]   = compute_angularVals(theta, thetaDot, Iner,...
-    measMode, zeros(6, Nt));
+    measMode, zeros(6, Nt), Mext);
 
 % plot S/C state
+err_omega    = angVel_true - angVel_nom;
+err_omegaDot = angAcc_true - angAcc_nom;
 plot_SC_state(t, saveData, Planet, state_t, orientation, ...
-    angVel_nom, angAcc_nom);
+    angVel_nom, angAcc_nom, err_omega, err_omegaDot);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 disp('Generating measurements ... ')
@@ -176,25 +178,25 @@ end
 if(Solver == "NSM")         % run NSM only
     if(Errors == "attitude")
         [SH_N, sigma_N] = NSM_solver_att(planetParams, ACAF_ACI, R, P0, Xp, t ,...
-        theta, thetaDot, zeros(3, Nt), angVel_nom, angAcc_nom, Ytrue, rn, vn, Iner);
+        theta, angVel_nom, angAcc_nom, Ytrue, rn, vn, Iner);
     else
         % TBD
     end
 elseif(Solver == "LS")      % run standard LS only
     if(Errors == "attitude")
         [SH_N, sigma_N] = LS_solver_att(planetParams, ACAF_ACI, R, P0, Pc, Pxc, Xp, t ,...
-            theta, thetaDot, zeros(3, Nt), angVel_nom, angAcc_nom, Ytrue, rn, vn, Iner);
+            theta, angVel_nom, angAcc_nom, Ytrue, rn, vn, Iner);
     else
         % TBD
     end
 elseif(Solver == "Both")    % run NSM & LS
     disp(' Solving with NSM .....')
     [SH_N, sigma_N] = NSM_solver_att(planetParams, ACAF_ACI, R, P0, Xp, t ,...
-        theta, thetaDot, zeros(3, Nt), angVel_nom, angAcc_nom, Ytrue, rn, vn, Iner);
+        theta, angVel_nom, angAcc_nom, Ytrue, rn, vn, Iner);
 
     disp(' Solving with LS .....')
     [SH_LS, sigma_LS] = LS_solver_att(planetParams, ACAF_ACI, R, P0, Pc, Pxc, Xp, t ,...
-        theta, thetaDot, zeros(3, Nt), angVel_nom, angAcc_nom, Ytrue, rn, vn, Iner);
+        theta, angVel_nom, angAcc_nom, Ytrue, rn, vn, Iner);
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -246,26 +248,6 @@ end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% FUNCTIONS
-function [ACAF_ACI] = compute_planetAtt(poleParams , t, saveData, ACI_ECEF)
-    Nt = length(t);
-    ACAF_ACI = ones(3*Nt, 3) * NaN;
-    if(saveData == 1)
-        for j = 1:Nt
-            maxPos = 3 * j; minPos = maxPos - 2;
-            ACAF_ACI(minPos:maxPos, :) = ACI_ECEF(minPos:maxPos, :)';
-        end
-    else
-        W = poleParams(1); W0 = poleParams(2); RA = poleParams(3); 
-        DEC = poleParams(4);
-        for j =  1:Nt
-            Wt = W0 + W * t(j);
-            R =rotationMatrix(pi/2 + RA, pi/2 - DEC, Wt, [3, 1, 3]);
-            maxPos = 3*j; minPos = maxPos - 2;
-            ACAF_ACI(minPos:maxPos, :) = R;
-        end
-    end
-end
-
 function [output] = check_outliers(t, input)
     ths = 5E-7; 
     for j = 1:length(t)

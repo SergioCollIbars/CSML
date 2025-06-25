@@ -1,5 +1,5 @@
 function [SH_N, sigma_N] = LS_solver_att(planetParams, RotPlanet, R, P0, Pc, Pxc, Xp, t ,...
-    attitude, datt_dt, ddatt_ddt, angVel, angAcc, Y, rn, vn, Iner)
+    attitude, angVel, angAcc, Y, rn, vn, Iner)
     % pole & planet variables
     GM  = planetParams(1); Re = planetParams(2); n_max = planetParams(3);
     normalized = planetParams(4);  

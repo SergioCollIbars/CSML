@@ -1,4 +1,4 @@
-function [theta] = SC_orientation(t, state_t, type, ACI_GRF)
+function [theta, M_ext] = SC_orientation(t, state_t, type, ACI_GRF, Iner)
     % Description: compute S/C orientation over time given the time vector
     % and its position in the inertial frame. Theta is a 9 x Nt vector
     % which describes the attitude deviation from the inertial frame over
@@ -105,7 +105,7 @@ function [theta] = SC_orientation(t, state_t, type, ACI_GRF)
         warning('Please, select a correct Instrument Frame (IF)')
     end
 
-    % compute angular velocity and acceleration
+    % compute angular velocity (body frame)
     w = ones(3, Nt) * NaN; wd = w;
     for i = 2:Nt-1
         dt = t(i+1) - t(i-1);
@@ -121,10 +121,16 @@ function [theta] = SC_orientation(t, state_t, type, ACI_GRF)
             omega_skew(2,1)];
     end
 
-    % Compute angular acceleration
+    % Compute angular acceleration (body frame)
     for i = 2:Nt-1
         dt = t(i+1) - t(i-1);
         wd(:,i) = (w(:,i+1) - w(:,i-1)) / dt;
+    end
+
+    % compute external torque (body frame)
+    M_ext  = ones(3, Nt) * NaN;
+    for i = 1:Nt
+        M_ext(:, i) = Iner*wd(:, i) + cross(w(:, i), Iner*w(:, i));
     end
     
     % Compute Euler angles and Euler angle rates 
