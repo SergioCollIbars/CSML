@@ -20,7 +20,7 @@ function [SH_N, sigma_N] = LS_solver_att(planetParams, RotPlanet, R, P0, Pc, Pxc
         [~, Mxc, Mcc] = get_considerCov_apriori(P0, Pc, Pxc);
         for j = 3:Nt-2
             % position vector
-            rn_ACI = rn(:, j);
+% %             rn_ACI = rn(:, j);
             
             % Planet orientation
             maxPos = 3*j; minPos = maxPos - 2;
@@ -29,20 +29,24 @@ function [SH_N, sigma_N] = LS_solver_att(planetParams, RotPlanet, R, P0, Pc, Pxc
             % from ACI to Nominal body frame
             B_ACI =rotationMatrix(attitude(1, j), attitude(2, j), attitude(3, j), ...
               [3, 2, 1]);   
-            ACAF_B = ACAF_ACI * B_ACI';
+% %             ACAF_B = ACAF_ACI * B_ACI';
         
              % compute attitude partials. Nominal body frame
-            [Hrot_grad] = compute_rotPartials(n_max, normalized, Cp, Sp, Re, GM, rn_ACI, ACAF_ACI, ACAF_B);
+% %             [Hrot_grad] = compute_rotPartials(n_max, normalized, Cp, Sp, Re, GM, rn_ACI, ACAF_ACI, ACAF_B);
 % %             [Hrot_dA_ang, Hrot_dAdT_ang] = compute_angularDyadPartials(angVel(:, j), attitude(:, j), datt_dt(:, j), ddatt_ddt(:, j), Iner);
 % %             Hrot_dA = Hrot_grad + Hrot_dA_ang;
 % %             Hrot_dAdT = Hrot_dAdT_ang;
 % %             Hrot = [Hrot_dA, Hrot_dAdT];
-            [Hrot_omega_dyad, H_omegaDot_dyad, ~, ~] = compute_angularDyadPartials_v2(angVel(:, j), Iner);
-            Hrot = [Hrot_grad, Hrot_omega_dyad+H_omegaDot_dyad];
         
             % Null space method correcting for attitude
-            [Yc, ~, Hc_BODY] = gradiometer_meas(t(j) ,planetParams, ACAF_ACI, [rn(:, j)', vn(:, j)'], ...
+            [Yc, Hc_ACI, ~] = gradiometer_meas(t(j) ,planetParams, ACAF_ACI, [rn(:, j)', vn(:, j)'], ...
                     zeros(9, Nt), Cp, Sp, B_ACI');
+            Hc_BODY = rotate_coeffPartials(Hc_ACI, B_ACI);
+
+            [Hrot_grad] = compute_rotPartials_analy(Yc, B_ACI);
+            [Hrot_omega_dyad, H_omegaDot_dyad, ~, ~] = compute_angularDyadPartials_v2(angVel(:, j), Iner);
+            Hrot = [Hrot_grad, Hrot_omega_dyad+H_omegaDot_dyad];
+
             [Yc] = add_angularComponents(Yc, attitude(:, j), zeros(3, Nt), angVel(:, j),...
                 angAcc(:, j));
     
@@ -65,14 +69,15 @@ function [SH_N, sigma_N] = LS_solver_att(planetParams, RotPlanet, R, P0, Pc, Pxc
         xnot_N = xnot_N + XNOT_N;
     
         % show error
-        disp('Least Squares update   '       + string(vecnorm(XNOT_N)));
+        disp('  Least Squares update   '       + string(vecnorm(XNOT_N)));
+        disp('  Condt. Numb. =    '          + string(cond(Ax_N)));
         disp('--------------------------------------------------------'); 
         
         % update counter
         count = count + 1;
     end
 
-    Px = inv(Ax_N);
+    Px = compute_covarianceMat(Ax_N);
     Sxc = -Px * Mxc;
     Pxx = Px + Sxc*Pc*Sxc';
     Pxc = Sxc * Pc;
@@ -82,4 +87,3 @@ function [SH_N, sigma_N] = LS_solver_att(planetParams, RotPlanet, R, P0, Pc, Pxc
     [Xp_N] = mat2list(Cp, Sp, Nc, Ns);
     SH_N = Xp_N(2:end);
 end
-

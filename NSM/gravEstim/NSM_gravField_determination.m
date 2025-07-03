@@ -26,7 +26,7 @@ Planet   = "Earth";       % options: Earth / Bennu / Eros
 Solver   = "Both";        % options: NSM / LS / Both
 Errors   = "attitude";    % options: position / attitude / both
 measMode = "2";           % options 1 = GG + ST + GYRO / 2 = GG + ST 
-saveData = 0;             % options: 0 / 1
+saveData = 1;             % options: 0 / 1
 
 [planetParams, poleParams, Kaula, r, Xtrue, Iner] = loadPlanet(Planet);
 GM  = planetParams(1); Re = planetParams(2); n_max = planetParams(3);
@@ -119,7 +119,7 @@ Amp  = 0.*[1;0.7;0.5];          % [m]
 [Ar] = generate_posErrors(t, type, Amp, T);
 
 % Attitude error
-type = "FOGMP";              % options: constant / periodic / linear
+type = "linear";              % options: constant / periodic / linear
 Amp  = 4.85E-10.*[1;0.7;0.5];  % [rad] 
 [att_Err] = generate_attErrors(t, type, Planet, saveData, Amp, T, measMode);
 
@@ -190,11 +190,11 @@ elseif(Solver == "LS")      % run standard LS only
         % TBD
     end
 elseif(Solver == "Both")    % run NSM & LS
-    disp(' Solving with NSM .....')
+    disp('Solving with NSM .....')
     [SH_N, sigma_N] = NSM_solver_att(planetParams, ACAF_ACI, R, P0, Xp, t ,...
         theta, angVel_nom, angAcc_nom, Ytrue, rn, vn, Iner);
 
-    disp(' Solving with LS .....')
+    disp('Solving with LS .....')
     [SH_LS, sigma_LS] = LS_solver_att(planetParams, ACAF_ACI, R, P0, Pc, Pxc, Xp, t ,...
         theta, angVel_nom, angAcc_nom, Ytrue, rn, vn, Iner);
 end

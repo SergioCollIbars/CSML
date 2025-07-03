@@ -4,7 +4,7 @@ function [Hpos] = compute_rotPartials(n_max, normalized, Cmat, Smat, Re, GM, r, 
     ACI_ACAF = ACAF_ACI';
 
     eps = 1E-6;
-    for j = 1:3
+    parfor j = 1:3
         At = zeros(3, 1);
         At(j) = eps;
 

@@ -18,7 +18,8 @@ function [Y] = add_angularComponents(Y, attitude, At, angVel, angAcc)
           b(3, 1); b(3, 2); b(3, 3)];
 
       % rotate to actual body frame. 
-      BN =rotationMatrix(attitude(1, j), attitude(2, j), attitude(3, j), ...
+      yaw  = attitude(1, j); pitch = attitude(2,j); roll = attitude(3, j);
+      BN =rotationMatrix(yaw, pitch, roll, ...
           [3, 2, 1]);   % from ACI to Nominal body frame
       AB =rotationMatrix(At(1, j), At(2, j), At(3, j), ...
           [3, 2, 1]);   % from Nominal body frame to actual frame (A)

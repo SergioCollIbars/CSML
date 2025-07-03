@@ -188,8 +188,8 @@ elseif(Solver == "Both")    % run NSM & LS
         theta, angVel_nom, rn, vn, Iner);
 
     disp(' Solving with LS .....')
-    [sigma_LS, Sensitivity] = LS_covSolver_att(planetParams, ACAF_ACI, R, P0, Pc, Pxc, Xp, t ,...
-        theta, angVel_nom, rn, vn, att_Err, Iner);
+    [sigma_LS, Sensitivity] = LS_covSolver_att(planetParams, ACAF_ACI, R,...
+        P0, Pc, Pxc, Xp, t, theta, angVel_nom, rn, vn, att_Err, Iner);
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
