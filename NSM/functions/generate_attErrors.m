@@ -19,26 +19,8 @@ function [att_Err] = generate_attErrors(t, type, planet, saveData, Amp, T, measM
         elseif(type == "random")
             att_Err(1:3, :) = normrnd(0, Amp(1), [3, length(t)]);
             att_Err(4:6, :) = centerDiff(att_Err(1:3, :), t(2)-t(1), Nt);
-        elseif(type == "FOGMP")
-            % Parameters
-            dt = t(2) -t(1);      % time step [s]
-            tau = 1*86400;           % correlation time [s]
-            sigma_b = Amp(1);       % steady-state std dev of bias
-            
-            % Discrete GM parameters
-            phi = exp(-dt / tau);
-            sigma_eta = sigma_b * sqrt(1 - phi^2);
-            
-            time = t - t(1);
-            pt = mod(time, 3*T);
-            
-            % Simulate
-            b = zeros(3, Nt);
-            for k = 2:Nt
-                eta = sigma_eta * randn(3, 1);
-                b(:, k) = phi * b(:, k-1) + eta;
-            end
-            att_Err(1:3, :) = b.* pt;
+        elseif(type == "custom")
+            att_Err(1:3, :) = generate_starTrackerErr(t, Amp);
             att_Err(4:6, :) = centerDiff(att_Err(1:3, :), t(2)-t(1), Nt);
         end
     elseif(measMode == "1") % GG + SST + GYRO X = (q, omega)
@@ -58,6 +40,9 @@ function [att_Err] = generate_attErrors(t, type, planet, saveData, Amp, T, measM
             att_Err(1:3, :) = normrnd(0, Amp(1), [3, length(t)]);
             % % att_Err(4:6, :) = normrnd(0, Amp(1)/dt, [3, length(t)]);
             att_Err(4:6, :) = centerDiff(att_Err(1:3, :), t(2)-t(1), Nt);
+        elseif(type == "custom")
+            att_Err(1:3, :) = generate_starTrackerErr(t, Amp);
+            att_Err(4:6, :) = generate_gyroErr(t, Amp);
         end
 
     end
@@ -94,14 +79,6 @@ function [] = plot_atittude_err(t, att_Err)
     ylabel('[rad/s]')
     title('$\delta \dot{\theta}$', 'Interpreter', 'latex')
     grid on;
-
-% %     subplot(1, 3, 3)
-% %     plot(t, att_Err(7:9, :), 'LineWidth', 2)
-% %     xlabel('Time')
-% %     ylabel('[rad/s^2]')
-% %     title('$\delta \ddot{\theta}$', 'Interpreter', 'latex')
-% %     sgtitle('Attitude error');
-% %     grid on;
 end
 
 function [df] = centerDiff(f, dt, Nt)
@@ -110,3 +87,32 @@ function [df] = centerDiff(f, dt, Nt)
         df(:, j) = (f(:, j+1) - f(:, j-1))./(2*dt);
     end
 end
+
+function [delta_q] = generate_starTrackerErr(t, Amp)
+    Nt = length(t);
+    b0 = Amp.* 1.* [1; -1; 1.5]; 
+    delta_q  = normrnd(0, Amp(1), 3, Nt) + b0;
+end
+
+function [delta_w] = generate_gyroErr(t, Amp)
+    Nt = length(t);
+
+    % Parameters
+    dt = t(2) -t(1);        % time step [s]
+    tau = 5*3600;             % correlation time [s]
+    sigma_b = 5E-9;         % steady-state std dev of bias [rad/s]
+
+    % Discrete GM parameters
+    phi = exp(-dt / tau);
+    sigma_eta = sigma_b * sqrt(1 - phi^2);
+
+    % Simulate bias
+    b = zeros(3, Nt);       % [rad/s]
+    for k = 2:Nt
+        eta = sigma_eta * randn(3, 1);
+        b(:, k) = phi * b(:, k-1) + eta;
+    end
+
+    delta_w = b + normrnd(0, Amp(1)/dt, 3, Nt);
+end
+

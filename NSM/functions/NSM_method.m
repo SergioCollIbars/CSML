@@ -10,7 +10,7 @@ function [ax, nx] = NSM_method(Y, Yc, Hc, R, Hpr)
     r  = C' * R * C;
 
     % information and normal matrices
-    ax = hc' * inv(r) * hc;
-    nx = hc' * inv(r) * y;
+    ax = hc' * (r\hc);
+    nx = hc' * (r\y);
 end
 

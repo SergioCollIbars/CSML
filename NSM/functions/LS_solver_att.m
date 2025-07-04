@@ -1,4 +1,4 @@
-function [SH_N, sigma_N] = LS_solver_att(planetParams, RotPlanet, R, P0, Pc, Pxc, Xp, t ,...
+function [SH_N, sigma_N] = LS_solver_att(planetParams, RotPlanet, B_ACI_mat, R, P0, Pc, Pxc, Xp, t ,...
     attitude, angVel, angAcc, Y, rn, vn, Iner)
     % pole & planet variables
     GM  = planetParams(1); Re = planetParams(2); n_max = planetParams(3);
@@ -27,8 +27,7 @@ function [SH_N, sigma_N] = LS_solver_att(planetParams, RotPlanet, R, P0, Pc, Pxc
             ACAF_ACI = RotPlanet(minPos:maxPos, :);
     
             % from ACI to Nominal body frame
-            B_ACI =rotationMatrix(attitude(1, j), attitude(2, j), attitude(3, j), ...
-              [3, 2, 1]);   
+            B_ACI = B_ACI_mat(minPos:maxPos, :);
 % %             ACAF_B = ACAF_ACI * B_ACI';
         
              % compute attitude partials. Nominal body frame
@@ -39,15 +38,15 @@ function [SH_N, sigma_N] = LS_solver_att(planetParams, RotPlanet, R, P0, Pc, Pxc
 % %             Hrot = [Hrot_dA, Hrot_dAdT];
         
             % Null space method correcting for attitude
-            [Yc, Hc_ACI, ~] = gradiometer_meas(t(j) ,planetParams, ACAF_ACI, [rn(:, j)', vn(:, j)'], ...
+            [Y_ACI, Hc_ACI, ~] = gradiometer_meas(t(j) ,planetParams, ACAF_ACI, [rn(:, j)', vn(:, j)'], ...
                     zeros(9, Nt), Cp, Sp, B_ACI');
             Hc_BODY = rotate_coeffPartials(Hc_ACI, B_ACI);
 
-            [Hrot_grad] = compute_rotPartials_analy(Yc, B_ACI);
+            [Hrot_grad] = compute_rotPartials_analy(Y_ACI, B_ACI);
             [Hrot_omega_dyad, H_omegaDot_dyad, ~, ~] = compute_angularDyadPartials_v2(angVel(:, j), Iner);
             Hrot = [Hrot_grad, Hrot_omega_dyad+H_omegaDot_dyad];
 
-            [Yc] = add_angularComponents(Yc, attitude(:, j), zeros(3, Nt), angVel(:, j),...
+            [Yc] = add_angularComponents(Y_ACI, attitude(:, j), zeros(3, Nt), angVel(:, j),...
                 angAcc(:, j));
     
             [ax, nx, mxc, mcc] = LS_method(Y(:,j), Yc, Hc_BODY, Hrot, R);

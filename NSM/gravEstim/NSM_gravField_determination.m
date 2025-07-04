@@ -82,9 +82,9 @@ else
     t = t1(idx1)';
     Nt = length(t);
     
-% %     % WARNING: reducing data set
-% %     t = t(1:round(Nt/10));
-% %     Nt = length(t);
+    % WARNING: reducing data set
+    t = t(1:round(Nt/10));
+    Nt = length(t);
 
     rn_ECEF = positions(idx1, 2:end)';
     vn_ECEF = velocity(idx1, 2:end)';
@@ -111,6 +111,18 @@ type = "GRF";
 theta    = orientation(1:3, :);  % Euler angle      [rad]
 thetaDot = orientation(4:6, :);  % Euler angle rate [rad /s]
 
+% compute Body to ACI rotation matrix
+B_ACI_mat = ones(3*Nt, 3);
+for j = 1:length(t)
+    maxVal = 3 * j; minVal = maxVal -2;
+    
+    yaw  = theta(1, j); pitch = theta(2,j); roll = theta(3, j);
+    B_ACI =rotationMatrix(yaw, pitch, roll, ...
+        [3, 2, 1]);
+
+    B_ACI_mat(minVal:maxVal, :) = B_ACI;
+end
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 disp('Generating state errors ... ')
 % Position error
@@ -119,8 +131,8 @@ Amp  = 0.*[1;0.7;0.5];          % [m]
 [Ar] = generate_posErrors(t, type, Amp, T);
 
 % Attitude error
-type = "linear";              % options: constant / periodic / linear
-Amp  = 4.85E-10.*[1;0.7;0.5];  % [rad] 
+type = "custom";              % options: constant / periodic / linear
+Amp  = 3.16E-6.*[1;1;1];      % [rad] 
 [att_Err] = generate_attErrors(t, type, Planet, saveData, Amp, T, measMode);
 
 % include position errors
@@ -177,25 +189,25 @@ end
 % run estimation
 if(Solver == "NSM")         % run NSM only
     if(Errors == "attitude")
-        [SH_N, sigma_N] = NSM_solver_att(planetParams, ACAF_ACI, R, P0, Xp, t ,...
+        [SH_N, sigma_N] = NSM_solver_att(planetParams, ACAF_ACI, B_ACI_mat, R, P0, Xp, t ,...
         theta, angVel_nom, angAcc_nom, Ytrue, rn, vn, Iner);
     else
         % TBD
     end
 elseif(Solver == "LS")      % run standard LS only
     if(Errors == "attitude")
-        [SH_N, sigma_N] = LS_solver_att(planetParams, ACAF_ACI, R, P0, Pc, Pxc, Xp, t ,...
+        [SH_N, sigma_N] = LS_solver_att(planetParams, ACAF_ACI, B_ACI_mat, R, P0, Pc, Pxc, Xp, t ,...
             theta, angVel_nom, angAcc_nom, Ytrue, rn, vn, Iner);
     else
         % TBD
     end
 elseif(Solver == "Both")    % run NSM & LS
     disp('Solving with NSM .....')
-    [SH_N, sigma_N] = NSM_solver_att(planetParams, ACAF_ACI, R, P0, Xp, t ,...
+    [SH_N, sigma_N] = NSM_solver_att(planetParams, ACAF_ACI, B_ACI_mat, R, P0, Xp, t ,...
         theta, angVel_nom, angAcc_nom, Ytrue, rn, vn, Iner);
 
     disp('Solving with LS .....')
-    [SH_LS, sigma_LS] = LS_solver_att(planetParams, ACAF_ACI, R, P0, Pc, Pxc, Xp, t ,...
+    [SH_LS, sigma_LS] = LS_solver_att(planetParams, ACAF_ACI, B_ACI_mat, R, P0, Pc, Pxc, Xp, t ,...
         theta, angVel_nom, angAcc_nom, Ytrue, rn, vn, Iner);
 end
 

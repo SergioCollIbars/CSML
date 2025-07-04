@@ -5,8 +5,8 @@ function [ax, nx, mxc, mcc] = LS_method(Y, Yc, Hc, Hrot, R)
     hrot = Hrot;
 
     % information and normal matrices
-    ax = hc' * inv(R) * hc;
-    nx = hc' * inv(R) * dY;
-    mxc = (hc' * inv(R) * hrot);
-    mcc = (hrot' * inv(R) * hrot); 
+    ax = hc' * (R\hc);
+    nx = hc' * (R\dY);
+    mxc = (hc' * (R\hrot));
+    mcc = (hrot' * (R\hrot)); 
 end
