@@ -56,3 +56,15 @@ data = dataBlock(idx, :);
 t = data(:, 1);
 gps_epoch = datetime(1980,1,6,0,0,0); % GPS epoch
 t_UTC = gps_epoch + seconds(t);        % date time 
+
+
+figure()
+tt  = ["\Gamma_{xx}", "\Gamma_{yy}", "\Gamma_{zz}", ...
+       "\Gamma_{xy}", "\Gamma_{xz}", "\Gamma_{yz}"];
+for j = 1:6
+    subplot(2, 3, j);
+    plot(t_UTC, data(:, j+1)./1E-9, 'LineWidth', 2);
+    ylabel('Eotvos');
+    title(tt(j));
+    grid on;
+end
