@@ -34,15 +34,6 @@ function [angVel, angAcc] = compute_angularVals(theta, thetaDot, I, measMode, at
         angVel = vals + att_Err(4:6, :);
     end
     for j = 1:Nt
-% %         theta = attitude(2, j); phi = attitude(3, j);
-% %         psiDot = dA_dt(1, j); thetaDot = dA_dt(2, j); phiDot = dA_dt(3, j);
-% %         A = [-sin(theta), 0, 1;...
-% %             sin(phi)*cos(theta), cos(phi), 0;...
-% %             cos(phi)*cos(theta), -sin(phi), 0];
-% %         A_dot = [-cos(theta)*thetaDot, 0, 0;...
-% %             cos(phi)*cos(theta)*phiDot-sin(phi)*sin(theta)*thetaDot, -sin(phi)*phiDot, 0;...
-% %             -sin(phi)*cos(theta)*phiDot-cos(phi)*sin(theta)*thetaDot, -cos(phi)*phiDot, 0];
-
         % angular acceleration
         w = angVel(:, j);
         angAcc(:, j) = inv(I) * Mext(:, j) + inv(I) * (-cross(w, I*w));

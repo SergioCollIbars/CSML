@@ -1,8 +1,7 @@
 function [SH_N, sigma_N] = NSM_solver_att(planetParams, RotPlanet, B_ACI_mat, R, P0, Xp, t ,...
     attitude, angVel, angAcc, Y, rn, vn, Iner)
-    % pole & planet variables
-    GM  = planetParams(1); Re = planetParams(2); n_max = planetParams(3);
-    normalized = planetParams(4);  
+    % planet variables
+    n_max = planetParams(3);
     
     % variables number
     [Nc, Ns, Ncs] = count_num_coeff(n_max); 
@@ -18,9 +17,6 @@ function [SH_N, sigma_N] = NSM_solver_att(planetParams, RotPlanet, B_ACI_mat, R,
     while count < iterMax
         Ax_N = inv(P0); Nx_N = -inv(P0) * xnot_N;
         for j = 3:Nt-2
-% %             % position vector
-% %             rn_ACI = rn(:, j);
-            
             % Planet orientation
             maxPos = 3*j; minPos = maxPos - 2;
             ACAF_ACI = RotPlanet(minPos:maxPos, :);
@@ -40,7 +36,7 @@ function [SH_N, sigma_N] = NSM_solver_att(planetParams, RotPlanet, B_ACI_mat, R,
            
             % Null space method correcting for attitude
             [Y_ACI, Hc_ACI, ~] = gradiometer_meas(t(j) ,planetParams, ACAF_ACI, [rn(:, j)', vn(:, j)'], ...
-                    zeros(9, Nt), Cp, Sp, B_ACI');
+                    zeros(9, Nt), Cp, Sp);
 
             % rotate coefficient partials to body frame
             Hc_BODY = rotate_coeffPartials(Hc_ACI, B_ACI);

@@ -1,4 +1,10 @@
 function [Hrot] = compute_rotPartials_analy(Y, BN)
+    % COMPUTE ROTATION GRAVITY TENSOR PARTIALS
+    % Description:  Given the gravity tensor in ACI coordinates, compute
+    % the Euler angles partials in the BODY frame.
+    % Author: Sergio Coll Ibars
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    
     % rotate to Body frame
     jN = [Y(1), Y(2), Y(3);...
           Y(4), Y(5), Y(6);...

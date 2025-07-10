@@ -1,10 +1,10 @@
 function [ddU_ACI, H_ACI, H_BODY] = gradiometer_meas(time ,asterParams, RotPlanet, state, ...
-                noise, Cnm, Snm, ACI_BODY)
+                noise, Cnm, Snm)
     % GRADIOMETER_MEAS generate gradiometer measurement
     % Given the set of Cnm and Snm coefficient, the asteroid pole
     % parameters and the spacecraft position at different times, generate
     % gradiometer measurements including white spectral noise with sigma
-    % std value.
+    % std value. All in the ACI frame.
     
     % extract parameters
     GM         = asterParams(1);
@@ -29,15 +29,13 @@ function [ddU_ACI, H_ACI, H_BODY] = gradiometer_meas(time ,asterParams, RotPlane
                                            rt_ACAF, Re, GM, normalized);
         T_ACI = ACAF_ACI' * T_ACAF * ACAF_ACI;
         
-        ddU_ACI(:, j) = [T_ACI(1,1); T_ACI(1,2) ; T_ACI(1,3); T_ACI(2,1);...
-         T_ACI(2,2); T_ACI(2,3) ; T_ACI(3,1); T_ACI(3,2); T_ACI(3,3)] + noise(:, j);
+        ddU_ACI(:, j) = [T_ACI(1,1); T_ACI(1,2); T_ACI(1,3); T_ACI(2,1);...
+         T_ACI(2,2); T_ACI(2,3); T_ACI(3,1); T_ACI(3,2); T_ACI(3,3)] + noise(:, j);
+        
         % compute gravity partials
-% %         [~, h_BODY] = potentialGradient_Cnm(n_max, rt_ACAF, Re, ...
-% %             GM, (ACAF_ACI*ACI_BODY)', normalized);
         [~, h_ACI] = potentialGradient_Cnm(n_max, rt_ACAF, Re, ...
             GM, (ACAF_ACI)', normalized);
         H_ACI = h_ACI;
-% %         H_BODY = h_BODY;
         H_BODY = [];
     else
         % time loop
@@ -55,11 +53,10 @@ function [ddU_ACI, H_ACI, H_BODY] = gradiometer_meas(time ,asterParams, RotPlane
             
             ddU_ACI(:, j) = [T_ACI(1,1); T_ACI(1,2) ; T_ACI(1,3); T_ACI(2,1);...
              T_ACI(2,2); T_ACI(2,3) ; T_ACI(3,1); T_ACI(3,2); T_ACI(3,3)] + noise(:, j);
-             
-            % empty arrays
-            H_ACI = [];
-            H_BODY = [];
         end
+        % empty arrays
+        H_ACI = [];
+        H_BODY = [];
     end
 end
 

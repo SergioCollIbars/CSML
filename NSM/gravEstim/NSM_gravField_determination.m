@@ -82,9 +82,9 @@ else
     t = t1(idx1)';
     Nt = length(t);
     
-    % WARNING: reducing data set
-    t = t(1:round(Nt/10));
-    Nt = length(t);
+% %     % WARNING: reducing data set
+% %     t = t(1:round(Nt/10));
+% %     Nt = length(t);
 
     rn_ECEF = positions(idx1, 2:end)';
     vn_ECEF = velocity(idx1, 2:end)';
@@ -103,9 +103,6 @@ end
 disp('Computing attitude ... ')
 type = "GRF";
 [orientation, Mext] = SC_orientation(t, state_t, type, GRF_ACI, Iner);
-
-% check for outliers
-% % [orientation(7:9, :)] = check_outliers(t, orientation(7:9, :));
 
 % attitude nominal value
 theta    = orientation(1:3, :);  % Euler angle      [rad]
@@ -131,8 +128,8 @@ Amp  = 0.*[1;0.7;0.5];          % [m]
 [Ar] = generate_posErrors(t, type, Amp, T);
 
 % Attitude error
-type = "custom";              % options: constant / periodic / linear
-Amp  = 3.16E-6.*[1;1;1];      % [rad] 
+type = "custom";                % options: constant / periodic / linear
+Amp  = 3.16E-7.*[1;1;1];        % [rad] 
 [att_Err] = generate_attErrors(t, type, Planet, saveData, Amp, T, measMode);
 
 % include position errors
@@ -153,7 +150,7 @@ plot_SC_state(t, saveData, Planet, state_t, orientation, ...
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 disp('Generating measurements ... ')
-% mesurement noise & weight
+% measurement noise & weight
 sigma    = 1E-12;                   % [1/s^2]
 means    = zeros(1, 9);
 std_devs = sigma * ones(1, 9); 
@@ -166,10 +163,13 @@ R = diag(std_devs.^2);
 
 % compute measurements
 [Ytrue, ~, ~] = gradiometer_meas(t ,planetParams, ACAF_ACI, state_t, ...
-                zeros(9, Nt), Cnm, Snm, eye(3,3));
+                zeros(9, Nt), Cnm, Snm);
 [Ytrue] = add_angularComponents(Ytrue, theta, att_Err(1:3, :), angVel_true,...
     angAcc_true); 
 Ytrue  = Ytrue + noise;
+
+% plot gradioemter signal
+plot_signal(Ytrue, t);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 disp('Running gravity determination ... ')
@@ -189,25 +189,29 @@ end
 % run estimation
 if(Solver == "NSM")         % run NSM only
     if(Errors == "attitude")
-        [SH_N, sigma_N] = NSM_solver_att(planetParams, ACAF_ACI, B_ACI_mat, R, P0, Xp, t ,...
+        [SH_N, sigma_N] = NSM_solver_att(planetParams, ACAF_ACI, B_ACI_mat,...
+            R, P0, Xp, t ,...
         theta, angVel_nom, angAcc_nom, Ytrue, rn, vn, Iner);
     else
         % TBD
     end
 elseif(Solver == "LS")      % run standard LS only
     if(Errors == "attitude")
-        [SH_N, sigma_N] = LS_solver_att(planetParams, ACAF_ACI, B_ACI_mat, R, P0, Pc, Pxc, Xp, t ,...
+        [SH_N, sigma_N] = LS_solver_att(planetParams, ACAF_ACI, B_ACI_mat,...
+            R, P0, Pc, Pxc, Xp, t ,...
             theta, angVel_nom, angAcc_nom, Ytrue, rn, vn, Iner);
     else
         % TBD
     end
 elseif(Solver == "Both")    % run NSM & LS
     disp('Solving with NSM .....')
-    [SH_N, sigma_N] = NSM_solver_att(planetParams, ACAF_ACI, B_ACI_mat, R, P0, Xp, t ,...
+    [SH_N, sigma_N] = NSM_solver_att(planetParams, ACAF_ACI, B_ACI_mat,...
+        R, P0, Xp, t ,...
         theta, angVel_nom, angAcc_nom, Ytrue, rn, vn, Iner);
 
     disp('Solving with LS .....')
-    [SH_LS, sigma_LS] = LS_solver_att(planetParams, ACAF_ACI, B_ACI_mat, R, P0, Pc, Pxc, Xp, t ,...
+    [SH_LS, sigma_LS] = LS_solver_att(planetParams, ACAF_ACI, B_ACI_mat,...
+        R, P0, Pc, Pxc, Xp, t ,...
         theta, angVel_nom, angAcc_nom, Ytrue, rn, vn, Iner);
 end
 
@@ -255,17 +259,4 @@ else
         llg = {'truth','NSM', 'error'};
         plot_gravField(Xtrue, sigma_N, Xtrue(2:end) - SH_N, n_max, tt, mk, llg);
     end
-end
-
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% FUNCTIONS
-function [output] = check_outliers(t, input)
-    ths = 5E-7; 
-    for j = 1:length(t)
-        if(rms(input(:, j)) > ths)
-            input(:, j) = zeros(3, 1);
-        end
-    end
-    output = input;
 end
