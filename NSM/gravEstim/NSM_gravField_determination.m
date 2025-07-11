@@ -82,9 +82,9 @@ else
     t = t1(idx1)';
     Nt = length(t);
     
-    % WARNING: reducing data set
-    t = t(1:round(Nt/10));
-    Nt = length(t);
+% %     % WARNING: reducing data set
+% %     t = t(1:round(Nt/10));
+% %     Nt = length(t);
 
     rn_ECEF = positions(idx1, 2:end)';
     vn_ECEF = velocity(idx1, 2:end)';

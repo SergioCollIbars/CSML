@@ -3,11 +3,10 @@ clc;
 close all;
 format long g;
 
-addpath('functions/')
-addpath('../QGG_gravEstim/src/')
-addpath('../QGG_navigation/data/')
-addpath('../QGG_gravEstim/data_files/')
-addpath('../matlab_codes/GOCE_products/GOCE_L2b_MatlabReaders/data/')
+addpath('functions/');
+addpath('../QGG_gravEstim/src/');
+addpath('../QGG_gravEstim/data_files/');
+addpath('../matlab_codes/GOCE_products/GOCE_L2b_MatlabReaders/data/');
 
 set(0,'defaultAxesFontSize',16);
 
@@ -59,22 +58,35 @@ else
     load('Nov_L2position.mat');   % ECEF coordinates
     load('Nov_L2velocity.mat');   % ECEF coordinates
     load('Nov_L2ECEF2ITRF.mat');  % rotation matrix ECEF 2 ITRF
+    load('Nov_L2ITRF2GRF.mat');   % rotation matrix ITRF 2 GRF
     
-    [ACI_ECEF] = read_ECEF2ITRF_mat(outPut);
+    [~, t2]  = quaternion2CDM(outPut);
+    [~, t3]  = quaternion2CDM(outPut2);
+    
+    % Check time-points to make sure that all files are at the
+    % same time.
+    t1 = positions(:, 1);
+    commonTimes = intersect(intersect(t1, t2), t3);
+    
+    [~, idx1] = ismember(commonTimes, t1);
+    [~, idx2] = ismember(commonTimes, t2);
+    [~, idx3] = ismember(commonTimes, t3);
 
-    rn_ECEF = positions(:, 2:end)';
-    vn_ECEF = velocity(:, 2:end)';
-    t = positions(:, 1)';
+    t = t1(idx1)';
     Nt = length(t);
+    
+% %     % WARNING: reducing data set
+% %     t = t(1:round(Nt/10));
+% %     Nt = length(t);
 
-    rn_ACI = rotate2ECI(rn_ECEF, ACI_ECEF, t);
-    vn_ACI = rotate2ECI(vn_ECEF, ACI_ECEF, t);
-    state_t = zeros(Nt, 6);
-    state_t(:, 1:3) = rn_ACI';
-    state_t(:, 4:6) = vn_ACI';
+    rn_ECEF = positions(idx1, 2:end)';
+    vn_ECEF = velocity(idx1, 2:end)';
+    ACI_ECEF = quaternion2CDM(outPut(idx2, :));
+    GRF_ACI  = quaternion2CDM(outPut2(idx3, :));
 
-    rn = state_t(:, 1:3)';
-    vn = state_t(:, 4:6)';
+    state_ACI = rotate2ECI([rn_ECEF; vn_ECEF], ACI_ECEF, t);
+    state_t(:, 1:3) = state_ACI(1:3, :)';
+    state_t(:, 4:6) = state_ACI(4:6, :)';
 end
 
 % compute planet orientation parameters
@@ -97,8 +109,6 @@ if(sensitivity_analysis)
                 '$S_{\sigma^2_{TT}} , \bar{S} = $' + string(z(4)), '$S_{\sigma^2_{TN}} , \bar{S} = $' + string(z(5)), '$S_{\sigma^2_{NN}} , \bar{S} = $' + string(z(6)), 'Interpreter', 'latex');
         end
     end
-    % % legend('','S_{\sigma^2_{xy}}', 'S_{\sigma^2_{xz}}',...
-    % %     'S_{\sigma^2_{yy}}', 'S_{\sigma^2_{yz}}', 'S_{\sigma^2_{zz}}');
 end
 
 %  compute residual projecction
