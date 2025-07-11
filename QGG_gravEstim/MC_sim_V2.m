@@ -40,8 +40,8 @@ for mc = 1:MC
     r_ACI = r_ACI + normrnd(0, 0.07, [length(r_ACI(:, 1)), 3]);
     v_ACI = v_ACI + ones(length(v_ACI(:, 1)), 3).*errV;
 
-    sdiag  = 10*6.32E-12;
-    sndiag = 10*2.52E-10;
+    sdiag  = 10*6.32E-13;
+    sndiag = 10*6.32E-13;
     % % sndiag = sdiag;
     R = diag([sdiag, sndiag, sndiag, sdiag, sndiag, sdiag].^2);
 

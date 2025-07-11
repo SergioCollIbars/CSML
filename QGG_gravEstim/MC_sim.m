@@ -5,7 +5,7 @@ set(0,'defaultAxesFontSize',16);
 
 %%              MONTE CARLO SIMULATION
 % Inputs
-MC = 200;         % number of MC runs
+MC = 10;         % number of MC runs
 
 % outputs
 CoefErr_RMS = zeros(MC, 6);
