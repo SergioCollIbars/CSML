@@ -3,7 +3,7 @@ clc;
 close all;
 format long g;
 
-addpath('../functions/')
+addpath(genpath('../functions/'))
 addpath('../../QGG_gravEstim/src/')
 addpath('../../QGG_navigation/data/')
 addpath('../data/')
@@ -26,7 +26,11 @@ Planet   = "Earth";       % options: Earth / Bennu / Eros
 Solver   = "Both";        % options: NSM / LS / Both
 Errors   = "attitude";    % options: position / attitude / both
 measMode = "2";           % options 1 = GG + ST + GYRO / 2 = GG + ST 
-saveData = 1;             % options: 0 / 1
+saveData = 0;             % options: 0 / 1
+
+%                Mesurement mask 
+%           xx xy xz yx yy yz zx zy zz
+mask     =  [1, 1, 1, 1, 1, 1, 1, 1, 1]';
 
 [planetParams, poleParams, Kaula, r, Xtrue, Iner] = loadPlanet(Planet);
 GM  = planetParams(1); Re = planetParams(2); n_max = planetParams(3);
@@ -38,7 +42,7 @@ DEC = poleParams(4);
 % Time options
 n   = sqrt(GM / r^3);    % Mean motion         [rad/s]
 T   = (2 * pi / n);
-rev = 10;
+rev = 20;
 f   = 1/10;
 t   = linspace(0, rev*T, rev*T * f);
 Nt  = length(t);
@@ -101,7 +105,7 @@ end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 disp('Computing attitude ... ')
-type = "GRF";
+type = "RTN";
 [orientation, Mext] = SC_orientation(t, state_t, type, GRF_ACI, Iner);
 
 % attitude nominal value
@@ -128,8 +132,8 @@ Amp  = 0.*[1;0.7;0.5];          % [m]
 [Ar] = generate_posErrors(t, type, Amp, T);
 
 % Attitude error
-type = "custom";                % options: constant / periodic / linear
-Amp  = 3.16E-7.*[1;1;1];        % [rad] 
+type = "linear";                % options: constant / periodic / linear
+Amp  = 3.16E-9.*[1;1;1];        % [rad] 
 [att_Err] = generate_attErrors(t, type, Planet, saveData, Amp, T, measMode);
 
 % include position errors
@@ -158,19 +162,19 @@ num_realizations = length(t);       % Number of realizations
 
 noise = normrnd(repmat(means', 1, num_realizations), ...
     repmat(std_devs', 1, num_realizations));
-
-R = diag(std_devs.^2);
+R = diag(std_devs(logical(mask)).^2);
 
 % compute measurements
 [Ytrue, ~, ~] = gradiometer_meas(t ,planetParams, ACAF_ACI, state_t, ...
                 zeros(9, Nt), Cnm, Snm);
 [Ytrue] = add_angularComponents(Ytrue, theta, att_Err(1:3, :), angVel_true,...
     angAcc_true); 
-Ytrue  = Ytrue + noise;
+Ytrue  = Ytrue(logical(mask), :) + noise(logical(mask), :);
 
 % plot gradioemter signal
-plot_signal(Ytrue, t);
-
+if(length(Ytrue(:, 1)) > 6)
+    plot_signal(Ytrue, t);
+end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 disp('Running gravity determination ... ')
 if(Errors == "attitude")
@@ -191,7 +195,7 @@ if(Solver == "NSM")         % run NSM only
     if(Errors == "attitude")
         [SH_N, sigma_N] = NSM_solver_att(planetParams, ACAF_ACI, B_ACI_mat,...
             R, P0, Xp, t ,...
-        theta, angVel_nom, angAcc_nom, Ytrue, rn, vn, Iner);
+        theta, angVel_nom, angAcc_nom, Ytrue, rn, vn, Iner, mask);
     else
         % TBD
     end
@@ -199,7 +203,7 @@ elseif(Solver == "LS")      % run standard LS only
     if(Errors == "attitude")
         [SH_N, sigma_N] = LS_solver_att(planetParams, ACAF_ACI, B_ACI_mat,...
             R, P0, Pc, Pxc, Xp, t ,...
-            theta, angVel_nom, angAcc_nom, Ytrue, rn, vn, Iner);
+            theta, angVel_nom, angAcc_nom, Ytrue, rn, vn, Iner, mask);
     else
         % TBD
     end
@@ -207,12 +211,12 @@ elseif(Solver == "Both")    % run NSM & LS
     disp('Solving with NSM .....')
     [SH_N, sigma_N] = NSM_solver_att(planetParams, ACAF_ACI, B_ACI_mat,...
         R, P0, Xp, t ,...
-        theta, angVel_nom, angAcc_nom, Ytrue, rn, vn, Iner);
+        theta, angVel_nom, angAcc_nom, Ytrue, rn, vn, Iner, mask);
 
     disp('Solving with LS .....')
     [SH_LS, sigma_LS] = LS_solver_att(planetParams, ACAF_ACI, B_ACI_mat,...
         R, P0, Pc, Pxc, Xp, t ,...
-        theta, angVel_nom, angAcc_nom, Ytrue, rn, vn, Iner);
+        theta, angVel_nom, angAcc_nom, Ytrue, rn, vn, Iner, mask);
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

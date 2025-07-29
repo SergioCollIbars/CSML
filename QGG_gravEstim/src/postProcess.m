@@ -19,10 +19,10 @@ addpath('../modules/orbital_module/functions/');
 set(0,'defaultAxesFontSize',16);
 
 % Input parameters
-plotOrbit = 1;                                       % plot orbit boolean
+plotOrbit = 0;                                       % plot orbit boolean
 plotAttitude = 0;                                    % plot Attitude boolean
 plotAcc = 1;                                         % plot acc boolean
-plotEstim = 0;                                       % plot estimation
+plotEstim = 1;                                       % plot estimation
 
 test = false;                                        % show test plots
 

@@ -12,27 +12,27 @@ set(0,'defaultAxesFontSize',16);
 % Date: 09/28/24
 
 % Asteroid parameters.
-path = "HARMCOEFS_BENNU_OSIRIS_1.txt";
-name = "BENNU";
-[Cnm, Snm, Re] = readCoeff(path);
-GM = 5.2;
-n_max  = 6;
-normalized = 1;
-W = 4.06130329511851E-4;  % Rotation ang. vel   [rad/s]
-W0 = 0;                   % Initial asteroid longitude
-RA = deg2rad(86.6388);    % Right Ascension     [rad]
-DEC = deg2rad(-65.1086);  % Declination         [rad]
-
-% % path = "HARMCOEFS_EROS_CD_1.txt";
-% % name = "EROS";
+% % path = "HARMCOEFS_BENNU_OSIRIS_1.txt";
+% % name = "BENNU";
 % % [Cnm, Snm, Re] = readCoeff(path);
-% % n_max  = 10;
+% % GM = 5.2;
+% % n_max  = 6;
 % % normalized = 1;
-% % GM =  459604.431484721;          % Point mass value    [m^3/s^2]
-% % W = 1639.38928 * pi/180 /86400;  % Rotation ang. vel   [rad/s]
-% % W0 = 0;                          % Initial asteroid longitude
-% % RA = deg2rad(11.363);            % Right Ascension     [rad]
-% % DEC = deg2rad(17.232);           % Declination         [rad]
+% % W = 4.06130329511851E-4;  % Rotation ang. vel   [rad/s]
+% % W0 = 0;                   % Initial asteroid longitude
+% % RA = deg2rad(86.6388);    % Right Ascension     [rad]
+% % DEC = deg2rad(-65.1086);  % Declination         [rad]
+
+path = "HARMCOEFS_EROS_CD_1.txt";
+name = "EROS";
+[Cnm, Snm, Re] = readCoeff(path);
+n_max  = 10;
+normalized = 1;
+GM =  459604.431484721;          % Point mass value    [m^3/s^2]
+W = 1639.38928 * pi/180 /86400;  % Rotation ang. vel   [rad/s]
+W0 = 0;                          % Initial asteroid longitude
+RA = deg2rad(11.363);            % Right Ascension     [rad]
+DEC = deg2rad(17.232);           % Declination         [rad]
 
 poleParams = [W, W0, RA, DEC];
 asterParams = [GM, Re, n_max, normalized];
@@ -41,7 +41,8 @@ asterParams = [GM, Re, n_max, normalized];
 [Nc, Ns, Ncs] = count_num_coeff(n_max); 
 
 % Initial conditions
-r      = 0.35E3;
+% % r      = 0.35E3;
+r      = 24E3;
 phi    = pi/2;
 lambda = 0;
 theta  = pi/2 - phi;% Orbit colatitude [m]
@@ -74,8 +75,8 @@ Amp = 0;                                    % [rad]
 attitude  = Amp.*t.*ones(3, Nt).*[0;1;0];   % nominal attitude [rad]
 datt_dt   = Amp.*ones(3, Nt).*[0;1;0];
 ddatt_ddt = zeros(3, Nt); 
-[angVel_true, angAcc_true] = compute_angularVals(attitude + At, datt_dt + dA_dt, ddatt_ddt + ddA_ddt);
-[angVel_nom, angAcc_nom]   = compute_angularVals(attitude, datt_dt, ddatt_ddt);
+[angVel_true, angAcc_true] = compute_angularVals_v2(attitude + At, datt_dt + dA_dt, ddatt_ddt + ddA_ddt);
+[angVel_nom, angAcc_nom]   = compute_angularVals_v2(attitude, datt_dt, ddatt_ddt);
 
 % plot S/C attitude
 scale = 3600 * 180 / pi;
@@ -87,7 +88,7 @@ noise0 = zeros(9, Nt);
 % % sigma1  = 0.01 * 1E-9 * sqrt(f); % Vxx, Vyy
 % % sigma2  = 0.6  * 1E-9 * sqrt(f); % Vyz, Vyx
 % % sigma3  = 0.02 * 1E-9 * sqrt(f); % Vxz, Vzz
-sigma1 = 1E-12;
+sigma1 = 1E-15;
 sigma2 = sigma1; sigma3 = sigma1;
 
 means    = zeros(1, 9);
@@ -106,16 +107,26 @@ PHI0 = reshape(eye(6,6), [36, 1]);
 rt = state_t(:, 1:3)';
 vt = state_t(:, 4:6)';
 
+% contruct ACAF_ACI rotation matrix
+ACAF_ACI_mat = zeros(3*Nt, 3) * NaN;
+for j = 1:Nt
+    Wt = W0 + W * t(j);
+    R =rotationMatrix(pi/2 + RA, pi/2 - DEC, Wt, [3, 1, 3]);
+
+    maxPos = 3 * j; minPos = maxPos - 2;
+    ACAF_ACI_mat(minPos:maxPos, :) = R;
+end
+
 % generate measurements & add rotations value
-[Y, ~, ~] = gradiometer_meas(t ,asterParams, poleParams, state_t, ...
-                noise0, Cnm, Snm, eye(3,3));
+[Y, ~, ~] = gradiometer_meas(t ,asterParams, ACAF_ACI_mat, state_t, ...
+                noise0, Cnm, Snm);
 [Y] = add_angularComponents(Y, attitude, At, flipud(angVel_true),...
     flipud(angAcc_true));  
 
 % perturb nominal coefficient
 [X] = mat2list(Cnm, Snm, Nc, Ns);
-sigma_n = 1E-3*[1E-4;1E-4;1E-4;1E-2;1E-2];
-% % sigma_n = ones(10, 1).*1E-4;
+% % sigma_n = 1E-3*[1E-4;1E-4;1E-4;1E-2;1E-2];
+sigma_n = 1E-3*[1E-4;1E-4;1E-4;1E-4;1E-4;1E-4;1E-2;1E-2;1E-2];
 [Xp, ~] = perturb_coeff(sigma_n, n_max, X);
 [Cp, Sp] = list2mat(n_max, Nc, Ns, Xp);
 
@@ -136,7 +147,8 @@ xlabel('Orbital rev.')
 legend('\Delta x', '\Delta y', '\Delta z')
 
 % intial uncertainty
-sigma_n = [1E0;1E0;1E0;1E0;1E0];
+% % sigma_n = [1E0;1E0;1E0;1E0;1E0];
+sigma_n = [1E0;1E0;1E0;1E0;1E0;1E0;1E0;1E0;1E0];
 [~, Pp] = perturb_coeff(sigma_n, n_max, X);
 P0 = Pp(2:end, 2:end); 
 
@@ -187,8 +199,9 @@ while count < iterMax
         [Hpos] = compute_posPartials(n_max, normalized, Cp_N, Sp_N, Re, GM, rn_ACI_N, ACAF_ACI, ACAF_B);
     
         % Null space method correcting for attitude
-        [Yc, ~, Hc_BODY] = gradiometer_meas(t(j) ,asterParams, poleParams, [rn_ACI_N', zeros(1, 3)], ...
-                noise0, Cp_N, Sp_N, B_ACI');
+        [Yc, Hc_ACI] = gradiometer_meas(t(j) ,asterParams, ACAF_ACI, [rn_ACI_N', zeros(1, 3)], ...
+                noise0, Cp_N, Sp_N);
+         Hc_BODY = rotate_coeffPartials(Hc_ACI, B_ACI);
         [Yc] = add_angularComponents(Yc, attitude(:, j), zeros(3, Nt), flipud(angVel_nom(:, j)),...
             flipud(angAcc_nom(:, j)));
       
@@ -220,6 +233,7 @@ while count < iterMax
             Hpr = [Hpr; hpr];
 
             C   = null(Hpr');
+            C   = null(Hpr(:, 1:6)'); 
             R = blkdiag(R_N, R_N);
             
             % project into null space
@@ -239,8 +253,9 @@ while count < iterMax
         end
 
         % classic LS
-        [Yc, ~, Hc_BODY] = gradiometer_meas(t(j) ,asterParams, poleParams, [rn_ACI_LS', zeros(1, 3)], ...
-                noise0, Cp_LS, Sp_LS, B_ACI');
+        [Yc, Hc_ACI] = gradiometer_meas(t(j) ,asterParams, ACAF_ACI, [rn_ACI_LS', zeros(1, 3)], ...
+                noise0, Cp_LS, Sp_LS);
+         Hc_BODY = rotate_coeffPartials(Hc_ACI, B_ACI);
         [Yc] = add_angularComponents(Yc, attitude(:, j), zeros(3, 1), flipud(angVel_nom(:, j)),...
             flipud(angAcc_nom(:, j)));
 
@@ -313,7 +328,7 @@ tt1 = 'Uncertainty SH. Cnm coefficients';
 tt2 = 'Uncertainty SH. Snm coefficients';
 ls  = '-'; mk = 'square'; 
 llg = {'truth','LS', 'NSM'};
-plot_gravField(X, 3.*sigma_LS(1:45), 3.*sigma_N, n_max, tt1, tt2, ls, mk, llg);
+plot_gravField(X, 3.*sigma_LS(1:Ncs-1), 3.*sigma_N, n_max, tt1, tt2, ls, mk, llg);
 
 
 tt1 = 'Estimation error. Cnm coefficients';

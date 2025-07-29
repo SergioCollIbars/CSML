@@ -1,5 +1,5 @@
 function [SH_N, sigma_N] = LS_solver_att(planetParams, RotPlanet, B_ACI_mat, R, P0, Pc, Pxc, Xp, t ,...
-    attitude, angVel, angAcc, Y, rn, vn, Iner)
+    attitude, angVel, angAcc, Y, rn, vn, Iner, mask)
     % planet variables
     n_max = planetParams(3);
  
@@ -38,6 +38,8 @@ function [SH_N, sigma_N] = LS_solver_att(planetParams, RotPlanet, B_ACI_mat, R, 
             [Y_ACI, Hc_ACI, ~] = gradiometer_meas(t(j) ,planetParams, ACAF_ACI, [rn(:, j)', vn(:, j)'], ...
                     zeros(9, Nt), Cp, Sp);
             Hc_BODY = rotate_coeffPartials(Hc_ACI, B_ACI);
+            Hc = [Hc_BODY(1, 2:end); Hc_BODY(4, 2:end); Hc_BODY(7, 2:end); Hc_BODY(2, 2:end); Hc_BODY(5, 2:end);...
+                  Hc_BODY(8, 2:end);  Hc_BODY(3, 2:end); Hc_BODY(6, 2:end); Hc_BODY(9, 2:end)];
 
             [Hrot_grad] = compute_rotPartials_analy(Y_ACI, B_ACI);
             [Hrot_omega_dyad, H_omegaDot_dyad, ~, ~] = compute_angularDyadPartials_v2(angVel(:, j), Iner);
@@ -46,7 +48,8 @@ function [SH_N, sigma_N] = LS_solver_att(planetParams, RotPlanet, B_ACI_mat, R, 
             [Yc] = add_angularComponents(Y_ACI, attitude(:, j), zeros(3, Nt), angVel(:, j),...
                 angAcc(:, j));
             
-            [ax, nx, mxc, mcc] = LS_method(Y(:,j), Yc, Hc_BODY, Hrot, R);
+            [ax, nx, mxc, mcc] = LS_method(Y(:,j), Yc(logical(mask)),...
+                Hc(logical(mask), :), Hrot(logical(mask), :), R);
 
             Ax_N  = Ax_N + ax;
             Nx_N  = Nx_N + nx;

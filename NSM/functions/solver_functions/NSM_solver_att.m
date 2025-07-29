@@ -1,5 +1,5 @@
 function [SH_N, sigma_N] = NSM_solver_att(planetParams, RotPlanet, B_ACI_mat, R, P0, Xp, t ,...
-    attitude, angVel, angAcc, Y, rn, vn, Iner)
+    attitude, angVel, angAcc, Y, rn, vn, Iner, mask)
     % planet variables
     n_max = planetParams(3);
     
@@ -11,7 +11,7 @@ function [SH_N, sigma_N] = NSM_solver_att(planetParams, RotPlanet, B_ACI_mat, R,
     [Cp, Sp] = list2mat(n_max, Nc, Ns, Xp);
 
     % loop
-    iterMax = 3;
+    iterMax = 5;
     count   = 0;
     xnot_N = zeros(Ncs-1, 1);
     while count < iterMax
@@ -40,16 +40,19 @@ function [SH_N, sigma_N] = NSM_solver_att(planetParams, RotPlanet, B_ACI_mat, R,
 
             % rotate coefficient partials to body frame
             Hc_BODY = rotate_coeffPartials(Hc_ACI, B_ACI);
+            Hc = [Hc_BODY(1, 2:end); Hc_BODY(4, 2:end); Hc_BODY(7, 2:end); Hc_BODY(2, 2:end); Hc_BODY(5, 2:end);...
+                  Hc_BODY(8, 2:end);  Hc_BODY(3, 2:end); Hc_BODY(6, 2:end); Hc_BODY(9, 2:end)];
             
             % rotation partials
             [Hrot_grad] = compute_rotPartials_analy(Y_ACI, B_ACI);
             Hrot = [Hrot_grad, Hrot_omega_dyad+H_omegaDot_dyad];
 
             [Yc] = add_angularComponents(Y_ACI, attitude(:, j), zeros(3, Nt), angVel(:, j),...
-                angAcc(:, j));  
+                angAcc(:, j));      
 
-            [ax, nx] = NSM_method(Y(:,j), Yc, Hc_BODY, R, Hrot);
-
+            [ax, nx] = NSM_method(Y(:, j), Yc(logical(mask)),...
+                Hc(logical(mask), :), R, Hrot(logical(mask), :));
+            
             Ax_N  = Ax_N + ax;
             Nx_N  = Nx_N + nx;
         end

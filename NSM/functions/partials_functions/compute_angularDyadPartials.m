@@ -1,5 +1,5 @@
 function [Hrot_dA_ang, Hrot_dAdT_ang, H_omega_dA, H_omegaDot_dA, H_omega_dAdt, H_omegaDot_dAdt] = ...
-    compute_angularDyadPartials(omega, att, datt_dt, ddatt_ddt, I)
+    compute_angularDyadPartials(omega, att, datt_dt, ddatt_ddt)
     % Description: Using the partials of the angular velocity and
     % acceleration w.r.t the Euler angles, compute the Dyad partials w.r.t
     % the Euler angles.

@@ -45,18 +45,27 @@ function [dx] = EoM(t, x, Cnm_t, Snm_t, n_max, GM, Re, normalized, ...
         [Nc, Ns, ~] = count_num_coeff(n_max);
         [Hacc, ~] = potentialGradient_Cnm(n_max, r_ACAF, Re, GM, ...
                         ACAF_ACI', normalized);
-% %          Nc = Nc-1;
-% %         J = [zeros(Nc, Nc), zeros(Nc, Ns), zeros(Nc, 3), zeros(Nc, 3);...
-% %             zeros(Ns, Nc), zeros(Ns, Ns), zeros(Ns, 3), zeros(Ns, 3);...
-% %             zeros(3, Nc), zeros(3, Ns), zeros(3, 3), eye(3,3);...
-% %             Hacc(:, 2:end), ddU_ACI, zeros(3,3)];
-         % acount for GM
-        [Hacc, ~] = potentialGradient_Cnm(n_max, r_ACAF, Re, GM, ...
-                        ACAF_ACI', normalized);
+         Nc = Nc-1;
         J = [zeros(Nc, Nc), zeros(Nc, Ns), zeros(Nc, 3), zeros(Nc, 3);...
             zeros(Ns, Nc), zeros(Ns, Ns), zeros(Ns, 3), zeros(Ns, 3);...
             zeros(3, Nc), zeros(3, Ns), zeros(3, 3), eye(3,3);...
-            Hacc(:, 1:end), ddU_ACI, zeros(3,3)];
+            Hacc(:, 2:end), ddU_ACI, zeros(3,3)];
+         % acount for GM
+% %         [Hacc, ~] = potentialGradient_Cnm(n_max, r_ACAF, Re, GM, ...
+% %                         ACAF_ACI', normalized);
+
+% %         [Hrot] = partials_acc_EulerAngles(ACAF_ACI, Cnm_t, Snm_t, n_max, Re, GM, r_ACI, normalized, ACAF_ACI);
+% % 
+% %         J = [zeros(Nc, Nc), zeros(Nc, Ns), zeros(Nc, 3), zeros(Nc, 6);...
+% %             zeros(Ns, Nc), zeros(Ns, Ns), zeros(Ns, 3), zeros(Ns, 6);...
+% %             zeros(3, Nc), zeros(3, Ns), zeros(3, 3), eye(3,3), zeros(3, 3);...
+% %             Hacc(:, 1:end), ddU_ACI, zeros(3,3), Hrot;...
+% %             zeros(3, Nc), zeros(3, Ns), zeros(3, 6), zeros(3,3)];
+
+% %                 J = [zeros(Nc, Nc), zeros(Nc, Ns), zeros(Nc, 3), zeros(Nc, 3);...
+% %             zeros(Ns, Nc), zeros(Ns, Ns), zeros(Ns, 3), zeros(Ns, 3);...
+% %             zeros(3, Nc), zeros(3, Ns), zeros(3, 3), eye(3,3);...
+% %             Hacc(:, 1:end), ddU_ACI, zeros(3,3)];
         Nx  = Nc + Ns + 6;
     else
         Nx  = 6;
@@ -89,4 +98,40 @@ function [Nc, Ns, Ncs] = count_num_coeff(degree)
     
     % total number of coefficients
     Ncs = Nc + Ns;
+end
+
+
+function [Hrot] = partials_acc_EulerAngles(ACAF_ACI, Cmat, Smat, n_max, Re, GM, r, normalized, ACAF_B)
+
+    % output value
+    Hrot = ones(3, 3) * NaN;
+    ACI_ACAF = ACAF_ACI';
+
+    eps = 1E-6;
+    for j = 1:3
+        At = zeros(3, 1);
+        At(j) = eps;
+
+        Atpos = At./2;
+        Atneg = - At./2; 
+
+        [Rpos] = rotationMatrix(Atpos(1), Atpos(2), Atpos(3), [3, 2, 1]);
+        [Rneg] = rotationMatrix(Atneg(1), Atneg(2), Atneg(3), [3, 2, 1]);
+
+        [~, ddUpos, ~] = potentialGradient_nm(Cmat, Smat, n_max, ...
+                                                ACI_ACAF'*r, Re, GM, ...
+                                                normalized);    % output in ACAF
+        ddUpos = ACAF_B' * ddUpos; % S/C body frame
+        ddUpos = Rpos * ddUpos;
+
+        [~, ddUneg, ~] = potentialGradient_nm(Cmat, Smat, n_max, ...
+                                                ACI_ACAF'*r, Re, GM, ...
+                                                normalized);    % output in ACAF
+        ddUneg = ACAF_B' * ddUneg; % S/C body frame
+        ddUneg = Rneg * ddUneg;
+
+        H = (ddUpos - ddUneg)./(vecnorm(Atpos-Atneg));
+
+        Hrot(:, j) = H;
+    end
 end

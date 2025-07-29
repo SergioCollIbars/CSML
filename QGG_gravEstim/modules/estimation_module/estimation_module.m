@@ -33,7 +33,7 @@ function [estimObj] = estimation_module(estimObj, OrbitObj, ...
     disp("Starting estimation process ...");
     
     % ------------------------------------------------------------------- %
-    mode = 2;                                         % extra param mode
+    mode = 0;                                         % extra param mode
 
     % get initial simulation parameters
     OrbitObj = OrbitObj.C_Wmatrix();        % load planet variables
