@@ -27,7 +27,7 @@ set(0,'defaultAxesFontSize',16);
 path = "HARMCOEFS_EROS_CD_1.txt";
 name = "EROS";
 [Cnm, Snm, Re] = readCoeff(path);
-n_max  = 10;
+n_max  = 0;
 normalized = 1;
 GM =  459604.431484721;          % Point mass value    [m^3/s^2]
 W = 1639.38928 * pi/180 /86400;  % Rotation ang. vel   [rad/s]

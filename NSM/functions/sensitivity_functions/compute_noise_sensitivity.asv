@@ -31,7 +31,7 @@ function [dM_total, IF_ratio] = compute_noise_sensitivity(planetParams, RotPlane
         dM_total{i} = zeros(Ncs-1, Ncs-1); 
     end
     fprintf('       Progress:    0%%');  % Initial message
-    for j = 1:Nt-2
+    for j = 3:Nt-2
         % Planet orientation
         maxPos = 3*j; minPos = maxPos - 2;
         ACAF_ACI = RotPlanet(minPos:maxPos, :);
@@ -62,9 +62,7 @@ function [dM_total, IF_ratio] = compute_noise_sensitivity(planetParams, RotPlane
         hc   =  Hc(logical(mask), :);
 
         % apply projection
-% %         C = null(hrot');
-        [~,~,d] = svd(hrot');
-        C = d(:, 6);
+        C = null(hrot');
         
         r = C' * R * C;
         Ax = (C' * hc)' * (r\(C' * hc));
@@ -77,12 +75,13 @@ function [dM_total, IF_ratio] = compute_noise_sensitivity(planetParams, RotPlane
 
         for i = 1:m
             Ax_proj{i} = Ax_proj{i} + Ax;
-% %             RR = R; 
-% %             RR(i, i) = RR(i,i) + 0.44;
-% % 
-% %             r = C' * RR * C;
-% %             ax = (C' * hc)' * (r\(C' * hc));
-% %             Ax_aug{i} = Ax_aug{i} + ax;
+            
+            RR = R; 
+            RR(i, i) = RR(i,i) + 0.44;
+
+            r = C' * RR * C;
+            ax = (C' * hc)' * (r\(C' * hc));
+            Ax_aug{i} = Ax_aug{i} + ax;
         end
         
         % Update every ~5% (optional)
@@ -94,7 +93,7 @@ function [dM_total, IF_ratio] = compute_noise_sensitivity(planetParams, RotPlane
     % compute information ratio
     IF_ratio = cell(m, 1);
     for i = 1:m
-        % % IF_ratio{i} = (Ax_aug{i} - Ax_proj{i})./Ax_proj{i}.*100;
+        IF_ratio{i} = (Ax_aug{i} - Ax_proj{i})./Ax_proj{i}.*100;
         dM_total{i, 1} = -dM_total{i, 1}./Ax_proj{i}.*100;
     end
 
@@ -102,7 +101,6 @@ function [dM_total, IF_ratio] = compute_noise_sensitivity(planetParams, RotPlane
 end
 
 
-%% FUNCTIONS
 function dM = derivative_Ht_w_H(H, C, R_diag)
     % Computes the derivative of H' * inv(C' * R * C) * H w.r.t. each r_i
     %

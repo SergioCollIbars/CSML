@@ -18,7 +18,7 @@ function [SH_N, sigma_N] = LS_solver_att(planetParams, RotPlanet, B_ACI_mat, R, 
     while count < iterMax
         Ax_N = inv(P0); Nx_N = -inv(P0) * xnot_N;
         [~, Mxc, Mcc] = get_considerCov_apriori(P0, Pc, Pxc);
-        for j = 3:Nt-2
+        for j = 1:Nt-2
             % Planet orientation
             maxPos = 3*j; minPos = maxPos - 2;
             ACAF_ACI = RotPlanet(minPos:maxPos, :);

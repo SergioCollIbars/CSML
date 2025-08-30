@@ -3,7 +3,25 @@ clc;
 close all;
 format long g;
 
-addpath('../functions/')
+setpref('Internet','E_mail','sergiocollibars@gmail.com');
+setpref('Internet','SMTP_Server','smtp.gmail.com');
+setpref('Internet','SMTP_Username','sergiocollibars@gmail.com');
+setpref('Internet','SMTP_Password','ptcq ybug jcgh wajg');
+props = java.lang.System.getProperties;
+props.setProperty('mail.smtp.auth','true');
+props.setProperty('mail.smtp.starttls.enable','true'); % For TLS
+props.setProperty('mail.smtp.port','587'); % Common TLS port
+email = 1;  % send plots by email 1 = yes / 0 = no
+
+% Start diary logging
+diaryFile = fullfile(tempdir, 'console_log.txt');
+if isfile(diaryFile)
+    delete(diaryFile);
+end
+diary(diaryFile);
+diary on;
+
+addpath(genpath('../functions/'))
 addpath('../../QGG_gravEstim/src/')
 addpath('../../QGG_navigation/data/')
 addpath('../data/')
@@ -23,11 +41,23 @@ set(0,'defaultAxesFontSize',16);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % Input parameters
-Planet   = "Earth";       % options: Earth / Bennu / Eros
-Solver   = "Both";        % options: NSM / LS / Both
-Errors   = "attitude";    % options: position / attitude / both
-measMode = "2";           % options 1 = GG + ST + GYRO / 2 = GG + ST
-saveData = 0;             % options: 0 / 1
+Planet     = "Earth";       % options: Earth / Bennu / Eros
+Analysis   = 3;             % options: 1 == cov. Analysis / 2 == IF analysis / 3 == Noise sensitivity / 4 == Signal PSD / 5 == Eigenvalue analysis
+Errors     = "attitude";    % options: position / attitude / both
+measMode   = "2";           % options 1 = GG + ST + GYRO / 2 = GG + ST
+saveData   = 1;             % options: 0 / 1
+
+type_Attitude = "GRF";    % options: inertial / RTN / GRF
+type_posErr = "constant"; % options: constant / periodic / random
+type_attErr = "custom"; % options: constant / periodic / linear
+
+printConfig_console(Planet, 'Covariance', Errors, measMode, saveData, ...
+    type_Attitude, type_posErr, type_attErr);
+
+%             Mesurement mask 
+%             xx xy xz yx yy yz zx zy zz
+mask       =  [1, 1, 1, 0, 1, 1, 0, 0, 1]';
+printMask_console(mask);
 
 [planetParams, poleParams, Kaula, r, Xtrue, Iner] = loadPlanet(Planet);
 GM  = planetParams(1); Re = planetParams(2); n_max = planetParams(3);
@@ -39,7 +69,7 @@ DEC = poleParams(4);
 % Time options
 n   = sqrt(GM / r^3);    % Mean motion         [rad/s]
 T   = (2 * pi / n);
-rev = 10;
+rev = 20;
 f   = 1/10;
 t   = linspace(0, rev*T, rev*T * f);
 Nt  = length(t);
@@ -82,7 +112,7 @@ else
 
     t = t1(idx1)';
     Nt = length(t);
-    
+
 % %     % WARNING: reducing data set
 % %     t = t(1:round(Nt/10));
 % %     Nt = length(t);
@@ -102,27 +132,34 @@ end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 disp('Computing attitude ... ')
-type = "RTN";
-[orientation, Mext] = SC_orientation(t, state_t, type, GRF_ACI, Iner);
-
-% check for outliers
-% % [orientation(7:9, :)] = check_outliers(t, orientation(7:9, :));
+[orientation, Mext] = SC_orientation(t, state_t, type_Attitude, GRF_ACI, Iner);
 
 % attitude nominal value
-theta    = orientation(1:3, :);  % [rad]
-thetaDot = orientation(4:6, :);  % [rad /s]
+theta    = orientation(1:3, :);  % Euler angle      [rad]
+thetaDot = orientation(4:6, :);  % Euler angle rate [rad /s]
+
+% compute Body to ACI rotation matrix
+B_ACI_mat = ones(3*Nt, 3);
+for j = 1:length(t)
+    maxVal = 3 * j; minVal = maxVal -2;
+    
+    yaw  = theta(1, j); pitch = theta(2,j); roll = theta(3, j);
+    B_ACI =rotationMatrix(yaw, pitch, roll, ...
+        [3, 2, 1]);
+
+    B_ACI_mat(minVal:maxVal, :) = B_ACI;
+end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 disp('Generating state errors ... ')
 % Position error
-type = "constant";              % options: constant / periodic / random
 Amp  = 0.*[1;0.7;0.5];          % [m] 
-[Ar] = generate_posErrors(t, type, Amp, T);
+[Ar] = generate_posErrors(t, type_posErr, Amp, T);
 
 % Attitude error
-type = "random";              % options: constant / periodic / linear
-Amp  = 4.85E-6.*[1;0.7;0.5];  % [rad] 
-[att_Err] = generate_attErrors(t, type, Planet, saveData, Amp, T, measMode);
+Amp  = 1.45E-5.*[1;1;1];        % [rad] 
+% % Amp = [0;0;0];
+[att_Err] = generate_attErrors(t, type_attErr, Planet, saveData, Amp, T, measMode);
 
 % include position errors
 rn = state_t(:, 1:3)' + Ar;
@@ -133,12 +170,6 @@ vn = state_t(:, 4:6)';
     measMode, att_Err, Mext);
 [angVel_nom, angAcc_nom]   = compute_angularVals(theta, thetaDot, Iner,...
     measMode, zeros(6, Nt), Mext);
-
-% plot S/C state
-err_omega    = angVel_true - angVel_nom;
-err_omegaDot = angAcc_true - angAcc_nom;
-plot_SC_state(t, saveData, Planet, state_t, orientation, ...
-    angVel_nom, angAcc_nom, err_omega, err_omegaDot);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 disp('Generating measurements weigths ... ')
@@ -151,75 +182,144 @@ num_realizations = length(t);       % Number of realizations
 noise = normrnd(repmat(means', 1, num_realizations), ...
     repmat(std_devs', 1, num_realizations));
 
-R = diag(std_devs.^2);
+R = diag(std_devs(logical(mask)).^2);
+
+% % % compute measurements
+% % [Ytrue, ~, ~] = gradiometer_meas(t ,planetParams, ACAF_ACI, state_t, ...
+% %                 zeros(9, Nt), Cnm, Snm);
+% % [Ytrue] = add_angularComponents(Ytrue, theta, att_Err(1:3, :), angVel_true,...
+% %     angAcc_true); 
+% % Ytrue  = Ytrue(logical(mask), :) + noise(logical(mask), :);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-disp('Running gravity determination ... ')
+% filter for NaN values in position ,velocity or attitude vector
+A = [rn;vn; theta; angVel_nom; angAcc_nom];
+nanMask = isnan(A);               % Logical matrix: true where A is NaN
+colHasNaN = any(nanMask, 1);      % 1 means operate across rows → result is 1 x N
+
+% Now find the first column where no NaNs exist
+firstIndx = find(~colHasNaN, 1, 'first');
+
 if(Errors == "attitude")
+    err = [att_Err(1:3, firstIndx:end);...
+        angVel_true(:, firstIndx:end) - angVel_nom(:, firstIndx:end)];
     Pc = zeros(6, 6); Pxc = zeros(Ncs - 1, 6);
     for j = 1:3
-        Pc(j, j) = max(att_Err(j, :))^2;
+        Pc(j, j) = err(j, 1)^2;
     end
     for j = 4:6
-        Pc(j, j) = max(att_Err(j-3, :)*1E-3)^2;
+        Pc(j, j) = err(j, 1)^2;
     end
 else
     % TBD
 end
 
+% short the input values to remove NaNs
+maxPos = 3 * firstIndx; minPos = maxPos -2;
+ACAF_ACI    = ACAF_ACI(minPos:end, :);
+B_ACI_mat   = B_ACI_mat(minPos:end, :);
+t           = t(1, firstIndx:end);
+theta       = theta(:, firstIndx:end);
+angVel_nom  = angVel_nom(:, firstIndx:end);
+angAcc_nom  = angAcc_nom(:, firstIndx:end);
+% % Ytrue       = Ytrue(:, firstIndx:end);
+rn          = rn(:, firstIndx:end);
+vn          = vn(:, firstIndx:end);
+
 % run estimation
-if(Solver == "NSM")         % run NSM only
-    if(Errors == "attitude")
-        [sigma_N] = NSM_covSolver_att(planetParams, ACAF_ACI, R, P0, Xp, t ,...
-        theta, angVel_nom, rn, vn, Iner);
-    else
-        % TBD
-    end
-elseif(Solver == "LS")      % run standard LS only
-    if(Errors == "attitude")
-        [sigma_N] = LS_covSolver_att(planetParams, ACAF_ACI, R, P0, Pc, Pxc, Xp, t ,...
-            theta, angVel_nom, rn, vn, Iner);
-    else
-        % TBD
-    end
-elseif(Solver == "Both")    % run NSM & LS
+if(Analysis == 1)    % run NSM & LS covariace analysis (TBD)
     disp(' Solving with NSM .....')
-    [sigma_N] = NSM_covSolver_att(planetParams, ACAF_ACI, R, P0, Xp, t ,...
-        theta, angVel_nom, rn, vn, Iner);
-
-    disp(' Solving with LS .....')
-    [sigma_LS, Sensitivity] = LS_covSolver_att(planetParams, ACAF_ACI, R,...
-        P0, Pc, Pxc, Xp, t, theta, angVel_nom, rn, vn, att_Err, Iner);
-end
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-disp('Displaying results ...')
-% plot resutls
-if(Solver == "Both")
-    % plot gravity field error per RMS value
+    [sigma_N] = NSM_covSolver_att(planetParams, ACAF_ACI, B_ACI_mat, R, P0, Pc, Pxc,...
+        Xp, t, angVel_nom, rn, vn, Iner, mask);
+    
     tt = "RMS error using NSM"; llg = {'truth', '3 \sigma NSM', ''};
-    error = Xtrue - Xtrue(1:end);
+    error = Xtrue.*0;
     plot_gravField_RMS(Xtrue, sigma_N, error, n_max, tt, llg);
+    
+% %     disp(' Solving with LS .....')
+% %     [sigma_LS, Sensitivity] = LS_covSolver_att(planetParams, ACAF_ACI, R,...
+% %         P0, Pc, Pxc, Xp, t, theta, angVel_nom, rn, vn, att_Err, Iner, mask);
+% % 
+% %     tt = "RMS error using LS"; llg = {'truth', '3 \sigma LS', ''};
+% %     error = Xtrue.*0;
+% %     plot_gravField_RMS(Xtrue, sigma_LS, error, n_max, tt, llg);
 
-    tt = "RMS error using LS"; llg = {'truth', '3 \sigma LS', 'LS Sensitivity'};
-    error =[1;Sensitivity];
-    plot_gravField_RMS(Xtrue, sigma_LS, error, n_max, tt, llg);
+elseif(Analysis == 2) % run IF projection analysis
+    disp('Computing Fisher information loss ratio ... ')
+    [IF_proj,IF_init, cond_proj, cond_init] = ...
+        compute_IF_projection(planetParams, ACAF_ACI, ...
+    B_ACI_mat, R, inv(P0), Xp, t, angVel_nom, rn, vn, Iner, mask);
+    
+    % plot results
+    limit = [1, 100];
+    limitTicks = [1, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
+    scale = 'linear'; digits = '%.0f';
 
-else
-    mk = 'square';  tt = "Estimation error "; 
-    llg = {'truth','NSM', ''};
-    error = Xtrue - Xtrue(1:end);
-    plot_gravField_RMS(Xtrue, sigma_N, error, n_max, tt, mk, llg);
+    tt = "Fisher information loss ratio, projected vs original "; 
+    error = [0;diag((1 - IF_proj./IF_init).* 100)];
+    plot_high_gravField(n_max, Nc, Ns, error, tt, limit, limitTicks, scale, digits);
+
+    figure()
+    semilogy(t, cond_proj, t, cond_init, 'LineWidth', 2)
+    legend('NSM', 'standard LS')
+    title('Condition Number')
+    grid on;
+
+elseif(Analysis == 3) % run Noise projection sensitivity
+    disp('Computing sensitivity to noise projection ... ')
+    [M, IF_ratio] = compute_noise_sensitivity(planetParams, ACAF_ACI, ...
+    B_ACI_mat, Xp, t, angVel_nom, rn, vn, Iner, mask);
+    
+    % plot
+% %     tt = {'xx', 'xy', 'xz', 'yx', 'yy', 'yz', 'zx', 'zy', 'zz'};
+    tt = {'xx', 'xy', 'xz', 'yy', 'yz', 'zz'};
+    limit = [1, 100];
+    limitTicks = [1, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
+    scale = 'linear'; digits = '%.0f';
+    ff = tt;
+    fig = figure();
+    fig.WindowState = 'maximized';
+    for i =1:sum(mask)
+        subplot(2,3,i)
+        textt = "Fisher information sensitivity " + string(ff{i}); 
+        error = [0;diag(M{i, 1})];
+        plot_high_gravField(n_max, Nc, Ns, error, textt, limit, limitTicks,...
+            scale, digits);
+    end
+
+% %     limit = [1, 100];
+% %     limitTicks = [1, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
+% %     scale = 'linear'; digits = '%.0f';
+% %     ff = tt(logical(mask));
+% %     figure()
+% %     for i =1:sum(mask)
+% %         subplot(3,3,i)
+% %         textt = "Fisher information loss ratio, inacurate component " + string(ff{i}); 
+% %         error = [0;diag(IF_ratio{i})];
+% %         plot_high_gravField(n_max, Nc, Ns, error, textt, limit, limitTicks,...
+% %             scale, digits);
+% %     end
+    
+elseif(Analysis == 4)
+    disp('Computing signal transfer function ... ')
+    compute_signalProj_PSD(planetParams, ACAF_ACI, B_ACI_mat, ...
+        Xp, t, angVel_nom, rn, vn, Iner, mask, Ytrue, err, ...
+        theta, angAcc_nom);
+elseif(Analysis == 5)
+    disp('Computing eigenvalue anlysis ... ')
+    compute_eigenvalue(planetParams, ACAF_ACI, B_ACI_mat, ...
+        Xp, t, angVel_nom, rn, vn, Iner);
 end
+
+diary off; % close diary
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% FUNCTIONS
-function [output] = check_outliers(t, input)
-    ths = 5E-7; 
-    for j = 1:length(t)
-        if(rms(input(:, j)) > ths)
-            input(:, j) = zeros(3, 1);
-        end
-    end
-    output = input;
+if(email)
+        % load console output 
+        consoleText = fileread(diaryFile);
+
+        sendOpenFiguresByEmail(...
+            'sergiocollibars@gmail.com', ...
+            'Auto Report - MATLAB Figures', consoleText);
 end
+delete(diaryFile);  % clean up immediately

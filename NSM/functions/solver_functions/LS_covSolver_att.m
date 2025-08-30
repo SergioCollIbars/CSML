@@ -1,5 +1,5 @@
 function [sigma_N, Sensitivity] = LS_covSolver_att(planetParams, RotPlanet, R, P0, Pc, Pxc, Xp, t ,...
-    attitude, angVel, rn, vn, attErr, Iner)
+    attitude, angVel, rn, vn, attErr, Iner, mask)
     % pole & planet variables
     GM  = planetParams(1); Re = planetParams(2); n_max = planetParams(3);
     normalized = planetParams(4); 
@@ -14,7 +14,8 @@ function [sigma_N, Sensitivity] = LS_covSolver_att(planetParams, RotPlanet, R, P
     Ax_N = inv(P0);
     [~, Mxc, Mcc] = get_considerCov_apriori(P0, Pc, Pxc);
     Serr = 0;
-    for j = 3:Nt-2
+    fprintf('       Progress:    0%%');  % Initial message
+    for j = 1:Nt-2
         % position vector
         rn_ACI = rn(:, j);
         
@@ -29,22 +30,21 @@ function [sigma_N, Sensitivity] = LS_covSolver_att(planetParams, RotPlanet, R, P
     
          % compute attitude partials. Nominal body frame
         [Hrot_grad] = compute_rotPartials(n_max, normalized, Cp, Sp, Re, GM, rn_ACI, ACAF_ACI, ACAF_B);
-% %         [Hrot_dA_ang, Hrot_dAdT_ang] = compute_angularDyadPartials(angVel(:, j), attitude(:, j), datt_dt(:, j), ddatt_ddt(:, j));
-% %         Hrot_dA = Hrot_grad + Hrot_dA_ang;
-% %         Hrot_dAdT = Hrot_dAdT_ang;
-% %         Hrot = [Hrot_dA, Hrot_dAdT];
-
         [Hrot_omega_dyad, H_omegaDot_dyad, ~, ~] = compute_angularDyadPartials_v2(angVel(:, j), Iner);
         Hrot = [Hrot_grad, Hrot_omega_dyad+H_omegaDot_dyad];
         
     
         % Least Square method
-        [~, ~, Hc] = gradiometer_meas(t(j) ,planetParams, ACAF_ACI, [rn(:, j)', vn(:, j)'], ...
-                zeros(9, Nt), Cp, Sp, B_ACI');
+        [~, Hc_ACI] = gradiometer_meas(t(j) ,planetParams, ACAF_ACI, [rn(:, j)', vn(:, j)'], ...
+                zeros(9, Nt), Cp, Sp);
+        Hc_BODY = rotate_coeffPartials(Hc_ACI, B_ACI);
 
-        hc = [Hc(1, 2:end); Hc(4, 2:end); Hc(7, 2:end); Hc(2, 2:end); Hc(5, 2:end);...
-             Hc(8, 2:end);  Hc(3, 2:end); Hc(6, 2:end); Hc(9, 2:end)];
-        hrot = Hrot;
+        Hc = [Hc_BODY(1, 2:end); Hc_BODY(4, 2:end); Hc_BODY(7, 2:end); Hc_BODY(2, 2:end); Hc_BODY(5, 2:end);...
+                Hc_BODY(8, 2:end);  Hc_BODY(3, 2:end); Hc_BODY(6, 2:end); Hc_BODY(9, 2:end)];
+        
+        % apply maks to partials
+        hrot = Hrot(logical(mask), :);
+        hc   =  Hc(logical(mask), :);
     
         % information and normal matrices
         ax = hc' * inv(R) * hc;
@@ -55,6 +55,11 @@ function [sigma_N, Sensitivity] = LS_covSolver_att(planetParams, RotPlanet, R, P
         Mxc = Mxc + mxc;
         Mcc = Mcc + mcc;
         Serr = Serr + (hc' * inv(R) * hrot * attErr(1:6, j));
+
+        % Update every ~5% (optional)
+        if mod(j, round(Nt/20)) == 0 || j == Nt-2
+            fprintf('\b\b\b\b%3d%%', round(100 * j / Nt));
+        end
     end
 
     Px = inv(Ax_N);
@@ -64,5 +69,8 @@ function [sigma_N, Sensitivity] = LS_covSolver_att(planetParams, RotPlanet, R, P
     P_N =  [Pxx, Pxc;Pxc', Pc];
     sigma_N = sqrt(diag(P_N));
     Sensitivity = - Px * Serr;
+    
+    disp(cond(Px));
+    fprintf('\nDone!\n');
 end
 

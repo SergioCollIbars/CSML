@@ -15,8 +15,8 @@ function [Mxx_bar, Mxc_bar, Mcc_bar] = get_considerCov_apriori(P0, Pc, Pxc)
     %       Mxx_bar:  
     % --------------------------------------------------------------------%
 
-    Mcc_bar = inv(Pc - Pxc' * inv(P0) * Pxc);
-    Mxx_bar = inv(P0 - Pxc * inv(Pc) * Pxc');
-    Mxc_bar = -Mxx_bar * Pxc * inv(Pc);
+    Mcc_bar = pinv(Pc - Pxc' * pinv(P0) * Pxc);
+    Mxx_bar = pinv(P0 - Pxc * pinv(Pc) * Pxc');
+    Mxc_bar = -Mxx_bar * Pxc * pinv(Pc);
 end
 

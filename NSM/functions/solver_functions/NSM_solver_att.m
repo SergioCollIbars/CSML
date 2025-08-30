@@ -1,7 +1,7 @@
-function [SH_N, sigma_N] = NSM_solver_att(planetParams, RotPlanet, B_ACI_mat, R, P0, Xp, t ,...
+function [SH_N, sigma_N] = NSM_solver_att(planetParams, RotPlanet, B_ACI_mat, R, P0, Pc, Pxc, Xp, t ,...
     attitude, angVel, angAcc, Y, rn, vn, Iner, mask)
     % planet variables
-    n_max = planetParams(3);
+     n_max = planetParams(3);
     
     % variables number
     [Nc, Ns, Ncs] = count_num_coeff(n_max); 
@@ -10,13 +10,19 @@ function [SH_N, sigma_N] = NSM_solver_att(planetParams, RotPlanet, B_ACI_mat, R,
      % a-priori coefficients
     [Cp, Sp] = list2mat(n_max, Nc, Ns, Xp);
 
+    % compute attitude STM
+% %     order = 5;
+% %     [STM] = integrateSTM_attitude(t, [attitude;angVel], order, Iner);
+
     % loop
-    iterMax = 5;
+    iterMax = 3;
     count   = 0;
     xnot_N = zeros(Ncs-1, 1);
+    fprintf('       Progress:    0%%');  % Initial message
     while count < iterMax
         Ax_N = inv(P0); Nx_N = -inv(P0) * xnot_N;
-        for j = 3:Nt-2
+        [~, Mxc, Mcc] = get_considerCov_apriori(P0, Pc, Pxc);
+        for j = 1:Nt-2
             % Planet orientation
             maxPos = 3*j; minPos = maxPos - 2;
             ACAF_ACI = RotPlanet(minPos:maxPos, :);
@@ -35,6 +41,7 @@ function [SH_N, sigma_N] = NSM_solver_att(planetParams, RotPlanet, B_ACI_mat, R,
             [Hrot_omega_dyad, H_omegaDot_dyad, ~, ~] = compute_angularDyadPartials_v2(angVel(:, j), Iner);
            
             % Null space method correcting for attitude
+            planetParams(3) = 0;
             [Y_ACI, Hc_ACI, ~] = gradiometer_meas(t(j) ,planetParams, ACAF_ACI, [rn(:, j)', vn(:, j)'], ...
                     zeros(9, Nt), Cp, Sp);
 
@@ -50,11 +57,18 @@ function [SH_N, sigma_N] = NSM_solver_att(planetParams, RotPlanet, B_ACI_mat, R,
             [Yc] = add_angularComponents(Y_ACI, attitude(:, j), zeros(3, Nt), angVel(:, j),...
                 angAcc(:, j));      
 
-            [ax, nx] = NSM_method(Y(:, j), Yc(logical(mask)),...
+            [ax, nx, mxc, mcc] = NSM_method(Y(:, j), Yc(logical(mask)),...
                 Hc(logical(mask), :), R, Hrot(logical(mask), :));
             
             Ax_N  = Ax_N + ax;
             Nx_N  = Nx_N + nx;
+            Mxc = Mxc + mxc;
+            Mcc = Mcc + mcc;
+
+            % Update every ~5% (optional)
+            if mod(j, round(Nt/20)) == 0 || j == Nt-2
+                fprintf('\b\b\b\b%3d%%', round(100 * j / Nt));
+            end
         end
     
         % solve LS
@@ -78,7 +92,12 @@ function [SH_N, sigma_N] = NSM_solver_att(planetParams, RotPlanet, B_ACI_mat, R,
 
     %  %Px = inv(Ax_N);
     Px = compute_covarianceMat(Ax_N);
-    sigma_N = sqrt(diag(Px));
+    Sxc = -Px * Mxc;
+    Pxx = Px + Sxc*Pc*Sxc';
+    Pxc = Sxc * Pc;
+    P_N =  [Pxx, Pxc;Pxc', Pc];
+
+    sigma_N = sqrt(diag(P_N));
     
     [Xp_N] = mat2list(Cp, Sp, Nc, Ns);
     SH_N = Xp_N(2:end);

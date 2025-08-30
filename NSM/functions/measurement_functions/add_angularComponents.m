@@ -31,7 +31,6 @@ function [Y] = add_angularComponents(Y, attitude, At, angVel, angAcc)
       JB = [jB(1,1); jB(1,2) ; jB(1,3); jB(2,1);...
          jB(2,2); jB(2,3) ; jB(3,1); jB(3,2); jB(3,3)];
       Y(:, j) = JB + A - B;
-% %       Y(:, j) = JB;
     end
 end
 

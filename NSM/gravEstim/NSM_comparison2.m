@@ -78,9 +78,9 @@ Nt = length(t);
 
 % position error
 Ar = 5E-2*[1;1;1].*1;            % [ACI]
-Ar_gaussian = [normrnd(0, Ar(1), 1, Nt); 
-               normrnd(0, Ar(2), 1, Nt); 
-               normrnd(0, Ar(3), 1, Nt)];
+Ar_gaussian = [normrnd(0, Ar(1)/3, 1, Nt); 
+               normrnd(0, Ar(2)/3, 1, Nt); 
+               normrnd(0, Ar(3)/3, 1, Nt)];
 
 % % % noise values from GOCE mission
 noise0 = zeros(9, Nt);
@@ -98,15 +98,17 @@ num_realizations = length(t); % Number of realizations
 
 noise = normrnd(repmat(means', 1, num_realizations), ...
     repmat(std_devs', 1, num_realizations));
+% % load("noise_bennu.mat");
+
 
 % Integrate trajectory
 options = odeset('RelTol',1e-11,'AbsTol',1e-11);
 STM0 = reshape(eye(6,6), [36, 1]);
 [~, state_t] = ode113(@(t, x) EoM(t, x, Cnm, Snm, n_max, GM, Re, normalized, ...
-    W0, W, RA, DEC, 1), t, [r0;v0;STM0], options);
-rn = state_t(:, 1:3)' + ones(3, Nt).*Ar;                                % constant position error
+    W0, W, RA, DEC, 0), t, [r0;v0;STM0], options);
+% % rn = state_t(:, 1:3)' + ones(3, Nt).*Ar;                                % constant position error
 % % rn = state_t(:, 1:3)' + [sin(1E-4.*t);sin(1E-3.*t);sin(5E-4.*t)].*Ar;   % sinusoidal position error
-% % rn = state_t(:, 1:3)' + Ar_gaussian;                                        % random Gaussian error                          
+rn = state_t(:, 1:3)' + Ar_gaussian;                                        % random Gaussian error                          
 vn = state_t(:, 4:6)';
 
 % contruct ACAF_ACI rotation matrix
@@ -126,7 +128,7 @@ end
 % perturb nominal coefficient
 [X] = mat2list(Cnm, Snm, Nc, Ns);
 sigma_n = 1E3.*[1E-2;1E-2;1E-2;1E-2;1E-2];% Bennu
-sigma_n = 10* ones(10, 1);                % Eros
+% % sigma_n = 10* ones(10, 1);                % Eros
 % % sigma_n = ones(10, 1).*1E-2;
 % % [S] = mat2list(sigma_Cnm, sigma_Snm, Nc, Ns);
 % % sigma_RMS     = computeRMS_coeffErr(n_max, Nc, Ns, S, Cnm.*0, Snm.*0);
@@ -142,7 +144,7 @@ R_N = diag([sigma1, sigma2, sigma3, sigma1, sigma2].^2);
 n = ones(2, Nt)*NaN;
 
 % loop
-iterMax = 7;
+iterMax = 5;
 count   = 0;
 xnot_R = zeros(Ncs-1, 1); xnot_N = xnot_R; xnot_LS = xnot_R; xnot_N_AP = xnot_R;
 Cp_R = Cp; Cp_N = Cp; Cp_LS = Cp; Cp_N_AP = Cp;
