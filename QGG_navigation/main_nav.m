@@ -5,6 +5,7 @@ format short;
 
 addpath("data/")
 addpath("functions/")
+addpath("simplified_functions/")
 addpath("functions/solver")
 addpath("functions/measurements")
 addpath("functions/integrator")
