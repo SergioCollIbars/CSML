@@ -44,7 +44,7 @@ function [X, Pc, Xhat, Xnot, pref, posf] = EKF_solver(TIME, X0, P0, ...
         % Compute dynamics. ODE 113
         options = odeset('RelTol',1e-12,'AbsTol',1e-12);
         [~, STATE] = ode113(@(t, x) EOM_navigation(t, x, planetParams, ...
-            poleParams, Cmat, Smat, system, 0, {DMC, Bw}, augmented_st), t_span, [X0; STM0], options);
+            poleParams, Cmat, Smat, system, 0, {DMC, Bw}, augmented_st, bias), t_span, [X0; STM0], options);
         
         state = STATE(end, 1:Ns);
         STM  = STATE(:, Ns+1:end);

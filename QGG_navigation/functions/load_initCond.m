@@ -35,7 +35,7 @@ function [X0] = load_initCond(system, planetParams, TIME)
         [r0, v0] = orbElems_2_ACI(rho, f, GM, Omega, omega, i, e);
     elseif(system == "CR3BP" || system == "FCR3BP")
          r0 = [1.021968177072928; 0; -0.18206];
-         v0 = [0; -0.1031401430288178; 0]; % L1 orbit
+         v0 = [0; -0.1031401430288178; 0]; % L2 orbit
 
          [r0, v0] = rotate2inertial(r0, v0, 0, 1);  % [-] and [-]
     elseif(system == "EPHEM")
