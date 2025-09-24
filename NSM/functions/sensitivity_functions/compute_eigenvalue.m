@@ -15,6 +15,9 @@ function [] = compute_eigenvalue(planetParams, RotPlanet, B_ACI_mat, ...
     eig_six   = zeros(6, Nt); 
     eig_three = zeros(3, Nt);
 
+    % Time normalization (meas. sampling time)
+    T = 10;                 % [s]
+
     fprintf('       Progress:    0%%');  % Initial message
     for j = 1:Nt-2
         % Planet orientation
@@ -30,7 +33,7 @@ function [] = compute_eigenvalue(planetParams, RotPlanet, B_ACI_mat, ...
         % compute attitude partials. Nominal body frame
         [Hrot_omega_dyad, H_omegaDot_dyad, ~, ~] = compute_angularDyadPartials_v2(angVel(:, j), Iner);
         [Hrot_grad] = compute_rotPartials_analy(Y_ACI, B_ACI);
-        hrot = [Hrot_grad, Hrot_omega_dyad+H_omegaDot_dyad];
+        hrot = [Hrot_grad, (Hrot_omega_dyad+H_omegaDot_dyad)./T]./(1E-9);   % [E/rad]
         
         % compute Eigenvalue full tensor
         [~, v, ~] = svd(hrot');
@@ -52,20 +55,27 @@ function [] = compute_eigenvalue(planetParams, RotPlanet, B_ACI_mat, ...
         end
     end
     
+    gps_epoch = datetime(1980,1,6,0,0,0); % GPS epoch
+    t_UTC = gps_epoch + seconds(t);        % date time 
+    t = t_UTC;
+         
     figure()
     semilogy(t, eig_full + 1E-20, 'LineWidth', 2)
     title('Eigenvalues full tensor')
     grid on;
+    ylabel('[Eotvos / rad]')
 
     figure()
     semilogy(t, eig_six, 'LineWidth', 2)
     title('Eigenvalues six components')
     grid on;
+    ylabel('[Eotvos / rad]')
 
     figure()
     semilogy(t, eig_three, 'LineWidth', 2)
     title('Eigenvalues three components')
     grid on;
+    ylabel('[Eotvos / rad]')
 
 end
 

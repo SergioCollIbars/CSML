@@ -51,7 +51,9 @@ function [IF_proj,IF_init, cond_proj, cond_init] = compute_IF_projection(planetP
         hc   =  Hc(logical(mask), :);
 
         % apply projection
-        C = null(hrot');
+        % C = null(hrot');
+        [~,~,d] = svd(hrot');
+        C = d(:, 6);
         r = C' * R * C;
 
         % projected IF & condition number

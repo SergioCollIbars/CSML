@@ -19,7 +19,7 @@ cspice_furnsh('/Users/sergiocollibars/Documents/MATLAB/kernels/kernels.tm')
 system = "EPHEM";
 consider_cov = 0;
 tmin = 0;                           % [rad]
-tmax = 6*1.4968;                    % [rad]
+tmax = 1*1.4968;                    % [rad]
 frec = 1/60;                        % [Hz]
 
 % load universe
@@ -40,7 +40,7 @@ for j = 1:length(tol)
     STM0 = reshape(eye(6,6), [36, 1]);
     tStart = tic;
     [t, state] = ode113(@(t, x) EOM_navigation(t, x, planetParams, ...
-        poleParams, Cmat_true, Smat_true, system, 0, {0,0}, 0), TIME, [X0; STM0], options);
+        poleParams, Cmat_true, Smat_true, system, 0, {0,0}, 0, 0), TIME, [X0; STM0], options);
     tEnd = toc(tStart);
 
     % save integrated state
@@ -190,7 +190,9 @@ legend('total', 'Earth', 'Moon', 'Sun', 'Jupiter', 'SRP')
 
 % compute attitude error effects along NRHO
 arcsec = 1;
-Ath = arcsec * pi / (180 * 3600).*[1;1;1];
+% % Ath = arcsec * pi / (180 * 3600).*[1;1;1];
+Ath = normrnd(0, arcsec * pi / (180 * 3600), [3,length(date)]);   % mean 0, std 2
+
 deltaE = ones(6, length(date)) * NaN;
 deltaX = ones(1, length(date)) * NaN;
 signal = deltaE;
@@ -202,7 +204,7 @@ for j = 1:length(date)
     [hpos] = compute_posErr(time(j)*planetParams(3), x(1:3), planetParams, ...
         Cmat_true, Smat_true);
     Hpos = [hpos(1:3, :);hpos(5:6,:);hpos(9, :)];
-    deltaE(:, j) = ([Hrot(1:3, :);Hrot(5:6,:);Hrot(9, :)] * Ath).* (planetParams(3)^2); % [1/s^2]
+    deltaE(:, j) = ([Hrot(1:3, :);Hrot(5:6,:);Hrot(9, :)] * Ath(:, j)).* (planetParams(3)^2); % [1/s^2]
     dY = deltaE(:, j)./ (planetParams(3)^2);                                            % [-]
     % % dY = 1E-3 * ones(6, 1) * 1E-9 / (planetParams(3)^2);
     deltaX(j) = vecnorm(inv(Hpos'*Hpos) * (Hpos' * dY)) * planetParams(2);              % [m]   

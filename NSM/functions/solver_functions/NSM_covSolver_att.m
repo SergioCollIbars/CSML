@@ -37,9 +37,9 @@ function [sigma_N] = NSM_covSolver_att(planetParams, RotPlanet, B_ACI_mat, R, P0
         hrot = Hrot(logical(mask), :);
         hc   =  Hc(logical(mask), :);
 
-        C = null(hrot');
-% %         [~,~,d] = svd(hrot');
-% %         C = d(:, 3);
+% %         C = null(hrot');
+        [~,~,d] = svd(hrot');
+        C = d(:, 6);
 
         hcp = C' * hc;
         r  = C' * R * C;

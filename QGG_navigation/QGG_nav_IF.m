@@ -56,7 +56,7 @@ end
 
 figure();
 [X, Y] = meshgrid(rad2deg(PHI), rad2deg(LAMBDA));
-surf(X, Y, BD_QGG, 'EdgeColor','none')
+surf(X, Y, real(BD_QGG), 'EdgeColor','none')
 xlabel('Latitude \phi [deg]')
 ylabel('Longitude \lambda [deg]')
 h = colorbar;
@@ -70,10 +70,11 @@ xlim([-90, 90])
 
 % meshgrid parameters
 Ref= Re_ND;
-N = 50;
-valsX = [-1.5*Ref + EarthD, 1.5*Ref + EarthD, N];
-valsY = [-1.5*Ref, 1.5*Ref, N];
-valsZ = [-1.5*Ref, 1.5*Ref, N];
+N = 150;
+% % valsX = [-1.5*Ref + EarthD, 1.5*Ref + EarthD, N];
+valsX = [-150*Ref, 150*Ref, N];
+valsY = [-150*Ref, 150*Ref, N];
+valsZ = [-150*Ref, 150*Ref, N];
 
 [IF_QGG, BD_QGG, X, Y, Z] = compute_boundingContour(valsX, valsY, valsZ,...
     planetParams, poleParams, C_mat, S_mat, system, Ref);

@@ -83,6 +83,10 @@ function [T, Hmeas, Hcoeff] = compute_measurements(t, state, planetParams,...
         else
             [H] = compute_pos_par_CR3BP(planetParams, state(j, 1:3)', ...
                 ACAF1_EM, ACAF2_EM, C_mat, S_mat, posE(:, j), posM(:, j));
+% %              Y = reshape(ddU', [9, 1]); 
+% %              BN = eye(3,3);
+% %              [Hrot] = compute_rotPartials_analy(Y, BN);
+% %              H = [Hrot(1, :);Hrot(2, :);Hrot(3, :);Hrot(5, :);Hrot(6,:);Hrot(9, :)];
         end
 
         if(As)

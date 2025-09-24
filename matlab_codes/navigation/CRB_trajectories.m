@@ -29,29 +29,36 @@ Rm_ND = Rm / D;                     % [-]
     load_universe("CR3BP", [0, pi], 1);
 
 % load initial condition and trajectory
-% % data = load('EM_NHalo_L2_Family.mat');
-data = load('EM_Lyap_L2_Family.mat');
-% % data = load('EM_DRO_Family.mat');
-% % data = load('EM_LoPO_Family.mat');
-% % data = load('EM_31_Res_Family.mat');
+% % data = load('EM_NHalo_south_L2_Family.mat');
+% % data = load('JPL_EM_Lyap_L1_Family.mat');
+% % data = load('JPL_EM_Lyap_L2_Family.mat');
+data = load('JPL_EM_Vert_L2_Family.mat');
+
 Nd =length(data.trajFam);
+index = 1:1:Nd;
 index = 1:40:Nd;
+% % index = [1, 100, 500, Nd];
 periapsis = 1;  % starting @ periapsis? 1 yes / 0 no
 insidePlanet = zeros(1, length(index));
 
 % trajectories struct
 dataOrbit = struct('traj', nan(3, 1E4), 'time', nan(1, 1E4), 'JC', []);
 dataCRB_pos    = struct('value', nan(1, 1E4));
+period_mat     = ones(1, length(index));
 for i = 1:length(index)
     % Filling with NaN data 
     dataOrbit(i).traj = ones(3, 1E4)*NaN;
     dataOrbit(i).time = ones(1, 1E4)*NaN;
-    dataOrbit(i).JC   = data.trajFam{i, 1}.CJ; 
+    dataOrbit(i).JC   = data.trajFam{index(i), 1}.CJ; 
     dataCRB_pos(i).value   = ones(1, 1E4) * NaN;
+    period_mat(i) = data.trajFam{index(i), 1}.period; 
 end
+maxPeriod = max(period_mat); minPeriod = min(period_mat);
 dataCRB_vel = dataCRB_pos;
 
 for j = 1:length(index)
+    disp('Progress ... ' + string(j/length(index) * 100));
+
     x0   = data.trajFam{index(j),1}.iState;
     mu = data.trajFam{index(j),1}.mu;
     P    = data.trajFam{index(j), 1}.period;
@@ -64,21 +71,27 @@ for j = 1:length(index)
     if(periapsis == 0)
         % integrate trajectory. Take the state @ periapsis
         options = odeset('RelTol',1e-13,'AbsTol',1e-13);
-        system = "CR3BP_inertial";
+        system = "CR3BP";
         STM0 = reshape(eye(6,6), [36, 1]);
         [t, state] = ode113(@(t, x) EOM_3BP(t, x, planetParams, ...
-            poleParams, Cmat, Smat, system), [0, 1*P], [X0; STM0], options);
-        Nt = length(t);
-        X0 = state(round(Nt/2), 1:6)';
-        tmin = t(round(Nt/2));   % [-]
+            poleParams, Cmat, Smat, system), [0, 1*P], [x0(1:6); STM0], options);
+        
+        % find minum position w.r.t Moon
+        [~, posM] = compute_EM_position(0, mu);
+        relPos_M = vecnorm(state(:, 1:3)' - posM);
+        [~, idx] = min(relPos_M);
+
+        % get the new initial conditions. Inertial coordinates
+        [r0, v0] = rotate2inertial(state(idx, 1:3)', state(idx, 4:6)', t(idx), 1);
+        X0 = [r0; v0];
+        tmin = t(idx);   % [-]
     else
         tmin = 0;                % [-]
     end
     
     % Simulation parameters
-    tmax = 2*P + tmin;         % [-]
-    frec = 1/30;             % [Hz]
-    TIME = linspace(tmin, tmax, round(tmax*frec/n));
+    tmax = 2*maxPeriod + tmin;         % [-]
+% %     tmax = 1.5*P;
     meas = "QGG";            % QGG / DSN
     
     % integrate trajectory.
@@ -86,8 +99,8 @@ for j = 1:length(index)
     system = "CR3BP_inertial";
     STM0 = reshape(eye(6,6), [36, 1]);
     [t, state] = ode113(@(t, x) EOM_3BP(t, x, planetParams, ...
-        poleParams, Cmat, Smat, system), TIME, [X0; STM0], options);
-
+        poleParams, Cmat, Smat, system), [tmin, tmax], [X0; STM0], options);
+    TIME = t;
     dataOrbit(j).traj = state(:, 1:3)';
     dataOrbit(j).time = t';
     
@@ -107,7 +120,7 @@ for j = 1:length(index)
         sG    = 1E-12 / (n^2);                         % [-]
         R_QGG = diag([sG, sG, sG, sG, sG, sG].^2);     % [-]
         
-        sP = 1E8/D;                                   % [-]
+        sP = 1E6/D;                                   % [-]
         sV = 10/(D*n);                                % [-]
         P0 = diag([sP, sP, sP, sV, sV, sV].^2);       % [-]
         
@@ -125,76 +138,146 @@ for j = 1:length(index)
     end
 end
 
-% plot trajectory
-figure()
-colormap("jet");
-maxVal = ones(1, length(index)) * NaN;
-minVal = maxVal;
-for j = 1:length(index)
-    if(insidePlanet(j) == 0)
-        Nt = length(dataOrbit(j).time);
-        init = round(Nt/2);
+
+%%  plot trajectory
+% % figure()
+% % colormap("jet");
+% % maxVal = ones(1, length(index)) * NaN;
+% % minVal = maxVal;
+% % for j = 1:length(index)
+% %     if(insidePlanet(j) == 0)
+% %         Nt = length(dataOrbit(j).time);
 % %         init = 1;
-        final = Nt; 
-        [rB] = rotate2BodyFrame(dataOrbit(j).time,  dataOrbit(j).traj');
-        scalarValues = dataCRB_pos(j).value;
-        maxVal(j) = max(scalarValues);
-        minVal(j) = min(scalarValues);
-        scatter3(rB(1, init:final), rB(2, init:final), rB(3, init:final), 20, log10(scalarValues(init:final)), 'filled');
-        axis equal;
-        hold on;
-    end
-end
-% % plot(-mu, 0, "o",'MarkerFaceColor',"#7E2F8E", 'MarkerEdgeColor', "#7E2F8E")
-plot((1-mu),0, "o",'MarkerFaceColor',"#77AC30", 'MarkerEdgeColor', "#77AC30")
-h= colorbar; % Show color scale
-caxis([-2, 6]);
-h.Ticks = linspace(min(caxis), max(caxis), 9); % Set tick positions
-h.TickLabels = {'< 1 cm', '10 cm', '1m', '10 m', '100 m', '1 km', '10 km', '100 km', '+ 1000 km'}; % Custom labels
-title('Maximum position value from covariance')
-xlabel('X [-]')
-ylabel('Y [-]')
+% %         final = Nt; 
+% %         [rB] = rotate2BodyFrame(dataOrbit(j).time,  dataOrbit(j).traj');
+% %         rB = rB.*(scaleP./1E3);                             % [km]
+% %         scalarValues = dataCRB_pos(j).value;
+% %         maxVal(j) = max(scalarValues);
+% %         minVal(j) = min(scalarValues);
+% %         scatter3(rB(1, init:final), rB(2, init:final), rB(3, init:final), 20, log10(scalarValues(init:final)), 'filled');
+% %         axis equal;
+% %         hold on;
+% %     end
+% % end
+% % plot(-mu*(scaleP./1E3), 0, "o",'MarkerFaceColor',"#7E2F8E", 'MarkerEdgeColor', "#7E2F8E")
+% % plot((1-mu)*(scaleP./1E3),0, "o",'MarkerFaceColor',"#77AC30", 'MarkerEdgeColor', "#77AC30")
+% % h= colorbar; % Show color scale
+% % caxis([-2, 6]);
+% % h.Ticks = linspace(min(caxis), max(caxis), 9); % Set tick positions
+% % h.TickLabels = {'< 1 cm', '10 cm', '1m', '10 m', '100 m', '1 km', '10 km', '100 km', '+ 1000 km'}; % Custom labels
+% % title('Maximum position value from covariance')
+% % xlabel('X [Km]')
+% % ylabel('Y [Km]')
 
-% plot trajectory
-figure()
-colormap("jet");
-maxVal = ones(1, length(index)) * NaN;
-minVal = maxVal;
-for j = 1:length(index)
-    if(insidePlanet(j) == 0)
-        Nt = length(dataOrbit(j).time);
-        init = round(Nt/2);
+
+% % 
+% % % plot trajectory
+% % figure()
+% % colormap("jet");
+% % maxVal = ones(1, length(index)) * NaN;
+% % minVal = maxVal;
+% % for j = 1:length(index)
+% %     if(insidePlanet(j) == 0)
+% %         Nt = length(dataOrbit(j).time);
+% % % %         init = round(Nt/2);
 % %         init = 1;
-        final = Nt; 
-        [rB] = rotate2BodyFrame(dataOrbit(j).time,  dataOrbit(j).traj');
-        scalarValues = dataCRB_vel(j).value;
-        maxVal(j) = max(scalarValues);
-        minVal(j) = min(scalarValues);
-        scatter3(rB(1, init:final), rB(2, init:final), rB(3, init:final), 20, log10(scalarValues(init:final)), 'filled');
-        axis equal;
-        hold on;
+% %         final = Nt; 
+% %         [rB] = rotate2BodyFrame(dataOrbit(j).time,  dataOrbit(j).traj');
+% %         rB = rB.*(scaleP./1E3);                             % [km]
+% %         scalarValues = dataCRB_vel(j).value;
+% %         maxVal(j) = max(scalarValues);
+% %         minVal(j) = min(scalarValues);
+% %         scatter3(rB(1, init:final), rB(2, init:final), rB(3, init:final), ...
+% %             20, log10(scalarValues(init:final)), 'filled');
+% %         axis equal;
+% %         hold on;
+% %     end
+% % end
+% % plot(-mu*(scaleP./1E3), 0, "o",'MarkerFaceColor',"#7E2F8E", 'MarkerEdgeColor', "#7E2F8E")
+% % plot((1-mu)*(scaleP./1E3),0, "o",'MarkerFaceColor',"#77AC30", 'MarkerEdgeColor', "#77AC30")
+% % h= colorbar; % Show color scale
+% % caxis([-3, 1]);
+% % h.Ticks = linspace(min(caxis), max(caxis), 5); % Set tick positions
+% % h.TickLabels = {'< 1 mm/s', '1 cm/s', '10 cm/s', '1 m /s', '10 m /s'}; % Custom labels
+% % xlabel('X [Km]')
+% % ylabel('Y [Km]')
+% % title('Maximum velocity value from covariance')
+
+% Plot position accuracy over time
+figure
+scalarVals = ones(1, length(index)) * NaN;
+for j = 1:length(index)
+    scalarVals(j) = dataOrbit(j).JC;
+end
+cmap = turbo;                      % or parula, turbo, etc.
+nColors = size(cmap,1);
+
+% Normalize scalar array to [1, nColors]
+cmin = min(scalarVals);
+cmax = max(scalarVals);
+for j = 1:length(index)
+    if insidePlanet(j)==0
+        ax(1) = subplot(2, 1, 1);
+        % Map scalar value to a row of the colormap
+        cIdx = round( 1 + (scalarVals(j)-cmin) * (nColors-1) / (cmax-cmin) );
+        cIdx = max(min(cIdx,nColors),1);  % safety
+        thisColor = cmap(cIdx,:);
+        timeX  = dataOrbit(j).time./planetParams(3) / 86400;
+        semilogy(timeX, dataCRB_pos(j).value, ...
+                 'LineWidth',2,'Color',thisColor);
+        hold on
     end
 end
-% % plot(-mu, 0, "o",'MarkerFaceColor',"#7E2F8E", 'MarkerEdgeColor', "#7E2F8E")
-plot((1-mu),0, "o",'MarkerFaceColor',"#77AC30", 'MarkerEdgeColor', "#77AC30")
-h= colorbar; % Show color scale
-caxis([-3, 1]);
-h.Ticks = linspace(min(caxis), max(caxis), 5); % Set tick positions
-h.TickLabels = {'< 1 mm/s', '1 cm/s', '10 cm/s', '1 m /s', '10 m /s'}; % Custom labels
-xlabel('X [-]')
-ylabel('Y [-]')
-title('Maximum velocity value from covariance')
+ylabel('[m]')
+xlabel('Time [days]')
 
-figure()
-for j =1:length(index)
-    if(insidePlanet(j) == 0)
-        semilogy(dataOrbit(j).time, dataCRB_pos(j).value, 'LineWidth', 2)
-        ylabel('[m]')
-        hold on;
+for j = 1:length(index)
+    if insidePlanet(j)==0
+        ax(2) = subplot(2, 1, 2);
+        % Map scalar value to a row of the colormap
+        cIdx = round( 1 + (scalarVals(j)-cmin) * (nColors-1) / (cmax-cmin) );
+        cIdx = max(min(cIdx,nColors),1);  % safety
+        thisColor = cmap(cIdx,:);
+        timeX  = dataOrbit(j).time./planetParams(3) / 86400;
+        semilogy(timeX, dataCRB_vel(j).value, ...
+                 'LineWidth',2,'Color',thisColor);
+        hold on
     end
 end
+ylabel('[m/s]')
+xlabel('Time [days]')
+colormap(cmap)                       % set figure colormap
+cb = colorbar;                       % add colorbar
+cb.Position = [0.92 0.11 0.02 0.77]; % adjust numbers to span both
+clim([cmin cmax])                    % match colorbar limits to data
+sgtitle('Position and velocity uncertainty')
 
-% FUNCTIONS
+if(length(index) < 100)
+    figure()
+    for j = 1:length(index)
+        if(insidePlanet(j) == 0)
+            Nt = length(dataOrbit(j).time);
+            [rB] = rotate2BodyFrame(dataOrbit(j).time,  dataOrbit(j).traj');
+            rB = rB.*(scaleP./1E3);                             % [km]
+            cIdx = round( 1 + (scalarVals(j)-cmin) * (nColors-1) / (cmax-cmin) );
+            cIdx = max(min(cIdx,nColors),1);  % safety
+            thisColor = cmap(cIdx,:);
+            plot3(rB(1, :), rB(2, :), rB(3, :), 'Color', thisColor, ...
+                'LineWidth', 1.5)
+            axis equal;
+            hold on;
+        end
+    end
+    grid on;
+    xlabel('X [km]'); ylabel('Y [Km]'); zlabel('[Km]')
+    title('3D orbit');
+    plot((1-mu)*(scaleP./1E3),0, "o",'MarkerFaceColor',"#77AC30",...
+        'MarkerEdgeColor', "#77AC30")   % plot Moon
+    plot(-mu*(scaleP./1E3), 0, "o",'MarkerFaceColor',"#7E2F8E", ...
+        'MarkerEdgeColor', "#7E2F8E")   % plot Earth
+end
+
+%% FUNCTIONS
 function [rB] = rotate2BodyFrame(t, state)
     Nt = length(t);
     rB = ones(3, Nt) * NaN;

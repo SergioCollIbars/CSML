@@ -12,7 +12,7 @@ function [] = plot_high_gravField(n_max, Nc, Ns, value, tt, limit, limitTicks, s
     J(:, n_max+2:end) = A;
     J(J == 0) = NaN;    % set 0's to NaNs
 
-%     figure;
+% %     figure;
     cmap = turbo(256);  % Original colormap with 256 colors
     im = imagesc(J);
     % % clim([1E-2 50]);      % Force color scaling between 1% and 100%

@@ -11,7 +11,7 @@ props = java.lang.System.getProperties;
 props.setProperty('mail.smtp.auth','true');
 props.setProperty('mail.smtp.starttls.enable','true'); % For TLS
 props.setProperty('mail.smtp.port','587'); % Common TLS port
-email = 1;  % send plots by email 1 = yes / 0 = no
+email = 0;  % send plots by email 1 = yes / 0 = no
 
 % Start diary logging
 diaryFile = fullfile(tempdir, 'console_log.txt');
@@ -49,7 +49,7 @@ saveData   = 1;             % options: 0 / 1
 
 type_Attitude = "GRF";    % options: inertial / RTN / GRF
 type_posErr = "constant"; % options: constant / periodic / random
-type_attErr = "custom"; % options: constant / periodic / linear
+type_attErr = "custom";   % options: constant / periodic / linear
 
 printConfig_console(Planet, 'Covariance', Errors, measMode, saveData, ...
     type_Attitude, type_posErr, type_attErr);
@@ -113,9 +113,9 @@ else
     t = t1(idx1)';
     Nt = length(t);
 
-% %     % WARNING: reducing data set
-% %     t = t(1:round(Nt/10));
-% %     Nt = length(t);
+    % WARNING: reducing data set
+    t = t(1:round(Nt/10));
+    Nt = length(t);
 
     rn_ECEF = positions(idx1, 2:end)';
     vn_ECEF = velocity(idx1, 2:end)';
@@ -170,6 +170,12 @@ vn = state_t(:, 4:6)';
     measMode, att_Err, Mext);
 [angVel_nom, angAcc_nom]   = compute_angularVals(theta, thetaDot, Iner,...
     measMode, zeros(6, Nt), Mext);
+
+% plot S/C state
+err_omega    = angVel_true - angVel_nom;
+err_omegaDot = angAcc_true - angAcc_nom;
+plot_SC_state(t, saveData, Planet, state_t, orientation, ...
+    angVel_nom, angAcc_nom, err_omega, err_omegaDot);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 disp('Generating measurements weigths ... ')

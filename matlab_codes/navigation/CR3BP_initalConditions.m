@@ -46,7 +46,7 @@ options = odeset('RelTol',1e-12,'AbsTol',1e-12);
 STM0 = reshape(eye(6,6), [36, 1]);
 
 [t, state] = ode113(@(t, x) EOM_navigation(t, x, planetParams, ...
-    poleParams, Cmat_true, Smat_true, system, 0, {0,0}, 0), TIME, [X0; STM0], options);
+    poleParams, Cmat_true, Smat_true, system, 0, {0,0}, 0, 0), TIME, [X0; STM0], options);
 TIME = t;
 
 state_b = state(:, 1:3)' * 0;
