@@ -26,6 +26,7 @@ plotResults   = 1;                                      % options: 1 or 0
 process_noise = 1;                                      % options: 1 or 0
 augmented_st  = 0;                                      % options: 1 or 0
 saveData      = 0;                                      % options: 1 or 0
+attitude      = "inertial";                             % options: inertial
 
 % time parameters
 tmin = 0*1.4968;
@@ -55,8 +56,8 @@ disp('  DONE!')
 % compute gradiometer measurements + attitude estimates
 disp('Computing measurements ...')
 [posE, posM, posS] = compute_posPrimaries(TIME, planetParams, "EPHEM");
-[BN_matrix_true] = compute_attitude_EPHEM(TIME, 0);
-[BN_matrix_meas] = compute_attitude_EPHEM(TIME, 1);
+[BN_matrix_true] = compute_attitude_EPHEM(TIME, 0, "inertial");
+[BN_matrix_meas] = compute_attitude_EPHEM(TIME, 1, "inertial");
 [T, acc] = compute_measurement_EPHEM(TIME, state, planetParams, ...
     BN_matrix_true, Cmat_true, Smat_true, 1, posE, posM, posS);
 

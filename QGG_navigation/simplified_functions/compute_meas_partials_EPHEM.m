@@ -1,5 +1,5 @@
 function [Hmeas] = compute_meas_partials_EPHEM(t, state, planetParams,...
-    C_mat, S_mat, posE, posM, posS)
+    BN, C_mat, S_mat, posE, posM, posS)
     % Compute measurements partials using the EPHEMERIDES model. 
     % The measurements partials computed are: gradiometer partials
     % and acceloremeter partials.
@@ -13,7 +13,7 @@ function [Hmeas] = compute_meas_partials_EPHEM(t, state, planetParams,...
     j = 1;
 
     % gradiometer partials
-    [H_GG_pos] = compute_posPartials(planetParams, C_mat, S_mat, t(j),...
+    [H_GG_pos] = compute_posPartials(planetParams, BN, C_mat, S_mat, t(j),...
                 state(j, 1:3)', posE(:, j), posM(:, j), posS(:, j));
     H_GG_vel   = zeros(6, 3);
     H_GG_eta   = zeros(6, 1);
@@ -23,6 +23,8 @@ function [Hmeas] = compute_meas_partials_EPHEM(t, state, planetParams,...
     eta        = state(j, 7); 
     [~, daSRP_dr, daSRP_deta] = SRP(r3, eta, mass, A,...
                 planetParams);
+    daSRP_dr = BN * daSRP_dr * BN';
+    daSRP_deta = BN * daSRP_deta;
             
     % accelerometer partials
     H_acc_pos  = daSRP_dr;

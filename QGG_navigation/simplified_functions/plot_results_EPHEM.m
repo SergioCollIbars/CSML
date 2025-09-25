@@ -37,7 +37,7 @@ function [] = plot_results_EPHEM(t, state_true, X, P, pref, posf,...
 
         cov(:, j)  = a(1:Ns);
         cov2(:, j) = a(1:Ns).^2;
-    end
+    end 
 
     %% plot real trajectory and reconstructed
     figure()

@@ -33,7 +33,7 @@ function [aSRP, daSRP_dr, daSRP_dEta] = SRP(rs, eta, m, A, planetParams)
     P = (Gamma * Rs^2 * Ts^4 )/ (c * m);
 
     aSRP = eta * ( P * Cr * A) * rs / rsn^3;
-
+    
     % SPR partial respect to inertial position
     daSRP_dr = eta * Gamma * Ts^4 * Rs^2 * Cr * A / (m * c * rsn^3) * ...
         (eye(3) - 3 * (rs * rs') / (rsn^2));

@@ -1,4 +1,4 @@
-function [BN_matrix] = compute_attitude_EPHEM(t, Nn)
+function [BN_matrix] = compute_attitude_EPHEM(t, Nn, attitude)
     % Compute attitude using the EPHEMERIDES model.
     % Date: 09/24/2025
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -16,6 +16,11 @@ function [BN_matrix] = compute_attitude_EPHEM(t, Nn)
 
     % compute attitude inertial (yaw - pitch - roll)
     Angles = zeros(3, Nt);
+    if(attitude == "RTN")
+        Angles(1, :) = ones(1, Nt).*pi/4;
+        Angles(2, :) = ones(1, Nt).*pi/6;
+        Angles(3, :) = ones(1, Nt).*pi/4;
+    end
     
     BN_matrix = ones(3 * Nt, 3) * NaN;
     for k = 1:Nt
