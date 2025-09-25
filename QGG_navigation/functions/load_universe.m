@@ -43,13 +43,13 @@ function [planetParams, poleParams, Cmat_true, Smat_true, ...
     planetParams(3) = n;
     planetParams(4) = R_earth(1) * 1E3;       % reference radius primary   
     planetParams(5) = R_moon(1)  * 1E3;       % reference radius secondary
-    planetParams(6) = n_max;     % max SH zonal
-    planetParams(7) = normalized;% normalized grav. coeff. option  
-    planetParams(8) = GM_earth * 1E9;       % primary point mass parameter [m^3/s^2]
-    planetParams(9) = GM_moon  * 1E9;       % secondary point mass parameter [m^3/s^2]
-    planetParams(10) = 1.3;                 % SRP scaling factor
-    planetParams(11) = 1000;                % S/C mass [Kg]
-    planetParams(12) = 50 / (D^2);          % S/C area [-]
+    planetParams(6) = n_max;                  % max SH zonal
+    planetParams(7) = normalized;             % normalized grav. coeff. option  
+    planetParams(8) = GM_earth * 1E9;         % primary point mass parameter [m^3/s^2]
+    planetParams(9) = GM_moon  * 1E9;         % secondary point mass parameter [m^3/s^2]
+    planetParams(10) = 1.3;                   % SRP scaling factor
+    planetParams(11) = 1000;                  % S/C mass [Kg]
+    planetParams(12) = 50 / (D^2);            % S/C area [-]
 
     % define pole parameters w.r.t J2000. Earth and Moon
     poleParams(1) =  -pi/2;                   % RA Earth

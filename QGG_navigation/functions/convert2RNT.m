@@ -19,7 +19,8 @@ function [r_RTN,v_RTN, cov_RTN] = convert2RNT(r, v, t, P, Ns)
         if(Ns == 6)
             rotMat = [BN, zeros(3, 3);zeros(3, 3), BN];
         else
-            rotMat = [BN, zeros(3, 4);zeros(3, 3), BN, zeros(3, 1); zeros(1, 7)];
+            % % rotMat = [BN, zeros(3, 4);zeros(3, 3), BN, zeros(3, 1); zeros(1, 7)];
+            rotMat = eye(Ns, Ns);
         end
         p = reshape(P(j, 1:Ns*Ns), [Ns, Ns]);
         pp =  rotMat * p * rotMat';
