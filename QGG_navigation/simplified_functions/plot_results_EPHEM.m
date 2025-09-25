@@ -81,7 +81,7 @@ function [] = plot_results_EPHEM(t, state_true, X, P, pref, posf,...
     figure()
     semilogy(time, X(7, :), 'LineWidth', 2)
     hold on;
-    semilogy(time, abs(err(7, :)), 'LineWidth', 2, 'Color', 'r')
+    semilogy(time, abs(err(7, :)), 'LineWidth', 2, 'Color', color2)
     semilogy(time, 3*cov(7, :), time, -3*cov(7, :), 'LineWidth', 2, 'Color',...
             'k', 'LineStyle', '--')
     title('SRP estimation, \eta factor')
@@ -96,7 +96,7 @@ function [] = plot_results_EPHEM(t, state_true, X, P, pref, posf,...
         d = sqrt(sum(cov2(7+k, :), 1));
         scale = planetParams(3)^2/1E-9;
         semilogy(time, abs(err(7+k, :)).* scale, 'LineWidth', lw, ...
-            'Color', color1)
+            'Color', color2)
         hold on;
         semilogy(time, 3.*d.* scale, 'LineWidth', lw, 'Color', 'k')
         grid on;
@@ -113,7 +113,7 @@ function [] = plot_results_EPHEM(t, state_true, X, P, pref, posf,...
         d = sqrt(sum(cov2(13+k, :), 1));
         scale = planetParams(2) * planetParams(3);
         semilogy(time, abs(err(13+k, :)).* scale, 'LineWidth', lw, ...
-            'Color', color1)
+            'Color', color2)
         hold on;
         semilogy(time, 3.*d.* scale, 'LineWidth', lw, 'Color', 'k')
         grid on;
