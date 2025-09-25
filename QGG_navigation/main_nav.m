@@ -25,10 +25,11 @@ cspice_furnsh('/Users/sergiocollibars/Documents/MATLAB/kernels/kernels.tm')
 plotResults   = 1;                                      % options: 1 or 0
 process_noise = 1;                                      % options: 1 or 0
 augmented_st  = 0;                                      % options: 1 or 0
+saveData      = 1;                                      % options: 1 or 0
 
 % time parameters
 tmin = 0*1.4968;
-tmax = 1*1.4968 + tmin;                                 % [rad] 
+tmax = 0.1*1.4968 + tmin;                                 % [rad] 
 frec = 1/30;                                            % meas. freq. [Hz]
 
 % load universe & initial conditions
@@ -79,7 +80,8 @@ posIter  = ones(MaxIter*6, length(TIME)) * NaN;
 corr_iter  = ones(2, MaxIter) * NaN;
 error_iter = ones(2, MaxIter) * NaN;
 while(abs(error) > epsilon && count < MaxIter)
-        Ntmax = round(1*86400*frec);
+% %         Ntmax = round(1*86400*frec);
+        Ntmax = round(length(TIME) * 0.1);
         t_batch = TIME(1:Ntmax);
         while(abs(error) > epsilon && count < MaxIter) % first run CKF to initialize
             [X_B, P_B, Xhat_B, XNOT, pref, posf] = CKF_solver_EPHEM(t_batch,...
@@ -128,7 +130,19 @@ if(plotResults)
     grid on;
 end
 
+% save results
+if(saveData)
+    X_true_final  = state(end, 1:16);
+    X_estim_final = X(:, end);
+    t_final       = TIME(end);
+    P_final       = P(end, :);
+    
+    save('GG_navigation_final_params.mat',...
+        't_final','X_true_final','X_estim_final','P_final');
+end
 
+
+%% FUNCTIONS
 function [Xnot, error, e, count, prefIter, posfIter] = ...
     check_err_save_post(Xnot, XNOT, e, count, prefIter, posfIter, pref, posf)
     % compute error

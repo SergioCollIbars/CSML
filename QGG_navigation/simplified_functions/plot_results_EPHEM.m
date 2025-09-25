@@ -90,6 +90,7 @@ function [] = plot_results_EPHEM(t, state_true, X, P, pref, posf,...
 
     %% plot gradiometer bias + 3 sigma
     figure()
+    ttlabel = ["xx", "xy", "xz", "yy", "yz", "zz"];
     for k = 1:6
         subplot(3, 2, k)
         d = sqrt(sum(cov2(7+k, :), 1));
@@ -100,12 +101,13 @@ function [] = plot_results_EPHEM(t, state_true, X, P, pref, posf,...
         semilogy(time, 3.*d.* scale, 'LineWidth', lw, 'Color', 'k')
         grid on;
         ylabel('[Eotvos]')
-        title('B_{' + string(k) + '}');
+        title('B_{' + ttlabel(k) + '}');
     end
     sgtitle('Gradiometer bias estimation error');
 
     %% plot accelerometer bias + 3 sigma
     figure()
+    ttlabel = ["x", "y", "z"];
     for k = 1:3
         subplot(1, 3, k)
         d = sqrt(sum(cov2(13+k, :), 1));
@@ -116,7 +118,7 @@ function [] = plot_results_EPHEM(t, state_true, X, P, pref, posf,...
         semilogy(time, 3.*d.* scale, 'LineWidth', lw, 'Color', 'k')
         grid on;
         ylabel('[m/s^2]')
-        title('B_{' + string(k) + '}');
+        title('B_{' + ttlabel(k) + '}');
     end
     sgtitle('Accelerometer bias estimation error');
 
