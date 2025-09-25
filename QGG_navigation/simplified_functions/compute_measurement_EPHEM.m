@@ -1,5 +1,5 @@
 function [T, acc] = compute_measurement_EPHEM(t, state, planetParams,...
-    C_mat, S_mat, Nn, posE, posM, posS)
+    BN_matrix, C_mat, S_mat, Nn, posE, posM, posS)
     % Compute measurements using the EPHEMERIDES model. The measurements
     % computed are: gradiometer measurements and acceloremeter measurements
     % Date: 09/24/2025
@@ -35,8 +35,13 @@ function [T, acc] = compute_measurement_EPHEM(t, state, planetParams,...
          % extract bias
          bias = state(j, 8:16);
 
-        [ddU] = compute_nBody(state(j, 1:3)' ,t(j), C_mat, S_mat, ...
+        [ddU_N] = compute_nBody(state(j, 1:3)' ,t(j), C_mat, S_mat, ...
                 planetParams, posE(:, j), posM(:, j), posS(:, j));
+
+        % rotate to body frame
+        maxInd = 3 * j; minInd = maxInd -2;
+        BN = BN_matrix(minInd:maxInd, :);
+        ddU = BN * ddU_N * BN';
 
         T(1, j) = ddU(1,1) + bias(1) + noise_GG(1, j);
         T(2, j) = ddU(1,2) + bias(2) + noise_GG(2, j);
@@ -52,7 +57,7 @@ function [T, acc] = compute_measurement_EPHEM(t, state, planetParams,...
         [aSRP, ~, ~] = SRP(r3, eta, mass, A,...
             planetParams);
 
-        acc(:, j) = aSRP + bias(7:9)' + noise_A(j);
+        acc(:, j) = BN * aSRP + bias(7:9)' + noise_A(j);
     end
 end
 

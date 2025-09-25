@@ -25,11 +25,11 @@ cspice_furnsh('/Users/sergiocollibars/Documents/MATLAB/kernels/kernels.tm')
 plotResults   = 1;                                      % options: 1 or 0
 process_noise = 1;                                      % options: 1 or 0
 augmented_st  = 0;                                      % options: 1 or 0
-saveData      = 1;                                      % options: 1 or 0
+saveData      = 0;                                      % options: 1 or 0
 
 % time parameters
 tmin = 0*1.4968;
-tmax = 0.1*1.4968 + tmin;                                 % [rad] 
+tmax = 1*1.4968 + tmin;                                 % [rad] 
 frec = 1/30;                                            % meas. freq. [Hz]
 
 % load universe & initial conditions
@@ -55,8 +55,10 @@ disp('  DONE!')
 % compute gradiometer measurements + attitude estimates
 disp('Computing measurements ...')
 [posE, posM, posS] = compute_posPrimaries(TIME, planetParams, "EPHEM");
+[BN_matrix_true] = compute_attitude_EPHEM(TIME, 0);
+[BN_matrix_meas] = compute_attitude_EPHEM(TIME, 1);
 [T, acc] = compute_measurement_EPHEM(TIME, state, planetParams, ...
-    Cmat_true, Smat_true, 1, posE, posM, posS);
+    BN_matrix_true, Cmat_true, Smat_true, 1, posE, posM, posS);
 
 if(plotResults), plot_measurements(TIME, [T;acc], ...
         planetParams, 1, "EPHEM"); end
@@ -80,13 +82,13 @@ posIter  = ones(MaxIter*6, length(TIME)) * NaN;
 corr_iter  = ones(2, MaxIter) * NaN;
 error_iter = ones(2, MaxIter) * NaN;
 while(abs(error) > epsilon && count < MaxIter)
-% %         Ntmax = round(1*86400*frec);
-        Ntmax = round(length(TIME) * 0.1);
+        Ntmax = round(1*86400*frec);
+% %         Ntmax = round(length(TIME) * 0.1);
         t_batch = TIME(1:Ntmax);
         while(abs(error) > epsilon && count < MaxIter) % first run CKF to initialize
             [X_B, P_B, Xhat_B, XNOT, pref, posf] = CKF_solver_EPHEM(t_batch,...
-                X0, Xnot, P0, R0, Q0,[T;acc], planetParams, Cmat_estim, ...
-                Smat_estim, posE, posM, posS);
+                X0, Xnot, P0, R0, Q0,[T;acc], planetParams, BN_matrix_meas, ...
+                Cmat_estim, Smat_estim, posE, posM, posS);
             
             [Xnot, error, corr_iter, count, prefIter, posIter] = ...
                 check_err_save_post(Xnot, XNOT, corr_iter, count,...
@@ -99,7 +101,7 @@ while(abs(error) > epsilon && count < MaxIter)
         X0 = X_B(:, 1);
         P0 = reshape(P_B(1, :), [Ns,Ns]);
         [X_E, P_E, Xhat_E, XNOT, pref, posf] = EKF_solver_EPHEM(t_EKF, X0, P0, ...
-                    R0, Q0, [T;acc], planetParams, ...
+                    R0, Q0, [T;acc], planetParams, BN_matrix_meas, ...
                     Cmat_estim, Smat_estim, posE, posM, posS);
 
         X = X_E;

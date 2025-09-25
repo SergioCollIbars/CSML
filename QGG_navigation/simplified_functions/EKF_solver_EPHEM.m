@@ -1,6 +1,6 @@
 function [X, Pc, Xhat, Xnot, pref, posf] = EKF_solver_EPHEM(TIME, X0, P0, ...
-                    R0, Q0, meas, planetParams, Cmat, Smat, posE, posM, ...
-                    posS)
+                    R0, Q0, meas, planetParams, BN_matrix, Cmat, Smat, ...
+                    posE, posM, posS)
     % Run EKF solver using only the EPHEMERIDES dynamics.
     % Date: 09/24/2025
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -43,8 +43,10 @@ function [X, Pc, Xhat, Xnot, pref, posf] = EKF_solver_EPHEM(TIME, X0, P0, ...
         PHI_ij = reshape(STM(end, :), [Ns,Ns]);
 
         % compute measurements
+        maxInd = 3 * k; minInd = maxInd -2;
+        BN = BN_matrix(minInd:maxInd, :);
         [T_c, acc_c] = compute_measurement_EPHEM(TIME(k), state, planetParams,...
-            Cmat, Smat, 0, posE(:, k), posM(:, k), posS(:, k));
+            BN, Cmat, Smat, 0, posE(:, k), posM(:, k), posS(:, k));
         [Hmeas] = compute_meas_partials_EPHEM(TIME(k), state, planetParams,...
                     Cmat, Smat, posE(:, k), posM(:, k), posS(:, k));
 
