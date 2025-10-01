@@ -3,6 +3,28 @@ clc;
 close all;
 format long g;
 
+% email settings
+setpref('Internet','E_mail','sergiocollibars@gmail.com');
+setpref('Internet','SMTP_Server','smtp.gmail.com');
+setpref('Internet','SMTP_Username','sergiocollibars@gmail.com');
+setpref('Internet','SMTP_Password','ptcq ybug jcgh wajg');
+props = java.lang.System.getProperties;
+props.setProperty('mail.smtp.auth','true');
+props.setProperty('mail.smtp.starttls.enable','true'); % For TLS
+props.setProperty('mail.smtp.port','587'); % Common TLS port
+email = 1;  % send plots by email 1 = yes / 0 = no
+
+% Start diary logging
+diaryFile = fullfile(tempdir, 'console_log.txt');
+if isfile(diaryFile)
+    delete(diaryFile);
+end
+diary(diaryFile);
+diary on;
+
+% plot settings
+set(0,'defaultAxesFontSize',16);
+
 %%              RUN MAIN_NAV.M CODE IN A MC BATCH
 % Description: generate MC samples for the main_nav.m file which runs
 % navigation in cislunar space using Ephemerides files
@@ -12,7 +34,7 @@ format long g;
 % Date: 10/01/2025
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-Mc       = 10;
+Mc       = 2;
 error_MC = ones(20, 1E4, Mc) * NaN; 
 cov_MC   = ones(1E4, 20, Mc) * NaN;
 
@@ -30,7 +52,8 @@ for mc = 1:Mc
     error_MC(1:Ns, 1:Nt, mc) = error_iter;
     cov_MC(1:Nt, 1:Ns*Ns, mc)   = P; 
 
-    clearvars -except mc Mc error_MC cov_MC planetParams Ns Nt TIME
+    clearvars -except mc Mc error_MC cov_MC planetParams Ns Nt TIME ...
+        email diaryFile
 end
 
 % convert to UTC time
@@ -182,3 +205,13 @@ end
 sgtitle('Accelerometer Bias')
 
 
+% send resutls through email
+if(email)
+    % load console output 
+    consoleText = fileread(diaryFile);
+    
+    sendOpenFiguresByEmail(...
+        'sergiocollibars@gmail.com', ...
+        'Auto Report - MATLAB Figures', consoleText);
+end
+delete(diaryFile);  % clean up immediately
