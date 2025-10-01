@@ -151,7 +151,7 @@ if(plotResults)
 end
 
 % save results
-if(saveData)
+if(saveData == 1)
     X_true_final  = state(end, 1:16);
     X_estim_final = X(:, end);
     t_final       = tmax;
