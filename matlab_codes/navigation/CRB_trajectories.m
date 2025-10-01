@@ -30,13 +30,13 @@ Rm_ND = Rm / D;                     % [-]
 
 % load initial condition and trajectory
 % % data = load('EM_NHalo_south_L2_Family.mat');
-% % data = load('JPL_EM_Lyap_L1_Family.mat');
+data = load('JPL_EM_Lyap_L1_Family.mat');
 % % data = load('JPL_EM_Lyap_L2_Family.mat');
-data = load('JPL_EM_Vert_L2_Family.mat');
+% % data = load('JPL_EM_Vert_L2_Family.mat');
 
 Nd =length(data.trajFam);
 index = 1:1:Nd;
-index = 1:40:Nd;
+% % index = 1:40:Nd;
 % % index = [1, 100, 500, Nd];
 periapsis = 1;  % starting @ periapsis? 1 yes / 0 no
 insidePlanet = zeros(1, length(index));
@@ -90,8 +90,8 @@ for j = 1:length(index)
     end
     
     % Simulation parameters
-    tmax = 2*maxPeriod + tmin;         % [-]
-% %     tmax = 1.5*P;
+% %     tmax = 2*maxPeriod + tmin;         % [-]
+    tmax = 1.5*P;
     meas = "QGG";            % QGG / DSN
     
     % integrate trajectory.

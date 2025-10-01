@@ -1,5 +1,5 @@
 function [X, Pt, Xhat, Xnot, pref, posf] = CKF_solver_EPHEM(TIME, X0, ...
-    Xnot, P0, R0, Q0, meas, planetParams, BN_matrix, C_mat, ...
+    Xnot, P0, R0, Q0, Qb, meas, planetParams, BN_matrix, C_mat, ...
     S_mat,posE, posM, posS)
     % Run CKF solver using only the EPHEMERIDES dynamics.
     % Date: 09/24/2025
@@ -22,6 +22,8 @@ function [X, Pt, Xhat, Xnot, pref, posf] = CKF_solver_EPHEM(TIME, X0, ...
 
     Pt = ones(Nt, Ns*Ns) * NaN;
     Xhat = ones(Ns, Nt) * NaN;
+
+    At = (TIME(2) - TIME(1)); % [-]
     
     % start filter
     for j = 1:Nt
@@ -59,9 +61,8 @@ function [X, Pt, Xhat, Xnot, pref, posf] = CKF_solver_EPHEM(TIME, X0, ...
         if(j == 1)
             Q = zeros(Ns,Ns);
         else
-            At = (TIME(j) - TIME(j-1)); % [-]
             DG = 0;
-            Q = processNoise(Q0, DG, At, [], "SNC", Ns);
+            Q = processNoise(Q0, DG, At, Qb, "SNC", Ns);
         end
         Qp = Q;
 

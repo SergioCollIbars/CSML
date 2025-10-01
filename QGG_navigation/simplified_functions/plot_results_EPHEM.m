@@ -93,7 +93,7 @@ function [] = plot_results_EPHEM(t, state_true, X, P, pref, posf,...
     ttlabel = ["xx", "xy", "xz", "yy", "yz", "zz"];
     for k = 1:6
         subplot(3, 2, k)
-        d = sqrt(sum(cov2(7+k, :), 1));
+        d  = cov(7+k, :);
         scale = planetParams(3)^2/1E-9;
         semilogy(time, abs(err(7+k, :)).* scale, 'LineWidth', lw, ...
             'Color', color2)
@@ -110,7 +110,7 @@ function [] = plot_results_EPHEM(t, state_true, X, P, pref, posf,...
     ttlabel = ["x", "y", "z"];
     for k = 1:3
         subplot(1, 3, k)
-        d = sqrt(sum(cov2(13+k, :), 1));
+        d = cov(13+k, :);
         scale = planetParams(2) * planetParams(3);
         semilogy(time, abs(err(13+k, :)).* scale, 'LineWidth', lw, ...
             'Color', color2)

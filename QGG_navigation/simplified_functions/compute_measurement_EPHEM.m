@@ -18,17 +18,44 @@ function [T, acc] = compute_measurement_EPHEM(t, state, planetParams,...
     % Generate noise
     measDim_QGG = planetParams(3)^2;
     measDim_Acc = planetParams(2)*planetParams(3)^2;
+    Hz = planetParams(3);
+    if(Nt > 1)
+        dt = (t(2) - t(1)) / planetParams(3);                        % [sec]
+        frec = 1 / dt;
+        At = t(2) - t(1);                                            % [-]
+    else
+        frec = 1;
+        At = 1;
+    end
+    sigma_GG  = [1, 1, 1, 1, 1, 1] * 1E-12 * sqrt(frec);             % [1/s^2]
+    sigma_A   = 1E-10 * sqrt(frec);                                  % [m/s^2]
+    sigma_bGG = ones(1, 6) * 9.33E-18;                               % [1/s^2 * sqrt(Hz)] works with 9E-18
+    sigma_bac = ones(1, 3) * 9.33E-16;                                      % [m/s^2 * sqrt(Hz)]
+    sigma_GG  = sigma_GG./measDim_QGG;                               % [-]
+    sigma_A   = sigma_A./measDim_Acc;                                % [-]
+    sigma_bGG = sigma_bGG./(measDim_QGG * sqrt(Hz));                 % [-]
+    sigma_bac = sigma_bac./(measDim_Acc * sqrt(Hz));                 % [-]
 
-    sigma_GG = [1, 1/sqrt(2), 1/sqrt(2), 1, 1/sqrt(2), 1] * 1E-12;  % [1/s^2]
-    sigma_A  = 1E-10;                                               % [m/s^2]
-    sigma_GG = sigma_GG./measDim_QGG;                               % [-]
-    sigma_A  = sigma_A./measDim_Acc;                                % [-]
     
     noise_GG = ones(6, Nt);
     for j=1:length(sigma_GG)
             noise_GG(j, :) = normrnd(0, sigma_GG(j), [1, Nt]) * Nn;
     end
-    noise_A = normrnd(0, sigma_A, [1, Nt]) * Nn;
+    noise_A = normrnd(0, sigma_A, [3, Nt]) * Nn;
+
+    % include bias random-walk
+    if(Nn == 1)
+        for j = 1:Nt-1
+            for k = 1:length(sigma_bGG)
+                state(j+1, 7+k) = state(j, 7+k) + normrnd(0,...
+                    sqrt(At)*sigma_bGG(k), [1, 1]);
+            end
+            for k = 1:length(sigma_bac)
+                state(j+1, 13+k) = state(j, 13+k) + normrnd(0,...
+                    sqrt(At)*sigma_bac(k), [1, 1]);
+            end
+        end
+    end
 
     % compute measurements
     for j = 1:Nt
@@ -50,6 +77,8 @@ function [T, acc] = compute_measurement_EPHEM(t, state, planetParams,...
         T(5, j) = ddU(2,3) + bias(5) + noise_GG(5, j);
         T(6, j) = ddU(3,3) + bias(6) + noise_GG(6, j);
 
+% %         T(1, j) = bias(1) - (0.9E-9)/measDim_QGG + noise_GG(1, j);
+
         r3 = state(j, 1:3)' - posS(:, j);
         eta= state(j, 7); 
 
@@ -57,7 +86,7 @@ function [T, acc] = compute_measurement_EPHEM(t, state, planetParams,...
         [aSRP, ~, ~] = SRP(r3, eta, mass, A,...
             planetParams);
 
-        acc(:, j) = BN * aSRP + bias(7:9)' + noise_A(j);
+        acc(:, j) = BN * aSRP + bias(7:9)' + noise_A(:, j);
     end
 end
 

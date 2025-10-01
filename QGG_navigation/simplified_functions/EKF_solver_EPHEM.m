@@ -1,5 +1,5 @@
 function [X, Pc, Xhat, Xnot, pref, posf] = EKF_solver_EPHEM(TIME, X0, P0, ...
-                    R0, Q0, meas, planetParams, BN_matrix, Cmat, Smat, ...
+                    R0, Q0, Qb, meas, planetParams, BN_matrix, Cmat, Smat, ...
                     posE, posM, posS)
     % Run EKF solver using only the EPHEMERIDES dynamics.
     % Date: 09/24/2025
@@ -23,6 +23,8 @@ function [X, Pc, Xhat, Xnot, pref, posf] = EKF_solver_EPHEM(TIME, X0, P0, ...
     Nm = length(R0);
     pref = ones(Nm, Nt) * NaN;
     posf = ones(Nm, Nt) * NaN;
+
+    At = TIME(2) - TIME(1); % [-]
 
     % data gap null 
     f = waitbar(0, 'Starting');
@@ -55,8 +57,7 @@ function [X, Pc, Xhat, Xnot, pref, posf] = EKF_solver_EPHEM(TIME, X0, P0, ...
         pref(:, k) = dY;
 
         % run filter
-        At = (t_span(2) - t_span(1)); % [-]
-        Q = processNoise(Q0, 0, At, [], "SNC", Ns);
+        Q = processNoise(Q0, 0, At, Qb, "SNC", Ns);
         Qp = Q; % don't use addaptative process noise
 
         [X_hat, P, ~] = EKF(dY, Hmeas, R0, P, PHI_ij, Qp);
@@ -78,6 +79,7 @@ function [X, Pc, Xhat, Xnot, pref, posf] = EKF_solver_EPHEM(TIME, X0, P0, ...
 
         % save correction
         Xhat(:, k) = X_hat;
+
     end
     close(f);
 

@@ -25,7 +25,7 @@ clc;
 % specify simulation time, frequency and noise
 tmin = 0;                                            % Phi = 0  [-]
 T = 1.4968;                                          % [-]
-tmax = 1*T + tmin;                                   % [-]
+tmax = 4*T + tmin;                                   % [-]
 frec = 1/30; f_time = 1/30;
 
 % define system
@@ -56,13 +56,13 @@ end
 dt = TIME(2) - TIME(1);                              % [-]
 
 % Measurement weights
-sigmaMeas = [1, 1] * 1E-12;                  % [1/s^2]
+sigmaMeas = [1, 1] * 1E-12 * sqrt(frec);             % [1/s^2]
 sigmaMeas = sigmaMeas./measDim;                      % [-]
 R0 = diag([sigmaMeas(1), sigmaMeas(2), sigmaMeas(2), sigmaMeas(1), ...
 sigmaMeas(2), sigmaMeas(1)].^2);                     % [-]
 
 %  state process noise
-sigmaQ_s = 5E-8/ (planetParams(2)*planetParams(3)^2);% [-]
+sigmaQ_s = 5E-11/ (planetParams(2)*planetParams(3)^2);% [-]
 qs = diag([sigmaQ_s, sigmaQ_s, sigmaQ_s].^2).*1;
 I = eye(3, 3);
 
@@ -85,19 +85,17 @@ Nt  = length(TIME);
 
 % random-walk bias process noise (FOGM)
 Nq = 10;
-sigmaQVec = logspace(-7, -2, Nq);                            % [E/ sqrt(sec)]
-% % sigmaB    = logspace(-9, -4, Nq);                           % [E]
-tauVec = linspace(1E3, 2, Nq);                              % [sec]
+sigmaQVec = logspace(-8, -4, Nq);                            % [E/ sqrt(sec)]
+tauVec = linspace(3*86400, 60, Nq);                          % [sec]
 obsPercMat = ones(Nq, Nq);
 count = 0;
+At = t(2) - t(1);
 for j = 1:Nq
     for i = 1:Nq
         varQ   = sigmaQVec(j)^2;                             % [E^2 / sec]
         q      = varQ * 1E-18;                               % [1 / sec^5]
         q      = q  / (timeDim^5);                           % [-] 
-% %         qNorm = 2 * sigmaB(j) / tauVec(i) * 1E-9;                % [1/sec^3]
-% %         q     = qNorm /(timeDim^3);                              % [-]
-        tau   = tauVec(i) * timeDim;                             % [-]
+        tau   = tauVec(i) * timeDim;                         % [-]
 
         % compute PCRB
         PCRB = ones(Nt, Nx*Nx) * NaN; P = PCRB;
@@ -107,30 +105,29 @@ for j = 1:Nq
         for k = 2:Nt
             PHI_1 = reshape(STM(k-1, :), [Ns, Ns]); % from 0 to k-1
             PHI_2 = reshape(STM(k, :), [Ns, Ns]);   % from 0 to k
-            PHI = PHI_2 * inv(PHI_1);               % from k-1 to k;
+            PHI = PHI_2/(PHI_1);                    % from k-1 to k;
         
             % compute measurements and visibility matrix
             [~, Ht, ~] = compute_measurements(TIME(k), state(k, 1:Ns), planetParams, ...
                  poleParams, C_mat, S_mat, 0, 0, 0, [], DOM, posE(:, k), ...
                  posM(:, k), posS(:, k), system);
             
-            % gamma function
-             At = t(k) - t(k-1);
-             Gamma = At * [At/2*I;I];
-             PHI_inv = inv(PHI);
-             Aiprev_plus = reshape(PCRB(k-1, :), [Nx,Nx]);
+            % Process noise
+            Qrv = At.*[1/3*At^2*qs, 1/2*At*qs;...
+                1/2*At*qs, qs];
+
+            % previous information
+            Aiprev_plus = reshape(PCRB(k-1, :), [Nx,Nx]);
         
-% %              PHIbd = exp(-dt/tau);         
-% %              Sbd   = q * tau / 2 * (1 - exp(-2*dt/tau));   
-             PHIbd = compute_STM_FOGM(dt, tau);
-             Sbd = compute_PN_FOGM(dt, tau, q);
-             F = diag_stack(PHI, PHIbd, PHIbd, PHIbd, PHIbd, PHIbd, PHIbd);
-             Qy = diag_stack(Gamma * qs * Gamma', Sbd, Sbd, Sbd, Sbd, Sbd, Sbd);
-             M = inv(F)' * Aiprev_plus * inv(F);
-             Ai_min = M - M*Qy*inv(eye(Nx, Nx) + M * Qy)*M;
+             PHIbd   = compute_STM_FOGM(dt, tau);
+             Sbd     = compute_PN_FOGM(dt, tau, q);
+             F       = diag_stack(PHI, PHIbd, PHIbd, PHIbd, ...
+                 PHIbd, PHIbd, PHIbd);
+             Qy      = diag_stack(Qrv, Sbd, Sbd, Sbd, Sbd, Sbd, Sbd);
+             M       = inv(F)' * Aiprev_plus * inv(F);
+             Ai_min  = M - M*Qy*inv(eye(Nx, Nx) + M * Qy)*M;
              
              % measurement partials
-% %              Hb = eye(6,6);
              Hb = compute_biasDrift_measPartials();
              h = [Ht, Hb];
         
@@ -141,43 +138,37 @@ for j = 1:Nq
             % store new value
             PCRB(k, :) = reshape(Ai_plus, [1, Nx*Nx]);
         end
+        % observability at the last orbital period
+        time  = t./T;
+        [~, idx] = min(abs(time - 3));  % index of closest element
 
-        % compute percentage of full observability
-        obsNum = obs(2:end) == Nx;
-        obsPerc = sum(obsNum) / (Nt -1) * 100;  % [%]
+        obs_lastPeriod = obs(idx:end);
 
-        obsPercMat(i, j) = obsPerc;
+        obsPerc_mean = mean(obs_lastPeriod./(Nx) * 100);  % [%]
+
+        obsPercMat(i, j) = obsPerc_mean;
         count = count + 1;
 
         disp('Progress = ' + string(count/(Nq*Nq) * 100) + ' %')
     end
 end
 
-% plot observability
+% surface plot
 figure()
-plot(TIME/timeDim/86400, obs, 'LineWidth', 2, 'color', 'r')
-xlabel('TIME [days]')
-ylabel('[-]');
-title('system observability')
+[X, Y] = meshgrid(sigmaQVec, tauVec./3600); 
+surf(X, Y, obsPercMat, 'EdgeColor', 'none')
+colormap("winter")                     % Specify colormap
+colorbar                               % Show color scale
+xlabel('Intensity [E $\sqrt{sec}$]', 'Interpreter', 'latex')
+ylabel('Correlation [hr]',  'Interpreter', 'latex')
+set(gca, 'XScale', 'log')              % Set X axis to log scale
+% % set(gca, 'YScale', 'log')              % Set Y axis to log scale
+% % set(gca, 'XTick', [1E-7, 1E-6, 1E-4, 1E-3])  % Specify 3 X tick values
+% % set(gca, 'YTick', [5, 10, 100, 1000])  % Specify 3 Y tick values
+% % ylim([60, 1*86400])
+% % xlim([1E-8, 1E-5])
+title('System observability in percentage. FOGMP')
 
-if(Nq > 1)
-    % surface plot
-    figure()
-    [X, Y] = meshgrid(sigmaQVec, tauVec); 
-% %     [X, Y] = meshgrid(sigmaB, tauVec); 
-    surf(X, Y, obsPercMat, 'EdgeColor', 'none')
-    colormap(parula)                       % Specify colormap
-    colorbar                               % Show color scale
-    xlabel('Intensity [E / $\sqrt{sec}$]', 'Interpreter', 'latex')
-    ylabel('Correlation [sec]',  'Interpreter', 'latex')
-    set(gca, 'XScale', 'log')              % Set X axis to log scale
-    set(gca, 'YScale', 'log')              % Set Y axis to log scale
-    set(gca, 'XTick', [1E-7, 1E-6, 1E-4, 1E-3])  % Specify 3 X tick values
-    set(gca, 'YTick', [5, 10, 100, 1000])  % Specify 3 Y tick values
-    xlim([1E-7, 1E-3])
-    xlim([1E-5, 1])
-    title('Observability percentage along 1 revolution')
-end
 
 
 %% FUNCTIONS

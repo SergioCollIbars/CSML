@@ -1,4 +1,4 @@
-function [Q] = processNoise(QT, DG, At, Bw, type, Ns)
+function [Q] = processNoise(QT, DG, At, Qb, type, Ns)
 %%                          PROCESS NOISE
     % ------------------------------------------------------------------- %
     %   Author: Sergio Coll Ibars
@@ -30,9 +30,11 @@ function [Q] = processNoise(QT, DG, At, Bw, type, Ns)
             Gamma = At * [At/2*I;I];
             q = Gamma * QT * Gamma';
             Nq = length(q);
-
+            q = At.*[1/3*At^2*QT, 1/2*At*QT;...
+                1/2*At*QT, QT];
             Q(1:Nq, 1:Nq) = q;
         end
+        Q(8:end, 1:end) = [zeros(9, 7), At.*Qb];
     end
     
     if(type == "DMC")

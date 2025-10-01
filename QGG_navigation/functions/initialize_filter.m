@@ -1,5 +1,5 @@
 function [Xnot, P0, R0, Q0, Bw, c, Pc, Pxc, Cmat_estim, Smat_estim] = ...
-    initialize_filter(planetParams, Cmat, Smat, consider_cov, process_noise, augmented_st)
+    initialize_filter(planetParams, Cmat, Smat, consider_cov, process_noise, augmented_st, frec)
     %%                    INITIALIZE FILTER FUNCTION
     % Description: Compute inital deviation and apriori covariance for a 
     % given dynamical system.
@@ -9,14 +9,18 @@ function [Xnot, P0, R0, Q0, Bw, c, Pc, Pxc, Cmat_estim, Smat_estim] = ...
     % apriori covariance
     % % sigmaState = [1E7, 1E7, 1E7, 10, 10, 10, 1];        % [m], [m/s] and [-]
     sigmaState = [1E3, 1E3, 1E3, 0.1, 0.1, 0.1, 1, ...
-        ones(1, 6)*1E-9, ones(1, 3)*1E-5];                  % [m], [m/s],[-], [s^-2] and [m/s^2]
+        ones(1, 6)*1E-9, ones(1, 3)*1E-3];                  % [m], [m/s],[-], [s^-2] and [m/s^2]
+% %     sigmaState = [6, 6, 6, 0.001, 0.001, 0.001, 1, ...
+% %         ones(1, 6)*1E-9, ones(1, 3)*1E-3];                  % [m], [m/s],[-], [s^-2] and [m/s^2]
 
     % apriori measurement error matrix
-    sigmaMeas = [1, 1/sqrt(2)] * 1E-12;                     % [1/s^2]
-    sigmaMeasAcc = ones(1, 3)  * 1E-10;                     % [m/s^2]
+    sigmaMeas = [1, 1] * 1E-12 * sqrt(frec);                % [1/s^2]
+    sigmaMeasAcc = ones(1, 3)  * 1E-10 * sqrt(frec);        % [m/s^2]
 
     % process noise. SNC
-    sigmaQ_SNC  = [7E-9, 7E-9, 7E-9];                       % [m/s^2]            for PN
+    sigmaQ_SNC  = [5E-11, 5E-11, 5E-11];                    % [m/s^2]            for PN
+    sigmaQ_GG   = ones(1, 6) * 1E-16;                       % [1/s^2 * sqrt(Hz)]
+    sigmaQ_acc  = ones(1, 3) * 1E-15;                       % [m/s^2 * sqrt(Hz)] 
 
     sigma_Bw    = 30 / (6*86400);                           % STD BW noise [1/s] for Jupiter
     sigmaQ_DMC  = [1E-5, 1E-5, 1E-5];                       % [m/s^2]            for Jupiter
@@ -24,7 +28,9 @@ function [Xnot, P0, R0, Q0, Bw, c, Pc, Pxc, Cmat_estim, Smat_estim] = ...
     % inital deviation
 % %     XNOT = [1E6; 1E6; 1E6; 5; 5; 5; 0.5];               % [m], [m/s] and [-]
     XNOT = [1E1; 1E1; 1E1; .05; .05; .05; 0.5;...
-        ones(6, 1)*1E-10; ones(3, 1)*1E-9];                 % [m], [m/s],[-],[s^-2] and [m/s^2]
+        ones(6, 1)*1E-10; ones(3, 1)*1E-4];                 % [m], [m/s],[-],[s^-2] and [m/s^2]
+% %     XNOT = [1; 1; 1; 1E-4; 1E-4; 1E-4; 0.5;...
+% %         ones(6, 1)*1E-12; ones(3, 1)*1E-6];                 % [m], [m/s],[-],[s^-2] and [m/s^2]
 
 
     % consider parameters & consider uncertainty
@@ -88,6 +94,7 @@ function [Xnot, P0, R0, Q0, Bw, c, Pc, Pxc, Cmat_estim, Smat_estim] = ...
     velDim  = planetParams(2) * planetParams(3);
     measDim = planetParams(3)^2;
     measDimAcc = planetParams(2) * planetParams(3)^2;
+    Hz      = planetParams(3);
 
     sigmaState(1:3)  = sigmaState(1:3)./distDim;     % [-]
     sigmaState(4:6)  = sigmaState(4:6)./velDim;      % [-]
@@ -100,9 +107,15 @@ function [Xnot, P0, R0, Q0, Bw, c, Pc, Pxc, Cmat_estim, Smat_estim] = ...
     end
     
     if(process_noise == "SNC") 
-        sigmaQ_SNC = sigmaQ_SNC./(measDim*distDim);                    % [-]
+        sigmaQ_SNC = sigmaQ_SNC./(measDim*distDim);                   % [-]
         Q0 = diag([sigmaQ_SNC(1), sigmaQ_SNC(2), sigmaQ_SNC(3)].^2);  % [-]
-        Bw = zeros(3,3);
+        % % Bw = zeros(3,3);
+
+        sigmaQ_GG  = sigmaQ_GG./(planetParams(3)^2 * sqrt(Hz));
+        sigmaQ_acc = sigmaQ_acc./(measDimAcc * sqrt(Hz));
+        Q_GG       = diag(sigmaQ_GG.^2);
+        Q_acc      = diag(sigmaQ_acc.^2);
+        Bw         = [Q_GG, zeros(6,3);zeros(3,6),Q_acc];
     elseif(process_noise == "DMC")
         sigma_Bw = sigma_Bw/planetParams(3);                        % [-]
         sigmaQ_DMC = sigmaQ_DMC/(measDim*distDim);                  % [-]
@@ -127,7 +140,7 @@ function [Xnot, P0, R0, Q0, Bw, c, Pc, Pxc, Cmat_estim, Smat_estim] = ...
         Xnot(4:6, 1) = XNOT(4:6)./velDim;                % [-]
         Xnot(7, 1)   = XNOT(7);                          % [-]
         Xnot(8:13, 1)= XNOT(8:13)./measDim;              % [-]
-        Xnot(14:16, 1)  = XNOT(14:16)./measDimAcc;             % [-]
+        Xnot(14:16, 1)  = XNOT(14:16)./measDimAcc;       % [-]
     else
         sigmaMeas = sigmaMeas./(measDim);               % [-]
         R0 = diag([sigmaMeas(1), sigmaMeas(2), sigmaMeas(2), sigmaMeas(1), ...

@@ -1,13 +1,13 @@
-function [BN_matrix] = compute_attitude_EPHEM(t, Nn, attitude)
+function [BN_matrix] = compute_attitude_EPHEM(t, frec, Nn, attitude)
     % Compute attitude using the EPHEMERIDES model.
     % Date: 09/24/2025
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     
     % time points
     Nt = length(t);
-
+  
     % compute Euler angles noise
-    sigmaAng = [0.1;0.1;0.1] * pi / (180 * 3600);               % [rad]
+    sigmaAng = [1;1;1] * 1 * sqrt(frec) * pi / (180 * 3600);        % [rad]
 
     noise_ST = ones(3, Nt) * NaN;
     for k = 1:length(sigmaAng)

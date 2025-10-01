@@ -23,15 +23,16 @@ cspice_furnsh('/Users/sergiocollibars/Documents/MATLAB/kernels/kernels.tm')
 
 % Initial configuration
 plotResults   = 1;                                      % options: 1 or 0
-process_noise = 1;                                      % options: 1 or 0
-augmented_st  = 0;                                      % options: 1 or 0
 saveData      = 0;                                      % options: 1 or 0
+loadData      = 1;                                      % options: 1 or 0
 attitude      = "inertial";                             % options: inertial
 
 % time parameters
-tmin = 0*1.4968;
-tmax = 1*1.4968 + tmin;                                 % [rad] 
+tmin = 0;
+tmax = 2*1.4968 + tmin;                                 % [rad] 
 frec = 1/30;                                            % meas. freq. [Hz]
+
+if(loadData), [tmin,~,~,~] = loadData_files(); tmax = tmax + tmin; end
 
 % load universe & initial conditions
 [planetParams, poleParams, Cmat_true, Smat_true, TIME, ~] = ...
@@ -41,7 +42,13 @@ n = round((TIME(end)-TIME(1))*(frec/planetParams(3)) + 1);
 TIME = linspace(TIME(1), TIME(end), n);
 
 traj0 = load_initCond("EPHEM", planetParams, TIME);
-X0_true = [traj0; planetParams(10); zeros(9, 1)];
+[b0_GG, b0_acc] = load_bias(planetParams);
+
+if(loadData == 1)
+    [~,X0_true,~,~] = loadData_files(); 
+elseif(loadData == 0)
+    X0_true = [traj0; planetParams(10);b0_GG;b0_acc]; 
+end
 
 % integrate true trajectory
 disp('Intregrating true trajectory ...')
@@ -56,8 +63,8 @@ disp('  DONE!')
 % compute gradiometer measurements + attitude estimates
 disp('Computing measurements ...')
 [posE, posM, posS] = compute_posPrimaries(TIME, planetParams, "EPHEM");
-[BN_matrix_true] = compute_attitude_EPHEM(TIME, 0, "inertial");
-[BN_matrix_meas] = compute_attitude_EPHEM(TIME, 1, "inertial");
+[BN_matrix_true] = compute_attitude_EPHEM(TIME, frec, 1, "inertial");
+[BN_matrix_meas] = compute_attitude_EPHEM(TIME, frec, 0, "inertial");
 [T, acc] = compute_measurement_EPHEM(TIME, state, planetParams, ...
     BN_matrix_true, Cmat_true, Smat_true, 1, posE, posM, posS);
 
@@ -66,10 +73,14 @@ if(plotResults), plot_measurements(TIME, [T;acc], ...
 disp('  DONE!')
 
 % initialize filter. Add error to a priori states
-[Xnot, P0, R0, Q0, ~, ~, ~, ~, Cmat_estim, Smat_estim] = ...
+[Xnot, P0, R0, Q0, Qb, ~, ~, ~, Cmat_estim, Smat_estim] = ...
     initialize_filter(planetParams, Cmat_true, Smat_true, ...
-    0, "SNC", 1);
-X0 = X0_true + Xnot;
+    0, "SNC", 1, frec);
+if(loadData == 1)
+    [~,~,X0, P0] = loadData_files(); 
+elseif(loadData == 0)
+    X0 = X0_true + Xnot;
+end
 Xnot = Xnot.*0;
 
 % Estimation process
@@ -83,26 +94,32 @@ posIter  = ones(MaxIter*6, length(TIME)) * NaN;
 corr_iter  = ones(2, MaxIter) * NaN;
 error_iter = ones(2, MaxIter) * NaN;
 while(abs(error) > epsilon && count < MaxIter)
-        Ntmax = round(1*86400*frec);
-% %         Ntmax = round(length(TIME) * 0.1);
-        t_batch = TIME(1:Ntmax);
-        while(abs(error) > epsilon && count < MaxIter) % first run CKF to initialize
-            [X_B, P_B, Xhat_B, XNOT, pref, posf] = CKF_solver_EPHEM(t_batch,...
-                X0, Xnot, P0, R0, Q0,[T;acc], planetParams, BN_matrix_meas, ...
-                Cmat_estim, Smat_estim, posE, posM, posS);
-            
-            [Xnot, error, corr_iter, count, prefIter, posIter] = ...
-                check_err_save_post(Xnot, XNOT, corr_iter, count,...
-                prefIter, posIter, pref, posf);
+        if(loadData == 0)
+            Ntmax = round(1*86400*frec);
+% %             Ntmax = round(length(TIME) * 0.1);
+            t_batch = TIME(1:Ntmax);
+            while(abs(error) > epsilon && count < MaxIter) % first run CKF to initialize
+                [X_B, P_B, Xhat_B, XNOT, pref, posf] = ...
+                    CKF_solver_EPHEM(t_batch, X0, Xnot, P0, R0, Q0, Qb,...
+                    [T;acc], planetParams, BN_matrix_meas, ...
+                    Cmat_estim, Smat_estim, posE, posM, posS);
+                
+                [Xnot, error, corr_iter, count, prefIter, posIter] = ...
+                    check_err_save_post(Xnot, XNOT, corr_iter, count,...
+                    prefIter, posIter, pref, posf);
+            end
+            disp('Final CKF error ' + string(error))
+        elseif(loadData == 1)
+            X_B = X0;
+            P_B = reshape(P0, [1, Ns*Ns]);
         end
-        disp('Final CKF error ' + string(error))
 
         % run EKF
         t_EKF = TIME(1:end);
         X0 = X_B(:, 1);
         P0 = reshape(P_B(1, :), [Ns,Ns]);
         [X_E, P_E, Xhat_E, XNOT, pref, posf] = EKF_solver_EPHEM(t_EKF, X0, P0, ...
-                    R0, Q0, [T;acc], planetParams, BN_matrix_meas, ...
+                    R0, Q0, Qb, [T;acc], planetParams, BN_matrix_meas, ...
                     Cmat_estim, Smat_estim, posE, posM, posS);
 
         X = X_E;
@@ -137,7 +154,7 @@ end
 if(saveData)
     X_true_final  = state(end, 1:16);
     X_estim_final = X(:, end);
-    t_final       = TIME(end);
+    t_final       = tmax;
     P_final       = P(end, :);
     
     save('GG_navigation_final_params.mat',...

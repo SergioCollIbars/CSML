@@ -18,7 +18,7 @@ system = "EPHEM";
 consider_cov = 0;
 tmin = 0;                           % [rad]
 tmax = 1*1.4968;                    % [rad]
-frec = 1/60;                        % [Hz]
+frec = 1/30;                        % [Hz]
 
 % load universe
 [planetParams, poleParams, Cmat_true, Smat_true, TIME, DOM] = ...
@@ -64,11 +64,11 @@ date = humanReadableTime;
 
 % compute attitude error effects along NRHO
 disp('Computing attitude error residuals ...')
-arcsec          = 1;                                % [arcseconds]
-radians         = arcsec * pi / (180 * 3600);       % [rad]
-radias_per_sec  = 3E-7;                                 % [rad/s]
-Ath = normrnd(0, radians, [3,length(date)]);        % mean 0, std: radians
-Aw  = normrnd(0, radias_per_sec, [3,length(date)]); % mean 0, std: radians
+arcsec          = 1 * sqrt(frec);                      % [arcseconds]
+radians         = arcsec * pi / (180 * 3600);          % [rad]
+radias_per_sec  = 1E-6 * sqrt(frec);                   % [rad/s]
+Ath = normrnd(0, radians, [3,length(date)]);           % mean 0, std: radians
+Aw  = normrnd(0, radias_per_sec, [3,length(date)]);    % mean 0, std: radians
 [b] = compute_FOMP(TIME./planetParams(3), radias_per_sec);
 
 deltaE_att = ones(6, length(date)) * NaN; deltaE_angVel = deltaE_att;
@@ -104,7 +104,7 @@ lb = ["\Gamma_{xx}", "\Gamma_{xy}", "\Gamma_{xz}", "\Gamma_{yy}", ...
     "\Gamma_{yz}", "\Gamma_{zz}"];
 for j = 1:6
     subplot(2, 3, idx(j))
-    semilogy(date, ones(1, length(date)) * 1E-3, 'LineWidth', 2, 'Color','k')
+    semilogy(date, ones(1, length(date)) * 3E-3 * sqrt(frec), 'LineWidth', 2, 'Color','k')
     hold all;
     semilogy(date, abs(deltaE_angVel(j, :))./1E-9, 'LineWidth', 2, 'Color', 'b', ...
         'LineStyle','-')
