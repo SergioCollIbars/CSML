@@ -20,8 +20,8 @@ frame  = "inertial"; % options: inertial, autonomous, RTN
 % time parameters
 T_orb = 1.3817;                        % [rad]
 tmin = 0;                              % [rad]
-tmax = 1 * T_orb;                      % [rad]
-frec = 1/60;                           % [Hz]
+tmax = 9 * T_orb;                      % [rad]
+frec = 1/30;                            % [Hz]
 
 % load universe
 [planetParams, poleParams, Cmat_true, Smat_true, TIME] = ...
@@ -65,16 +65,16 @@ end
 plot_orbit(pos, TIME./planetParams(3), planetParams)
 
 %% Select gravity content
-planetParams(6) = 2;
-
-A = Cmat_true{1,1}; B = Cmat_true{1,2};
-C = Smat_true{1,1}; D = Smat_true{1,2}; 
-for k = 1:planetParams(6)
-    A(k, :) = A(k, :).*0; B(k, :) = B(k, :).*0;
-    C(k, :) = C(k, :).*0; D(k, :) = D(k, :).*0;
-end
-Cmat_true{1,1} = A; Cmat_true{1,2} = B;
-Smat_true{1,1} = C; Smat_true{1,2} = D;
+% % planetParams(6) = 2;
+% % 
+% % A = Cmat_true{1,1}; B = Cmat_true{1,2};
+% % C = Smat_true{1,1}; D = Smat_true{1,2}; 
+% % for k = 1:planetParams(6)
+% %     A(k, :) = A(k, :).*0; B(k, :) = B(k, :).*0;
+% %     C(k, :) = C(k, :).*0; D(k, :) = D(k, :).*0;
+% % end
+% % Cmat_true{1,1} = A; Cmat_true{1,2} = B;
+% % Smat_true{1,1} = C; Smat_true{1,2} = D;
 
 %% compute gradiometer signal (Inertial frame [1/s^2])
 disp('Computing gravity gradient ... ')
@@ -414,10 +414,20 @@ function [] = plot_spectrogram(F, T, PSD, T_orbit, sgtt)
             colormap turbo; colorbar;
         xlabel('Orbit Number'); ylabel('Frequency [Hz]');
         title(tt(k))
-% %         clim([-60, 80])
-% %         ylim([0, 1E-3]);
     end
     sgtitle(sgtt)
+
+    figure()
+    x = squeeze(PSD(:, :, 1)); % [E^2 / Hz]
+    pcolor(T(1, :)./T_orbit, F(1, :), 10*log10(x)); 
+    axis xy; colormap turbo; colorbar;
+    shading flat
+    set(gca, 'YScale', 'log');    % Make y-axis log
+    xlabel('Orbit fraction'); ylabel('Frequency [Hz]');
+    title('Gradiometer spectrogram in xx direction')
+
+    clim([-60, 40])
+    ylim([0, 8E-3]);
 end
 
 function [var] = rotate_2_autonomousFrame(x, TIME)

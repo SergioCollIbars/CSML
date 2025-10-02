@@ -34,7 +34,7 @@ function [Q] = processNoise(QT, DG, At, Qb, type, Ns)
                 1/2*At*QT, QT];
             Q(1:Nq, 1:Nq) = q;
         end
-        Q(8:end, 1:end) = [zeros(9, 7), At.*Qb];
+        Q(8:end, 1:end) = [zeros(9, 7), Qb];
     end
     
     if(type == "DMC")

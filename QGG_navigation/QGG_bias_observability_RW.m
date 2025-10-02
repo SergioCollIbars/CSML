@@ -62,7 +62,7 @@ R0 = diag([sigmaMeas(1), sigmaMeas(2), sigmaMeas(2), sigmaMeas(1), ...
 sigmaMeas(2), sigmaMeas(1)].^2);                     % [-]
 
 %  state process noise
-sigmaQ_s = 5E-11/ (planetParams(2)*planetParams(3)^2);% [-]
+sigmaQ_s = 1E-10/ (planetParams(2)*planetParams(3)^2);% [-]
 qs = diag([sigmaQ_s, sigmaQ_s, sigmaQ_s].^2).*1;
 I = eye(3, 3);
 
@@ -84,8 +84,8 @@ Nt  = length(TIME);
 [posE, posM, posS] = compute_posPrimaries(TIME, planetParams, system);
 
 % random-walk bias process noise
-Nq = 50;
-sigmaQVec = logspace(-8, -6, Nq);                            % [E/ sqrt(sec)]
+Nq = 20;
+sigmaQVec = logspace(-9, -6, Nq);                            % [E/ sqrt(sec)]
 obsPercMat = ones(Nq, length(t));
 count = 0;
 At = t(2) - t(1);
@@ -154,8 +154,9 @@ xlabel('Orbit Period', 'Interpreter', 'latex')
 ylabel('Intensity [E $\sqrt{Hz}$]',  'Interpreter', 'latex')
 set(gca, 'YScale', 'log')              % Set Y axis to log scale
 % %     set(gca, 'YTick', [1E-10, 1E-9, 1E-5, 1E-3])  % Specify 3 Y tick values
-ylim([1E-8, 1E-6])
+ylim([1E-9, 1E-6])
 title('System observability in percentage');
+view(2);
 
 
 

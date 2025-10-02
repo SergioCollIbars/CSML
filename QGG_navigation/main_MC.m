@@ -12,7 +12,7 @@ props = java.lang.System.getProperties;
 props.setProperty('mail.smtp.auth','true');
 props.setProperty('mail.smtp.starttls.enable','true'); % For TLS
 props.setProperty('mail.smtp.port','587'); % Common TLS port
-email = 1;  % send plots by email 1 = yes / 0 = no
+email = 0;  % send plots by email 1 = yes / 0 = no
 
 % Start diary logging
 diaryFile = fullfile(tempdir, 'console_log.txt');
@@ -34,7 +34,7 @@ set(0,'defaultAxesFontSize',16);
 % Date: 10/01/2025
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-Mc       = 2;
+Mc       = 10;
 error_MC = ones(20, 1E4, Mc) * NaN; 
 cov_MC   = ones(1E4, 20, Mc) * NaN;
 

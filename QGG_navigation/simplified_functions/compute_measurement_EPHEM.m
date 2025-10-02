@@ -25,15 +25,15 @@ function [T, acc] = compute_measurement_EPHEM(t, state, planetParams,...
         At = t(2) - t(1);                                            % [-]
     else
         frec = 1;
-        At = 1;
+        At   = 1;
     end
     sigma_GG  = [1, 1, 1, 1, 1, 1] * 1E-12 * sqrt(frec);             % [1/s^2]
     sigma_A   = 1E-10 * sqrt(frec);                                  % [m/s^2]
-    sigma_bGG = ones(1, 6) * 9.33E-18;                               % [1/s^2 * sqrt(Hz)] works with 9E-18
-    sigma_bac = ones(1, 3) * 9.33E-16;                                      % [m/s^2 * sqrt(Hz)]
+    sigma_bGG = ones(1, 6) * 8E-9;                                   % [E * sqrt(Hz)] works with 9E-9
+    sigma_bac = ones(1, 3) * 9.33E-16;                               % [m/s^2 * sqrt(Hz)]
     sigma_GG  = sigma_GG./measDim_QGG;                               % [-]
     sigma_A   = sigma_A./measDim_Acc;                                % [-]
-    sigma_bGG = sigma_bGG./(measDim_QGG * sqrt(Hz));                 % [-]
+    sigma_bGG = sigma_bGG./(measDim_QGG * sqrt(Hz)) * 1E-9;          % [-]
     sigma_bac = sigma_bac./(measDim_Acc * sqrt(Hz));                 % [-]
 
     
@@ -76,8 +76,6 @@ function [T, acc] = compute_measurement_EPHEM(t, state, planetParams,...
         T(4, j) = ddU(2,2) + bias(4) + noise_GG(4, j);
         T(5, j) = ddU(2,3) + bias(5) + noise_GG(5, j);
         T(6, j) = ddU(3,3) + bias(6) + noise_GG(6, j);
-
-% %         T(1, j) = bias(1) - (0.9E-9)/measDim_QGG + noise_GG(1, j);
 
         r3 = state(j, 1:3)' - posS(:, j);
         eta= state(j, 7); 

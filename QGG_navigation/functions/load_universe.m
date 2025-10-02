@@ -50,6 +50,7 @@ function [planetParams, poleParams, Cmat_true, Smat_true, ...
     planetParams(10) = 1.3;                   % SRP scaling factor
     planetParams(11) = 1000;                  % S/C mass [Kg]
     planetParams(12) = 50 / (D^2);            % S/C area [-]
+% %     planetParams(12) = 50;            % S/C area [-]
 
     % define pole parameters w.r.t J2000. Earth and Moon
     poleParams(1) =  -pi/2;                   % RA Earth

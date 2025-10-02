@@ -29,7 +29,7 @@ attitude      = "inertial";                             % options: inertial
 
 % time parameters
 tmin = 0;
-tmax = 1*1.4968 + tmin;                                 % [rad] 
+tmax = 2*1.4968 + tmin;                                 % [rad] 
 frec = 1/30;                                            % meas. freq. [Hz]
 
 if(loadData), [tmin,~,~,~] = loadData_files(); tmax = tmax + tmin; end
@@ -40,6 +40,9 @@ if(loadData), [tmin,~,~,~] = loadData_files(); tmax = tmax + tmin; end
 
 n = round((TIME(end)-TIME(1))*(frec/planetParams(3)) + 1);
 TIME = linspace(TIME(1), TIME(end), n);
+
+% % TIME = TIME /planetParams(3);
+% % planetParams(2) = 1; planetParams(3) =1;
 
 traj0 = load_initCond("EPHEM", planetParams, TIME);
 [b0_GG, b0_acc] = load_bias(planetParams);

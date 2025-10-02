@@ -24,8 +24,6 @@ function [] = plot_results_EPHEM(t, state_true, X, P, pref, posf,...
     humanReadableTime.Format = 'MMM dd';
 
     time = humanReadableTime';
-    xlb = "date";
-    tt  = ' from ' + date_init + ' - ' + date_end;
     
     %% parse error and covariance values
     err = state_true(:, 1:Ns)' - X(1:Ns, :);
