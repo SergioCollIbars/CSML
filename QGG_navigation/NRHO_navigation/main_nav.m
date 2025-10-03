@@ -1,5 +1,5 @@
-% % clear;
-% % clc;
+clear;
+clc;
 close all;
 format short;
 
@@ -22,9 +22,9 @@ cspice_furnsh('/Users/sergiocollibars/Documents/MATLAB/kernels/kernels.tm')
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % Initial configuration
-plotResults   = 0;                                      % options: 1 or 0
+plotResults   = 1;                                      % options: 1 or 0
 saveData      = 0;                                      % options: 1 or 0
-loadData      = 1;                                      % options: 1 or 0
+loadData      = 0;                                      % options: 1 or 0
 attitude      = "inertial";                             % options: inertial
 
 % time parameters

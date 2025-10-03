@@ -93,7 +93,7 @@ for mc = 1:Mc
     end
 end
 ylabel('[Km]')
-title('Position norm')
+title('Position error norm & 3\sigma bound')
 grid on;
 ylim([1E-5, 1]);
 
@@ -118,7 +118,7 @@ for mc = 1:Mc
     end
 end
 ylabel('[m/s]')
-title('Velocity norm')
+title('Velocity error norm & 3\sigma bound')
 grid on;
 
 % plot SRP scaling factor
@@ -142,13 +142,13 @@ for mc = 1:Mc
     end
 end
 ylabel('[-]')
-title('SRP scaling factor norm')
+title('SRP \eta error & 3\sigma bound')
 grid on;
 
 
 % plot gradiometer bias
 ttlabel = ["xx", "xy", "xz", "yy", "yz", "zz"];
-scale = planetParams(3)/1E-9;               % [Eotvos]
+scale = (planetParams(3)^2)/1E-9;               % [Eotvos]
 figure();
 for mc = 1:Mc
     cov_iter = cov_MC(1:Nt, 1:Ns*Ns, mc);
@@ -160,11 +160,11 @@ for mc = 1:Mc
     error    = squeeze(error_MC(1:Ns, 1:Nt, mc));
     for k = 1:6
         subplot(3, 2, k)
-        semilogy(time, abs(error(7+k, :)).* scale, 'LineWidth', lw, ...
-            'Color', color1);
+        plot(time, abs(error(7+k, :)).* scale, 'LineWidth', lw, ...
+            'Color', color2);
         hold on;
         if(mc == 1)
-            semilogy(time, 3.*s(7+k, :).* scale, 'LineWidth', lw, ...
+            plot(time, 3.*s(7+k, :).* scale, 'LineWidth', lw, ...
                 'Color', 'k');
             hold on;
             title('B_{' + ttlabel(k) + '}');
@@ -173,7 +173,7 @@ for mc = 1:Mc
         end
     end
 end
-sgtitle('Gradiometer Bias')
+sgtitle('Gradiometer bias error & 3\sigma bound')
 
 % plot gradiometer bias
 ttlabel = ["x", "y", "z"];
@@ -189,11 +189,11 @@ for mc = 1:Mc
     error    = squeeze(error_MC(1:Ns, 1:Nt, mc));
     for k = 1:3
         subplot(1, 3, k)
-        semilogy(time, abs(error(13+k, :)).* scale, 'LineWidth', lw, ...
-            'Color', color1);
+        plot(time, abs(error(13+k, :)).* scale, 'LineWidth', lw, ...
+            'Color', color2);
         hold on;
         if(mc == 1)
-            semilogy(time, 3.*s(13+k, :).* scale, 'LineWidth', lw, ...
+            plot(time, 3.*s(13+k, :).* scale, 'LineWidth', lw, ...
                 'Color', 'k');
             hold on;
             title('B_{' + ttlabel(k) + '}');
@@ -202,7 +202,7 @@ for mc = 1:Mc
         end
     end
 end
-sgtitle('Accelerometer Bias')
+sgtitle('Accelerometer bias error & 3\sigma bound')
 
 
 % send resutls through email

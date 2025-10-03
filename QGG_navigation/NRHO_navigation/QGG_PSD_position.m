@@ -20,7 +20,7 @@ frame  = "inertial"; % options: inertial, autonomous, RTN
 % time parameters
 T_orb = 1.3817;                        % [rad]
 tmin = 0;                              % [rad]
-tmax = 9 * T_orb;                      % [rad]
+tmax = 1 * T_orb;                      % [rad]
 frec = 1/30;                            % [Hz]
 
 % load universe
@@ -420,14 +420,22 @@ function [] = plot_spectrogram(F, T, PSD, T_orbit, sgtt)
     figure()
     x = squeeze(PSD(:, :, 1)); % [E^2 / Hz]
     pcolor(T(1, :)./T_orbit, F(1, :), 10*log10(x)); 
-    axis xy; colormap turbo; colorbar;
+    axis xy; colormap turbo; cb = colorbar;
     shading flat
     set(gca, 'YScale', 'log');    % Make y-axis log
     xlabel('Orbit fraction'); ylabel('Frequency [Hz]');
     title('Gradiometer spectrogram in xx direction')
 
-    clim([-60, 40])
+    clim([-60, 40]);
     ylim([0, 8E-3]);
+    cb.Ticks = [-60 -40 -20 0 20 40];     
+    cb.TickLabels = {'$10^{-3}$','$10^{-2}$','$0.1$','$1$',...
+        '$10$', '$10^2$'};
+    set(cb,'TickLabelInterpreter','latex')
+   
+    % Set label text with LaTeX
+    cb.Label.String = '$E\sqrt{Hz}$';   % example units
+    cb.Label.Interpreter = 'latex';
 end
 
 function [var] = rotate_2_autonomousFrame(x, TIME)
