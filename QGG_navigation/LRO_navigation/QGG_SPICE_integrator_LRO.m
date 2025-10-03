@@ -41,7 +41,7 @@ axis equal;
 xlabel('X [km]')
 ylabel('Y [km]')
 zlabel('Z [km]')
-title('LRO Trajectory around the Moon')
+title('LRO Trajectory around the Moon. Moon frame')
 
 figure()
 subplot(1, 2, 1)
@@ -54,3 +54,6 @@ plot(et, vecnorm(sc_SPICE(4:6, :)), 'LineWidth', 2)
 xlabel('Time');
 ylabel('[m/s]');
 sgtitle('postion & velocity norm w.r.t the Moon');
+
+% close SPICE
+cspice_kclear 
