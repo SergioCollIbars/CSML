@@ -10,8 +10,8 @@ format long g;
 % INPUT
 addpath('./functions/');
 addpath('//Users/sergiocollibars/Desktop/');
-out_path   = './HARMCOEFS_MOON_1.txt';
-input_path = 'GRGM_400A.txt';
+out_path   = './HARMCOEFS_MOON_1_v2.txt';
+input_path = 'GRAIL_900.txt';
 
 normalized_ouput = 0;          % do you want normalized output coeff? 0 if input file is already normalized
 normalized       = 1;          % output file normalized?

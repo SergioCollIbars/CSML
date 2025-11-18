@@ -34,7 +34,7 @@ system = "CR3BP"; % options: 2BP, CR3BP, F2BP
     load_universe(system, [tmin, tmax], frec);
 
 % normalization values
-measDim = planetParams(3)^2;
+measDim = 1E-9;
 timeDim = planetParams(3);                            % [1/s]
 posDim  = planetParams(2);                            % [m]
 velDim  = planetParams(3) * planetParams(2);          % [m/s]
@@ -57,14 +57,14 @@ dt = TIME(2) - TIME(1);                              % [-]
 
 % Measurement weights
 sigmaMeas = [1, 1] * 1E-12 * sqrt(frec);             % [1/s^2]
-sigmaMeas = sigmaMeas./measDim;                      % [-]
+sigmaMeas = sigmaMeas./measDim *1E-3 ;                     % [E]
 R0 = diag([sigmaMeas(1), sigmaMeas(2), sigmaMeas(2), sigmaMeas(1), ...
-sigmaMeas(2), sigmaMeas(1)].^2);                     % [-]
+sigmaMeas(2), sigmaMeas(1)].^2);                     % [E^2]
 
 %  state process noise
-sigmaQ_s = 1E-10/ (planetParams(2)*planetParams(3)^2);% [-]
-qs = diag([sigmaQ_s, sigmaQ_s, sigmaQ_s].^2).*1;
-I = eye(3, 3);
+sigmaQ_s = 1E-11/ (planetParams(2)*planetParams(3)^2);% [-]
+qs       = diag([sigmaQ_s, sigmaQ_s, sigmaQ_s].^2).*1;
+I        = eye(3, 3);
 
 % A priori uncertainty
 Nx = 12; Ns = 6; Nm = 6;
@@ -84,21 +84,22 @@ Nt  = length(TIME);
 [posE, posM, posS] = compute_posPrimaries(TIME, planetParams, system);
 
 % random-walk bias process noise
-Nq = 20;
-sigmaQVec = logspace(-9, -6, Nq);                            % [E/ sqrt(sec)]
+Nq         = 100;
+sigmaQVec  = logspace(-7, -2, Nq).*1E-3;             % [E/ sqrt(sec)]
 obsPercMat = ones(Nq, length(t));
-count = 0;
-At = t(2) - t(1);
+RMS_val    = ones(3, Nq);
+count      = 0;
+At         = t(2) - t(1);
+At_sec     = At / planetParams(3);
 for j = 1:Nq
-    varQ   = sigmaQVec(j)^2;                             % [E^2 / sec]
-    q      = varQ * 1E-18;                               % [1 / sec^5]
-    q      = q  / (timeDim^5);                           % [-] 
+    q   = sigmaQVec(j)^2;                             % [E^2 / sec]
 
     % compute PCRB
-    PCRB = ones(Nt, Nx*Nx) * NaN; P = PCRB;
-    sigmaP = ones(Nx, Nt) * NaN;
-    PCRB(1, :) = reshape(inv(P0), [1, Nx*Nx]);
-    obs = ones(1, Nt) * NaN;
+    PCRB       = ones(Nt, Nx*Nx) * NaN; P = PCRB;
+    sigmaP     = ones(Nx, Nt) * NaN;
+    PCRB(1, :) = zeros(1, Nx*Nx);
+    obs        = ones(1, Nt) * NaN;
+    posUnc     = ones(3, Nt) * NaN;
     for k = 2:Nt
         PHI_1 = reshape(STM(k-1, :), [Ns, Ns]); % from 0 to k-1
         PHI_2 = reshape(STM(k, :), [Ns, Ns]);   % from 0 to k
@@ -108,6 +109,7 @@ for j = 1:Nq
         [~, Ht, ~] = compute_measurements(TIME(k), state(k, 1:Ns), planetParams, ...
              poleParams, C_mat, S_mat, 0, 0, 0, [], DOM, posE(:, k), ...
              posM(:, k), posS(:, k), system);
+        Ht = Ht * (planetParams(3)^2) / measDim *1E-3;   % [E/[-]]
         
          % Process noise
          Qrv = At.*[1/3*At^2*qs, 1/2*At*qs;...
@@ -117,7 +119,7 @@ for j = 1:Nq
          Aiprev_plus = reshape(PCRB(k-1, :), [Nx,Nx]);
     
          PHIbd   = eye(6);
-         Qb      = At * q * eye(6);
+         Qb      = At_sec * q * eye(6);
          F       = diag_stack(PHI, PHIbd);
          Qy      = diag_stack(Qrv, Qb);
          M       = inv(F)' * Aiprev_plus * inv(F);
@@ -130,32 +132,55 @@ for j = 1:Nq
         Ai_plus = Ai_min + h' * (R0(1:Nm, 1:Nm) \ h);
     
         obs(k) = rank(Ai_plus);
-    
+        if(obs(k)==12)
+            p = inv(Ai_plus); sigmaP = sqrt(diag(p));
+            posUnc(:, k) = sigmaP(1:3)*planetParams(2); % [m]
+        end
+
         % store new value
         PCRB(k, :) = reshape(Ai_plus, [1, Nx*Nx]);
     end
 
     % compute percentage of full observability
-    obsPerc = obs./(Nx) * 100;  % [%]
+    obsPerc = obs;              % [-]
 
     obsPercMat(j, :) = obsPerc;
     count = count + 1;
+    
+    % select last orbit period
+    time_T = t/T;
+    idx = find(time_T > 3, 1);    % first index where t is greater than 3
+
+    RMS_val(:, j) = rms(posUnc(:, idx:end), 2);
 
     disp('Progress = ' + string(count/(Nq) * 100) + ' %')
 end
 
+figure()
+loglog(sigmaQVec./1E-3, RMS_val, 'LineWidth', 2)
+grid on;
+xlabel('bias rate [E $\sqrt{Hz}$]',  'Interpreter', 'latex');
+ylabel('[m]')
+legend('X', 'Y', 'Z');
+title('Formal error RMS value')
+
 % surface plot
 figure()
-[X, Y] = meshgrid(t./T, sigmaQVec); 
-surf(X, Y, obsPercMat, 'EdgeColor', 'none')
+time_h = t /planetParams(3) / 3600;
+[X, Y] = meshgrid(time_h, sigmaQVec./1E-3); 
+contourf(X, Y, obsPercMat, 'EdgeColor', 'none')
 colormap("winter")                      % Specify colormap
-colorbar                                % Show color scale
+c = colorbar;                                % Show color scale
+c.Label.String = 'Number of states';   % <-- Your label here
 xlabel('Orbit Period', 'Interpreter', 'latex')
-ylabel('Intensity [E $\sqrt{Hz}$]',  'Interpreter', 'latex')
+ylabel('bias rate [E $\sqrt{Hz}$]',  'Interpreter', 'latex')
 set(gca, 'YScale', 'log')              % Set Y axis to log scale
-% %     set(gca, 'YTick', [1E-10, 1E-9, 1E-5, 1E-3])  % Specify 3 Y tick values
-ylim([1E-9, 1E-6])
-title('System observability in percentage');
+% % set(gca, 'YTick', [1E-8, 3E-8, 1E-7, 5E-7])  % Specify 4 Y tick values
+% % set(gca, 'XTick', [1, 2, 3, 4])  % Specify 4 X tick values
+% % ylim([1E-8, 5E-7]);
+ax.GridColor = [0 0 0];   % darker grid
+ax.GridAlpha = 1;         % more opaque
+title('System observability over time');
 view(2);
 
 

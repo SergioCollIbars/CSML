@@ -1,11 +1,11 @@
 clear;
 clc;
 close all;
+set(0,'defaultAxesFontSize',16);
 
 %%                  FREQUENCY PER DEGREE ANALYTICAL
 % Description: Compute the excited frequency for a certain degree in the
-% gradiometer signal. Assuming a polar, circular orbit and non-rotating
-% planet.
+% gradiometer signal. 
 %
 % Date: 10/02/2025
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -13,201 +13,134 @@ close all;
 % Reference radius & planet mass
 Ref = 1737.4E3;                     % [m] 
 GM  = 4.902800118E12;               % [m^3/s^2] 
+f_spin = 2*pi / (27.5 * 86400);     % [rad/s]
 
-% Orbit altitude
-N = 5;
-hmin = 1E3;                         % [m]
-hmax = 3000E3;                       % [m]
+% load gravity coefficients
+path = "HARMCOEFS_MOON_1_v2.txt";
+[Cmat, Smat, ~] = readCoeff(path); % grav. field primary
 
-separation = round((hmax - hmin) / (N-1));
+% Mean orbital elements
+e = 1E-2;              % [-]
+i = deg2rad(90);    % [rad]
+a = Ref + 90E3;     % [m]
 
-H = hmin:separation:hmax;
+% select mean orbit radius
+r2_inv = 1/(a^2) * 1 / (sqrt(1-e^2));
 
-% degree expansion
-n_range = 2:1:100;
+% maximum degree
+n_max = 1;
 
-f_n = ones(N, length(n_range)) * NaN;
-for k = 1:N
-    r = Ref + H(k);
-    f_n(k, :) = (sqrt(GM /r)/(2 * pi * Ref)).* n_range;
-end
+% compute mean secular rates (accounting only for J2 perturbation)
+[Nnm] = nomalization_fnc(2, 0);
+rates = j2_secular_rates(a, e, i, GM, Ref, -Nnm*Cmat(3,1));
+Omega_dot = rates.Omega_rad_s.*0;
+omega_dot = rates.omega_rad_s.*0;
+M_dot     = rates.M_rad_s;
 
-figure()
-semilogy(n_range, f_n, 'LineWidth', 2)
+% create figure
+figure; hold on;
+xlabel('Frequency [Hz]');
+ylabel('Amplitude [Eotvos]');
+set(gca, 'XScale', 'log');
+set(gca, 'YScale', 'log');
+grid on;
+title('Frequency-Amplitude for zonals');
 
-%%
-r = Ref + 3000E3;
-f_orb   = sqrt(GM/r^3)/ (2*pi);
-f_spin = 1/(27.3 * 86400).*1; 
+colors = lines(n_max);
+h_leg = []; % store one handle per color
 
-f2 = grad_lines(2, 0, f_orb, f_spin);
-%%
-nmax   = 10;
-i_deg  = 90;                % polar
-f_orb  = 1/6000;            % ~100 min orbit
-f_spin = 1/86164;           % 1 sidereal day
+for k = 0:n_max
+    disp('Compute frequencies for degree ' + string(k) + ' ...');
+    for m = 0:k
+        % normalization for SH coefficients
+        [Nnm] = nomalization_fnc(k, m);
 
-[atoms, groups] = grad_lines_map(nmax, i_deg, f_orb, f_spin);
+        p_range = 0:1:k;
+        q_range = 80;
 
-% Inspect exactly which harmonic creates a line:
-k = 12;   % pick any atom
-fprintf('f=% .6e Hz  comes from  %s\n', atoms(k).f, atoms(k).label);
+        % go over p-values
+        A = zeros(1, length(p_range)*q_range + 1);
+        f = zeros(1, length(p_range)*q_range + 1);
 
-% Plot unique sticks with all contributors shown in the title/tooltip
-hold on; xline([groups.f], '--'); hold off;
+        count = 1;
+        for idx = 1:length(p_range)
+            for q = -q_range/2:q_range/2
+                p = p_range(idx);
 
-% Example: print contributors for the 5th grouped line
-g = 5;
-fprintf('f=% .6e Hz has contributors:\n', groups(g).f);
-disp({atoms(groups(g).contributors).label}.');
-
-
-
-%% FUNCTIONS
-function f = grad_lines(n, i_deg, f_orb, f_spin)
-% n: degree
-% i_deg: inclination in degrees
-% f_orb: orbital frequency [Hz]
-% f_spin: body spin frequency [Hz]
-ci = cosd(i_deg);
-f_rel = abs(f_orb*ci - f_spin);
-
-f = [];                     % list of expected line frequencies
-for m = 0:n
-    qset = m:2:n;           % parity selection
-    for q = qset
-        f = [f, abs(q*f_orb + m*f_rel), abs(q*f_orb - m*f_rel)];
-    end
-end
-f = unique(f);              % collapse duplicates
-end
-
-
-function [atoms, groups] = grad_lines_map(nmax, i_deg, f_orb, f_spin, varargin)
-%GRAD_LINES_MAP  Enumerate and label gravity(-gradient) spectral lines.
-%
-% [atoms, groups] = grad_lines_map(nmax, i_deg, f_orb, f_spin, 'Name',Value,...)
-%
-% Inputs
-%   nmax    : maximum spherical-harmonic degree to enumerate (>=0)
-%   i_deg   : orbital inclination in degrees (0=equatorial, 90=polar)
-%   f_orb   : orbital frequency [Hz] = n0/(2*pi)
-%   f_spin  : body spin frequency [Hz] = omega_b/(2*pi)
-%
-% Name-Value options
-%   'Tol'         : frequency grouping tolerance (default 1e-10 Hz)
-%   'IncludeDC'   : true to keep f=0 lines (default false)
-%   'OnlyPlus'    : true to only make q*f_orb + m*f_rel (default false: makes both + and -)
-%
-% Outputs
-%   atoms  : struct array with one entry per (n,m,q,combination) *before* grouping
-%            fields: n,m,q,comb ('+','-','0'), f [Hz], label, latex
-%   groups : struct array of unique frequencies (within Tol), with contributors[]
-%
-% Notes
-% - Allowed latitudinal indices follow the Legendre parity rule:
-%     q = n, n-2, n-4, ... down to >= m
-%   (i.e., q has the same parity as n and q >= m).
-% - Combination frequencies with rotation:
-%     f = | q*f_orb ± m*f_rel |,  where  f_rel = | f_orb*cos(i) - f_spin |
-% - For non-rotating body, use f_spin = 0.
-%
-% Example
-%   [atoms, groups] = grad_lines_map(6, 90, 1/6000, 1/86164);
-%   % Print first few atoms:
-%   for k=1:10
-%     fprintf('f=% .6e Hz  <- %s\n', atoms(k).f, atoms(k).label);
-%   end
-%   % Overlay sticks:
-%   hold on; xline([groups.f], '--'); hold off;
-
-% ---- options
-p = inputParser;
-p.addParameter('Tol', 1e-10);
-p.addParameter('IncludeDC', false);
-p.addParameter('OnlyPlus', false);
-p.parse(varargin{:});
-Tol       = p.Results.Tol;
-IncludeDC = p.Results.IncludeDC;
-OnlyPlus  = p.Results.OnlyPlus;
-
-ci    = cosd(i_deg);
-f_rel = abs(f_orb*ci - f_spin);
-
-atoms = struct('n',{},'m',{},'q',{},'comb',{},'f',{},'label',{},'latex',{});
-idx = 0;
-
-for n = 0:nmax
-    for m = 0:n
-        % Latitudinal harmonics respecting parity of n: q = n, n-2, ..., >= m
-        qvals = n:-2:0;
-        qvals = qvals(qvals >= m);
-        for q = qvals
-            if m == 0
-                % No longitudinal modulation term when m=0
-                f0 = abs(q*f_orb);
-                if IncludeDC || f0 > 0
-                    idx = idx + 1;
-                    atoms(idx) = make_atom(n,m,q,'0',f0);
-                end
-            else
-                % With rotation, produce ± combinations; without rotation f_rel may be 0
-                fplus  = abs(q*f_orb + m*f_rel);
-                fminus = abs(q*f_orb - m*f_rel);
-
-                if OnlyPlus
-                    if IncludeDC || fplus > 0
-                        idx = idx + 1; atoms(idx) = make_atom(n,m,q,'+',fplus);
-                    end
-                else
-                    if IncludeDC || fplus > 0
-                        idx = idx + 1; atoms(idx) = make_atom(n,m,q,'+',fplus);
-                    end
-                    if IncludeDC || fminus > 0
-                        idx = idx + 1; atoms(idx) = make_atom(n,m,q,'-',fminus);
-                    end
-                end
+                % compute inclination function
+                F = compute_inclinationFunction(k, m, p, i);
+    
+                % compute frequency (2-side freq)
+                f(count) = ((k - 2*p)*omega_dot + ...
+                    (k - 2*p + q)*M_dot + m*(Omega_dot - f_spin))./(2*pi);
+    
+                % compute eccenticiy function
+                G = compute_eccentricityFunction(k, p, q, e, 10);
+                 
+                % Amplitude per degree, order and p
+                c = r2_inv * (k+1)*(k+2)*GM * ((Ref/ a)^k) * (1 / a);
+                Cnm = Cmat(k+1, m+1); Snm = Smat(k+1, m+1);
+                RMS_coeff = Nnm * sqrt(Cnm^2 + Snm^2);
+    
+                A(count) = 2*(c * (G * F) * RMS_coeff);
+    
+                % increment counter  
+                count = count + 1;
             end
         end
+
+        % select frequency range (only positive freq) & sum over common
+        % frequencies
+        [idx] = (f >= 0);
+        f_pos = f(idx); A_pos = A(idx);
+        [~, keep_idx, grp] = unique(f_pos, 'stable');% mapping to groups
+        f_unique = f_pos(keep_idx);
+        A_unique = A_pos(1:length(f_unique));
+        
+        for idx = length(f_unique)+1:length(f_pos)
+            grpVal = grp(idx);
+            val    = A_pos(idx);
+            A_unique(grpVal) = A_unique(grpVal) + val; 
+        end
+
+        % Choose color
+        c = colors(mod(k-1, size(colors,1)) + 1, :);
+
+        % Draw vertical lines from 0 to amplitude
+        fval = f_unique + 1E-12; Aval = abs(A_unique)./1E-9; % [Eotvos]
+        ymin = 1e-10;
+        if(m == 0)
+            ls = '-';
+            mk = 's';
+        else
+            ls = '-';
+            mk = "diamond";
+        end
+        for d = 1:length(fval)
+            plot([fval(d), fval(d)], [ymin, Aval(d)], ls, ...
+                'Color', c, 'LineWidth', 1.5);
+        end
+    
+        % Plot square markers at the top
+         h = scatter(fval, Aval, 80, mk, 'filled', ...
+            'MarkerFaceColor', c, 'MarkerEdgeColor', 'k', 'LineWidth', 0.5);
+         if(m == 0)
+            h_leg = [h_leg; h];  % append valid handle
+         end
     end
 end
+legend_labels = arrayfun(@(n) sprintf('n = %d', n+1), 1:n_max-1, ...
+    'UniformOutput', false);
+legend(h_leg, legend_labels, 'Location', 'best');
+ylim([1E-3, 10]);
+xticks([1E-12 1E-5 1E-4 1E-3 1E-2, 1E-1])
+xticklabels({'0','10^{-5}','10^{-4}','10^{-3}','10^{-2}', '10^{-1}'});
 
-% Sort atoms by frequency
-[~,ord] = sort([atoms.f]);
-atoms = atoms(ord);
+%% FUNCTIONS
+function [Nnm] = nomalization_fnc(n, m)
+ delta = 0;
+ if(m == 0), delta = 1; end
 
-% Group near-duplicate frequencies and list contributors
-groups = struct('f',{},'contributors',{});
-if isempty(atoms), return; end
-
-f_list = [atoms.f];
-used = false(size(f_list));
-g = 0;
-
-for k = 1:numel(atoms)
-    if used(k), continue; end
-    g = g + 1;
-    fk = f_list(k);
-    close_idx = find(abs(f_list - fk) <= Tol);
-    used(close_idx) = true;
-    groups(g).f = mean(f_list(close_idx));   % representative frequency
-    groups(g).contributors = close_idx(:)';  % indices into atoms
-end
-
-% ---- nested helper
-    function a = make_atom(nn, mm, qq, comb, ff)
-        a.n = nn; a.m = mm; a.q = qq; a.comb = comb; a.f = ff;
-        a.label = sprintf('n=%d, m=%d, q=%d, %s', nn, mm, qq, combstr(comb));
-        a.latex = sprintf('$n=%d,\\;m=%d,\\;q=%d,\\;%s$', nn, mm, qq, combsym(comb));
-    end
-    function s = combstr(c)
-        switch c, case '+', s = 'q f_{orb} + m f_{rel}';
-                    case '-', s = 'q f_{orb} - m f_{rel}';
-                    otherwise, s = 'q f_{orb}'; end
-    end
-    function s = combsym(c)
-        switch c, case '+', s = '+';
-                    case '-', s = '-';
-                    otherwise, s = '0'; end
-    end
+ a = factorial(n-m); b = factorial(n+m);
+ Nnm = sqrt((2-delta)*(2*n + 1) * a/b);
 end

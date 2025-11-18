@@ -3,13 +3,17 @@ clc;
 close all;
 format long g;
 set(0,'defaultAxesFontSize',16);
+addpath('simplified_functions/');
+addpath('data/');
 
-cspice_furnsh('/Users/sergiocollibars/Documents/MATLAB/kernels/kernels.tm')
+cspice_furnsh('/Users/sergiocollibars/Documents/MATLAB/kernels/kernels_LRO.tm')
 
 
-utc_start = '2015-05-20 00:00:00';
-utc_stop  = '2015-05-30 00:00:00';
+utc_start = '2025-05-20 00:00:00';
+utc_stop  = '2025-05-20 04:00:00';
 N         = 2000;           % number of samples
+[GM] = cspice_bodvrd('MOON', 'GM', 1);    % Get GM for the Moon [km^3/s^2]
+GM_moon = GM * 1E9;                       % [m^3/s^2]
 
 et0 = cspice_str2et(utc_start);
 et1 = cspice_str2et(utc_stop);
@@ -17,7 +21,7 @@ et  = linspace(et0, et1, N);
 
 tgt       = 'LUNAR RECONNAISSANCE ORBITER';
 observer  = 'MOON';
-ref_frame = 'IAU_MOON'; % options: J2000 / IAU_MOON
+ref_frame = 'J2000'; % options: J2000 / IAU_MOON
 [sc_SPICE, ~] = cspice_spkezr(tgt, et, ref_frame, 'NONE', observer);
 
 [R_planet] = cspice_bodvrd(observer, 'RADII', 3); % get planet Radius [Km]
@@ -41,7 +45,7 @@ axis equal;
 xlabel('X [km]')
 ylabel('Y [km]')
 zlabel('Z [km]')
-title('LRO Trajectory around the Moon. Moon frame')
+title('LRO Trajectory around the Moon. J2000 frame')
 
 figure()
 subplot(1, 2, 1)
@@ -55,5 +59,49 @@ xlabel('Time');
 ylabel('[m/s]');
 sgtitle('postion & velocity norm w.r.t the Moon');
 
+% compute orbital elements
+orb_elem = ones(6, N);
+for k = 1:N
+   [alpha] = orbitalElem(sc_SPICE(1:3, k), sc_SPICE(4:6, k), GM_moon);
+   a  = alpha(3);
+   n = sqrt(GM / a^3);
+   orb_elem(:, k) = [alpha(1), alpha(3)./1E3, wrapTo2Pi(rad2deg(alpha(6:8))),n];
+end
+figure()
+tt = ['e', 'a', 'i', "\omega", "\Omega", 'n'];
+time  = (et - et(1))./3600;
+for k = 1:6
+    subplot(2, 3, k)
+    plot(time, orb_elem(k, :), 'LineWidth', 2);
+    xlabel('time')
+    title(tt(k))
+end
+
+%% Integrate trajectory with our integrator
+
+[planetParams, Cmat_true, Smat_true] = load_universe();
+
+% initial conditions
+X0 = sc_SPICE(1:6, 1);  % [m] & [m/s]
+
+% orbital period (2BP)
+% % T = 1/ sqrt(GM / (vecnorm(X0(1:3))^3));
+
+% Integrator
+options = odeset('RelTol',1E-13,'AbsTol',1E-13);
+STM0 = reshape(eye(6,6), [36, 1]);
+
+[t, state] = ode113(@(t, x) EOM_LRO_EPHEM(t, x, planetParams, ...
+    Cmat_true, Smat_true), et, [X0; STM0], options);
+
+
+error_pos = state(:, 1:3)' - sc_SPICE(1:3, :);  % [m]
+error_vel = state(:, 4:6)' - sc_SPICE(4:6, :);  % [m/s]
+
+figure()
+plot(et, vecnorm(error_pos), 'LineWidth', 2)
+xlabel('time')
+ylabel('[m]')
+
 % close SPICE
-cspice_kclear 
+cspice_kclear

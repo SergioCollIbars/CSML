@@ -6,13 +6,18 @@ close all;
 % Description: Compute the IMIL for a point mass at different altitudes
 
 
-% planet gravity constants
+% planet gravity constants (Moon)
 GM  = 4.902800118E12;            % [m^3 s^-2]
 Ref = 1737.4E3;                  % [m]
 
+% planet gravity constants (Earth)
+GM  = 3.98E14;                   % [m^3 s^-2]
+Ref = 6378E3;                    % [m]
+
+
 % orbit altitudes
 N   = 5000;
-h   = linspace(10E3, 3500E3, N);  
+h   = linspace(10E3, 30000E3, N);  
 
 % Measurement accuracy
 sigma_m = 1E-12;                % [s^-2]

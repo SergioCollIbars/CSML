@@ -75,6 +75,8 @@ function [X, Pt, Xhat, Xnot, pref, posf] = CKF_solver_EPHEM(TIME, X0, ...
         X(:, j) = X(:, j) + X_hat;
 
         % current uncertainty
+        C = (P + P.')/2;
+        P = C;
         Pt(j, :) = reshape(P, [1, Ns*Ns]);
     end
     

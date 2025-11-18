@@ -3,8 +3,8 @@ clc;
 close all;
 format long g;
 addpath('../functions/')
-addpath('../../QGG_gravEstim/src/')
-addpath('../../QGG_navigation/data/')
+% % addpath('../../QGG_gravEstim/src/')
+% % addpath('../../QGG_navigation/data/')
 addpath('../data/')
 set(0,'defaultAxesFontSize',16);
 
@@ -60,7 +60,7 @@ for k = 1:length(radius)
     % time vector
     n = sqrt(GM / r^3);    % Mean motion         [rad/s]
     T = (2 * pi / n);
-    rev = 10;
+    rev = 3;
     f = 1/10;
     t = linspace(0, rev*T, rev*T * f);
     Nt = length(t);
@@ -109,8 +109,8 @@ for k = 1:length(radius)
         ACAF_ACI =rotationMatrix(pi/2 + RA, pi/2 - DEC, Wt, [3, 1, 3]);
     
         % computed meas. partials
-        [~, Hx_ACI, ~] = gradiometer_meas(t(j) ,asterParams, poleParams, [rn(:, j)', vn(:, j)'], ...
-                noise0, Cnm, Snm, eye(3,3));
+        [~, Hx_ACI, ~] = gradiometer_meas(t(j) ,asterParams, ACAF_ACI, [rn(:, j)', vn(:, j)'], ...
+                noise0, Cnm, Snm);
         hx = [Hx_ACI(1, 2:end); Hx_ACI(2, 2:end); Hx_ACI(3, 2:end);Hx_ACI(5, 2:end);...
             Hx_ACI(6, 2:end)];
     
@@ -144,7 +144,9 @@ for k = 1:length(radius)
         Mxc_NSM = Mxc_NSM + (hx_NSM' * inv(r) * hap_NSM);
         Mcc_NSM = Mcc_NSM + (hap_NSM' * inv(r) * hap_NSM); 
     end
-    
+    if(rank(Ax) ~= Ncs -1)
+        disp('NOT ALL STATES OBSERVABLE');
+    end
     % compute final covariance at epoch time. LS
     Px = inv(Ax);
     Sxc = -Px * Mxc;
@@ -227,6 +229,3 @@ grid on;
 hold off;
 if(threshold == "position"), title('Position error threshold'); else,  ...
      title('Attitude error threshold'); end
-
-
-%% FUNCTIONS

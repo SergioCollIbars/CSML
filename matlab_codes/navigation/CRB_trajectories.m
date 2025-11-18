@@ -3,9 +3,9 @@ clc;
 close all;
 addpath("data/")
 addpath("functions/")
-addpath("../../QGG_navigation/functions/measurements/")
-addpath("../../QGG_navigation/functions/")
-addpath("../../QGG_navigation/data/")
+addpath("../../QGG_navigation/NRHO_navigation/functions/measurements/")
+addpath("../../QGG_navigation/NRHO_navigation/functions/")
+addpath("../../QGG_navigation/NRHO_navigation/data/")
 set(0,'defaultAxesFontSize',16);
 cspice_furnsh('/Users/sergiocollibars/Documents/MATLAB/kernels/kernels.tm') 
 %%                        PCRLB UPPER BOUND
@@ -29,16 +29,17 @@ Rm_ND = Rm / D;                     % [-]
     load_universe("CR3BP", [0, pi], 1);
 
 % load initial condition and trajectory
-data = load('EM_NHalo_south_L2_Family.mat');
+% % data = load('EM_NHalo_south_L2_Family.mat');
+% % data = load('JPL_EM_NHalo_L2_Family.mat');
 % % data = load('JPL_EM_Lyap_L1_Family.mat');
-% % data = load('JPL_EM_Lyap_L2_Family.mat');
+data = load('JPL_EM_Lyap_L2_Family.mat');
 % % data = load('JPL_EM_Vert_L2_Family.mat');
 
 Nd =length(data.trajFam);
-index = 1:1:Nd;
+% % index = 1:1:Nd;
 index = 1:40:Nd;
-% % index = [1, 100, 500, Nd];
-periapsis = 1;  % starting @ periapsis? 1 yes / 0 no
+index = [1, 100, 500, Nd-200, Nd];
+periapsis = 0;  % starting @ periapsis? 1 yes / 0 no
 insidePlanet = zeros(1, length(index));
 
 % trajectories struct
@@ -90,8 +91,8 @@ for j = 1:length(index)
     end
     
     % Simulation parameters
-    tmax = 2*maxPeriod + tmin;         % [-]
-% %     tmax = 1.5*P;
+% %     tmax = 1.5*maxPeriod + tmin;         % [-]
+    tmax = 2*P + tmin;
     meas = "QGG";            % QGG / DSN
     
     % integrate trajectory.
@@ -109,7 +110,6 @@ for j = 1:length(index)
 
     relPos_E = vecnorm(state(:, 1:3)' - posE);
     relPos_M = vecnorm(state(:, 1:3)' - posM);
-
     
     if(sum(relPos_E < Re_ND) || sum(relPos_M < Rm_ND))
         insidePlanet(j) = 1;
@@ -129,8 +129,6 @@ for j = 1:length(index)
         scaleV = D*n;   % [m/s]
         [CRB_pos, CRB_vel] = compute_CRB_Linear(state, posM, posE, t, P0, R_QGG, Ns,...
             mu, meas);
-% %         [X, P, CRB_pos, CRB_vel] = compute_CRB_Unscented(X0, P0, ...
-% %             planetParams, t, R_QGG);
         dataCRB_pos(j).value = CRB_pos.*scaleP;    % [m]
         dataCRB_vel(j).value = CRB_vel.*scaleV;    % [m/s]
     else
@@ -170,10 +168,14 @@ title('Orbit family')
 xlabel('X [Km]')
 ylabel('Y [Km]')
 
+%%
+dataCRB_pos_lasT = struct('value', nan(1, 1E4), 'JC', nan(1,1));
+dataCRB_vel_lasT = struct('value', nan(1, 1E4), 'JC', nan(1,1));
 figure()
 colormap("jet");
 maxVal = ones(1, length(index)) * NaN;
 minVal = maxVal;
+count = 1;
 for j = 1:length(index)
     if(insidePlanet(j) == 0)
         Nt = length(dataOrbit(j).time);
@@ -192,9 +194,15 @@ for j = 1:length(index)
         minP = maxP - 1;
         [~, idx] = min(abs(time - minP));  % index of closest element
 
+        % save data in struct
+        dataCRB_pos_lasT(count).value = scalarValues(idx:end);
+        dataCRB_pos_lasT(count).JC    = dataOrbit(j).JC;
+
         scatter3(rB(1, idx:end), rB(2, idx:end), rB(3, idx:end), 7, log10(scalarValues(idx:end)), 'filled');
         axis equal;
         hold on;
+
+        count = count +1;
     end
 end
 % % plot(-mu*(scaleP./1E3), 0, "o",'MarkerFaceColor',"#7E2F8E", 'MarkerEdgeColor', "#7E2F8E")
@@ -207,13 +215,12 @@ title('Maximum position value from covariance')
 xlabel('X [Km]')
 ylabel('Y [Km]')
 
-
-
 % plot trajectory
 figure()
 colormap("jet");
 maxVal = ones(1, length(index)) * NaN;
 minVal = maxVal;
+count = 1;
 for j = 1:length(index)
     if(insidePlanet(j) == 0)
         Nt = length(dataOrbit(j).time);
@@ -232,10 +239,15 @@ for j = 1:length(index)
         minP = maxP - 1;
         [~, idx] = min(abs(time - minP));  % index of closest element
 
+        % save data in struct
+        dataCRB_vel_lasT(count).value = scalarValues(idx:end);
+
         scatter3(rB(1, idx:end), rB(2, idx:end), rB(3, idx:end), ...
             7, log10(scalarValues(idx:end)), 'filled');
         axis equal;
         hold on;
+
+        count = count +1;
     end
 end
 % % plot(-mu*(scaleP./1E3), 0, "o",'MarkerFaceColor',"#7E2F8E", 'MarkerEdgeColor', "#7E2F8E")
@@ -248,6 +260,7 @@ xlabel('X [Km]')
 ylabel('Y [Km]')
 title('Maximum velocity value from covariance')
 
+%%
 % Plot position accuracy over time
 figure
 scalarVals = ones(1, length(index)) * NaN;
@@ -321,6 +334,21 @@ if(length(index) < 100)
     plot(-mu*(scaleP./1E3), 0, "o",'MarkerFaceColor',"#7E2F8E", ...
         'MarkerEdgeColor', "#7E2F8E")   % plot Earth
 end
+
+%% get orbit with minimum state uncertainty 
+mins = arrayfun(@(s) min(s.value), dataCRB_pos_lasT);  % minimum of each vector
+[globalMin, idx] = min(mins);                     % find smallest overall
+
+orbit_pos = [min(dataCRB_pos_lasT(idx).value), max(dataCRB_pos_lasT(idx).value)];
+orbit_vel = [min(dataCRB_vel_lasT(idx).value), max(dataCRB_vel_lasT(idx).value)];
+orbit_JC  = dataCRB_pos_lasT(idx).JC;
+
+fprintf('Maximum and minimum position [m]: %.4f and %.4f\n',...
+    orbit_pos(1), orbit_pos(2));
+fprintf('Maximum and minimum velocity [m/s]: %.8f and %.8f\n',...
+    orbit_vel(1), orbit_vel(2));
+fprintf('Jacobi constant valie: %.6f \n',...
+    orbit_JC);
 
 %% FUNCTIONS
 function [rB] = rotate2BodyFrame(t, state)

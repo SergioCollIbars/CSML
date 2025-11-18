@@ -146,5 +146,17 @@ function [] = plot_results_EPHEM(t, state_true, X, P, pref, posf,...
         title('Iter ' + string(j))
     end
     sgtitle('Posfit per iteration');
+
+    %% plot condition number for the uncertainty over time
+    condNum = ones(1, length(t)) * NaN;
+    for k =1:length(t)
+        p = reshape(P(k, :), [Np,Np]); 
+        condNum(k) = cond(p);
+    end
+    figure()
+    semilogy(time, condNum, 'LineWidth', 2)
+    grid on;
+    xlabel('Time');
+    title('Condition number for formal uncertainty');
 end
 

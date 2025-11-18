@@ -3,11 +3,11 @@ clc;
 format long g;
 close all;
 
-addpath("data/")
-addpath("functions/")
-addpath("functions/solver")
-addpath("functions/measurements")
-addpath("functions/integrator")
+addpath("NRHO_navigation/data/")
+addpath("NRHO_navigation/functions/")
+addpath("NRHO_navigation/functions/solver")
+addpath("NRHO_navigation/functions/measurements")
+addpath("NRHO_navigation/functions/integrator")
 
 % load SPICE kernels
 cspice_furnsh('/Users/sergiocollibars/Documents/MATLAB/kernels/kernels.tm') 
@@ -25,7 +25,7 @@ frame  = "inertial"; % options: inertial, autonomous, RTN
 T_orb = 1.3817;                        % [rad]
 tmin = 0;                              % [rad]
 tmax = 1 * T_orb;                      % [rad]
-frec = 1/60;                           % [Hz]
+frec = 1/300;                           % [Hz]
 
 % load universe
 [planetParams, poleParams, Cmat_true, Smat_true, TIME] = ...
@@ -34,16 +34,20 @@ frec = 1/60;                           % [Hz]
 % load initial conditions. inertial frame (baricenter centered)
 X0 = load_initCond(system, planetParams, TIME);
 
+% compute integration time
+n = round((TIME(end)-TIME(1))*(frec/planetParams(3)) + 1);
+TIME = linspace(TIME(1), TIME(end), n);
+
 % load initial position and velocity uncertainty
-sigmaP = 1E3;                                                   % [m]
-sigmaV = 1;                                                     % [m/s]
+sigmaP = 100E3;                                                   % [m]
+sigmaV = 100;                                                     % [m/s]
 
 sigmaP = sigmaP / planetParams(2);                              % [-]
 sigmaV = sigmaV / (planetParams(2) * planetParams(3));          % [-]
 P = diag([sigmaP, sigmaP, sigmaP, sigmaV, sigmaV, sigmaV].^2); % [m, m/s]
 
 % Instrument measurement standardt deviation
-sigmaM = 1E-12;                                                  % [1/s^2]
+sigmaM = 1E-9 * sqrt(frec);                                     % [1/s^2]
 sigmaM = sigmaM/(planetParams(3)^2);                             % [-]
 R = diag([sigmaM, sigmaM, sigmaM, sigmaM, sigmaM, sigmaM].^2);
 
@@ -53,7 +57,7 @@ options = odeset('RelTol',1e-12,'AbsTol',1e-12);
 STM0 = reshape(eye(6,6), [36, 1]);
 
 [t, state_inertial] = ode113(@(t, x) EOM_navigation(t, x, planetParams, ...
-    poleParams, Cmat_true, Smat_true, system, 0, {0,0}, 0, 0), [tmin, tmax], ...
+    poleParams, Cmat_true, Smat_true, system, 0, {0,0}, 0, 0), TIME, ...
     [X0; STM0], options);
 TIME = t;
 
@@ -114,7 +118,7 @@ title('3D trajectory');
 pb = [max(a), max(b)];
 ab = [min(a), min(b)];
 disp('\Gamma value at periapsis: ' + string(pb))
-disp('\Gamma value at periapsis: ' + string(ab))
+disp('\Gamma value at apoapsis: ' + string(ab))
 
 figure()
 subplot(2, 1, 1)
@@ -160,10 +164,10 @@ function [Ns, Nm, trcP, trcV] = compute_nonLin_markers(pos, vel, P, R, TIME,...
                 X0_prop, Cmat, Smat, TIME(k) + dT, eye(3,3));
 
         % compute Instant Measure Information Limit (IMIL)
-        B = H_0' * (R\H_0);
-        l = min(eig(B));
-        poslimit = (1/l)^(0.5);
-        posUnc = min([poslimit, sigmaP]);
+% %         B = H_0' * (R\H_0);
+% %         l = min(eig(B));
+% %         poslimit = (1/l)^(0.5);
+% %         posUnc = min([poslimit, sigmaP]);
 % %         P0 = diag([posUnc, posUnc, posUnc, sigmaV, sigmaV, sigmaV].^2);
         P0 = diag([sigmaP,sigmaP,sigmaP, sigmaV, sigmaV, sigmaV].^2);
         stdP = sqrt(diag(P0));

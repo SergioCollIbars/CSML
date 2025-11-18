@@ -5,7 +5,7 @@ function ekf_augmented_bias_demo()
 % - Additive measurement with bias
 % - Analytic and numerical measurement partials (Jacobian)
 % - EKF estimation with 3-sigma plots & consistency checks
-
+close all;
 %% -------------------- Settings --------------------
 rng(7);                 % Reproducible
 dt   = 30;             % [s] sample time
@@ -16,7 +16,7 @@ Nt   = round(T/dt);     % steps
 Sa   = 1e-2;            % [m^2/s^3] (tune for roughness of motion)
 
 % Continuous-time random-walk PSD for bias
-Sb   = 1e-1;            % [unit^2/s] (tune for bias drift rate)
+Sb   = 1;            % [unit^2/s] (tune for bias drift rate)
 
 % Measurement noise covariance
 R    = (0.5)^2;         % [unit^2] measurement variance
@@ -152,8 +152,8 @@ ylabel('vel [m/s]'); grid on; legend('true','error','\pm3\sigma','Location','bes
 
 % Bias
 nexttile;
-plot(t, b_true, 'k-', 'LineWidth', 1.5); hold on;
-plot(t, b_true - xhat(3,:), 'LineWidth', 1.2);
+%plot(t, b_true, 'k-', 'LineWidth', 1.5); hold on;
+plot(t, b_true - xhat(3,:), 'LineWidth', 1.2); hold on;
 sig_b = squeeze(sqrt(Phat(3,3,:))).';
 plot(t, +3*sig_b, '--', t, -3*sig_b, '--');
 ylabel('bias [unit]'); xlabel('time [s]'); grid on;

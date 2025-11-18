@@ -70,6 +70,7 @@ radias_per_sec  = 1E-6 * sqrt(frec);                   % [rad/s]
 Ath = normrnd(0, radians, [3,length(date)]);           % mean 0, std: radians
 Aw  = normrnd(0, radias_per_sec, [3,length(date)]);    % mean 0, std: radians
 [b] = compute_FOMP(TIME./planetParams(3), radias_per_sec);
+dt = 1/frec;                                           % seconds
 
 deltaE_att = ones(6, length(date)) * NaN; deltaE_angVel = deltaE_att;
 for j = 1:length(date)
@@ -90,7 +91,8 @@ for j = 1:length(date)
         .* (planetParams(3)^2); % [1/s^2]
 
     % Measurement residuals. Angular velocity error
-    omega_dyad = dyad_operator(Aw(:, j));
+    omega_dyad    = dyad_operator(Aw(:, j));
+    omegaDot_dyad = dyad_operator(Aw(:, j)./dt);
 % %     omega_dyad = dyad_operator(b(:, j));
     B = omega_dyad * omega_dyad;
     deltaE_angVel(:, j) = [B(1,1);B(1,2);B(1,3);B(2,2);B(2,3);B(3,3)];

@@ -68,10 +68,6 @@ Nt = length(t);
 
 % noise values from GOCE mission
 noise0 = zeros(9, Nt);
-sigma1  = 0.01 * 1E-9 * sqrt(f); % Vxx, Vyy
-sigma2  = 0.6  * 1E-9 * sqrt(f); % Vyz, Vyx
-sigma3  = 0.02 * 1E-9 * sqrt(f); % Vxz, Vzz
-
 sigma1 = 1E-12;
 sigma2 = sigma1; sigma3 = sigma1;
 

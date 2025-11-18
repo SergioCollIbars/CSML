@@ -12,7 +12,7 @@ addpath("functions/")
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 input_name  = "periodic_orbits";          % . csv file
-output_name = "JPL_EM_Vert_L2_Family";   % . mat file
+output_name = "JPL_EM_NHalo_L2_Family";   % . mat file
 
 % Load CSV into a table
 T = readtable(input_name + ".csv"); 

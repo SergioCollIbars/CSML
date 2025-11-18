@@ -5,7 +5,7 @@ function plot_measurements(t, T, planetParams, augmented_st, system)
     % Date: 03/29/2024
     
     % change tensor units to Etvos
-    measDim_QGG =  (planetParams(3)^2*1E9);                 % [Etvos]
+    measDim_QGG =  1E3;                                     % [Etvos]
     measDim_Acc = (planetParams(2) * planetParams(3)^2);    % [m/s^2]
 
     % plot options

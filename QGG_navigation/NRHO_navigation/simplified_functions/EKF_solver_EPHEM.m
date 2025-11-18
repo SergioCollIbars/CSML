@@ -75,6 +75,8 @@ function [X, Pc, Xhat, Xnot, pref, posf] = EKF_solver_EPHEM(TIME, X0, P0, ...
         posf(:, k) = pref(:, k) - Hmeas * X_hat;
 
         % save covariance
+        C = (P + P.')/2;
+        P = C;
         Pc(k, :) = reshape(P, [1, Ns*Ns]);
 
         % save correction

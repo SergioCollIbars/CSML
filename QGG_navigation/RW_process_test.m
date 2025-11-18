@@ -3,7 +3,7 @@ clc;
 close all;
 
 f = 1/30;
-tmax = 3000 * 86400;
+tmax = 300 * 86400;
 N = round(tmax * f);
 TIME = linspace(0, tmax, N);
 dt = TIME(2) - TIME(1);
@@ -12,7 +12,7 @@ dt = TIME(2) - TIME(1);
 % % fc= 1.05E-6;
 % % q = S * 4 * sin(pi*fc/f)^2 * f^2;                        % [E^2 / s]
 
-q = (8E-9)^2;                                            % [E^2 / s]
+q = (1E-6)^2;                                            % [E^2 / s]
 
 % bais
 b_RW = ones(1, N);                                      % [E]
