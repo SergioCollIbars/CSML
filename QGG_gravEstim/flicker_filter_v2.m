@@ -2,7 +2,7 @@ clear; clc; close all;
 
 %% Parameters
 fs   = 1;           % [Hz] sampling frequency
-N    = 5E4;        % number of samples (even)
+N    = 5E4;         % number of samples (even)
 t    = (0:N-1)'/fs; % time vector
 
 % PSD model parameters

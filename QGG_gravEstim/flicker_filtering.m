@@ -16,9 +16,9 @@ fH = 0.10;          % upper MB limit [Hz]
 idxMB = (f>=fL & f<=fH);
 
 %% 1/f + white noise PSD: 1/f below MB, flat inside MB
-S_noise = ones(N,1);          % flat inside MB and above
+S_noise = ones(N,1);                % flat inside MB and above
 
-idxLow = (f<fL & f>0);        % avoid f=0
+idxLow = (f<fL & f>0);              % avoid f=0
 S_noise(idxLow) = (fL./f(idxLow));  % 1/f below MB
 
 % Enforce Hermitian symmetry for real time series
