@@ -49,4 +49,4 @@ disp('Running SLAM ...')
 
 % Smoothing
 do_smoothing(time, state, planetParams, poleParams, instrumentParams, ...
-    BN_mat, Cnm, Snm, Y, Xs, Ps, Xg, Pg);
+    BN_mat, Cnm, Snm, Y, Xs, Ps, Xg, Pg, h, ax);
