@@ -1,5 +1,5 @@
-function [fig, h, ax] = start_plots(time, Ncs, Xc_t, ...
-    Xc_0, P0c_grav)
+function [fig, h, ax] = start_plots(time, n_max, Xc_t, ...
+    Xc_0, P0c_grav, Nbatch)
 %=== EKF Summary Figure: All Plots in One Window ===%
 
 % Assumes variables:
@@ -8,6 +8,10 @@ function [fig, h, ax] = start_plots(time, Ncs, Xc_t, ...
 % You can adapt as needed.
 
 t_hours = time(:).'/3600;   % time in hours for x-axis limits
+
+idx = 1:Nbatch:length(t_hours);
+xv  = t_hours(idx);
+grayColor = [.7 .7 .7];
 
 fig = figure('Name','EKF Summary: State, Bias, Gravity',...
     'NumberTitle','off');
@@ -27,6 +31,9 @@ ylabel('[m]');
 title('Position Error Norm');
 xlim([0, t_hours(end)]);
 ax.pos = gca;
+for k = 2:length(xv)
+    xline(xv(k), '-', 'LineWidth', 0.3, 'Color', 'k');
+end
 
 %% 2) Velocity error (top-middle)
 nexttile; hold on; grid on;
@@ -38,6 +45,9 @@ title('Velocity Error Norm');
 xlim([0, t_hours(end)]);
 ax.vel = gca;
 set(ax.vel, 'YScale','log');
+for k = 2:length(xv)
+    xline(xv(k), '-', 'LineWidth', 0.3, 'Color', 'k');
+end
 
 %% 3–8) Bias plots (middle + bottom, 6 tiles)
 h.BiasErr = gobjects(1, 6);
@@ -53,28 +63,36 @@ for k = 1:6
     ylabel('[mE]');
     xlim([0, t_hours(end)]);
     ax.bias(k) = gca;
+    for j = 2:length(xv)
+        xline(xv(j), '-', 'LineWidth', 0.3, 'Color', 'k');
+    end
 end
 
 %% 9) Gravity field coefficients (bottom-right)
 nexttile; hold on; grid on;
 h.Err_c = semilogy(nan, nan, '-', 'LineWidth', 1.5); % |error|
 h.Cov_c = semilogy(nan, nan, '-', 'LineWidth', 1.5); % 3σ
-semilogy(1:Ncs-1, abs(Xc_t(2:end)), 'LineWidth', 2, 'Color','b');
 xlabel('Coeff index');
 ylabel('[-]');
 title('Gravity Coefficient Error');
-xlim([1, Ncs-1]);
+xlim([2, n_max+1]); ylim([1E-7, 1E-1]);
+xticks(1:n_max);
 ax.grav = gca;
 set(ax.grav, 'YScale','log');
 
 % compute initial gravity error
 errC   = abs(Xc_0 - Xc_t);
 sigmaC = sqrt(diag(P0c_grav));
+[X_true, xvals] = orderValues(abs(Xc_t(2:end)), n_max);
+[errC_order, ~] = orderValues(errC(2:end), n_max);
+[sigmaC_order, ~] = orderValues(sigmaC(2:end), n_max);
 
-set(h.Err_c, 'XData', 1:Ncs-1, 'YData',...
-    errC(2:end), 'LineWidth', 1.5, 'Color', 'r');
-set(h.Cov_c, 'XData', 1:Ncs-1, 'YData', 3.*sigmaC(2:end), ...
-    'LineWidth', 2, 'Color', 'k');
+semilogy(xvals, X_true, 'Color', 'k', 'LineWidth', 2)
+set(h.Err_c, 'XData', xvals, 'YData',...
+    errC_order, 'Color', 'r', 'Marker','*',...
+    "MarkerSize", 2, 'LineStyle','none');
+set(h.Cov_c, 'XData', xvals, 'YData', 3.*sigmaC_order, ...
+    'LineWidth', 2, 'Color', 'r');
 
 %=== At this point you have:
 % fig  -> figure handle
@@ -90,4 +108,3 @@ set(h.Cov_c, 'XData', 1:Ncs-1, 'YData', 3.*sigmaC(2:end), ...
 %   set(h.Cov_c, 'XData', 1:Ncs-1, 'YData', 3*sigmaC(2:end));
 
 end
-

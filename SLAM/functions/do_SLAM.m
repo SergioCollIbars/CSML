@@ -2,7 +2,7 @@ function [X, Px, Xc, P0c_grav] = do_SLAM(time, state_true, planetParams, ...
     poleParams, instrumentParams, BN_mat, Cnm_t, Snm_t, Y)
     
     % load filter parameters
-    [R0, P0,  P0c_grav, Q0, Qb, delta_state0, Cnm, Snm, ~] = ...
+    [R0, P0,  P0c_grav, Q0, Qb, delta_state0, Cnm, Snm, Nbatch, ~] = ...
         loadFilterParams(planetParams, instrumentParams, Cnm_t, Snm_t);
 
     state0 = delta_state0+state_true(1, 1:12)';
@@ -45,8 +45,8 @@ function [X, Px, Xc, P0c_grav] = do_SLAM(time, state_true, planetParams, ...
     std_bias      = nan(6, Nt);
 
     % start real-time plots
-    [fig, h, ax] = start_plots(time, Ncs, Xc_t, ...
-    Xc_0, P0c_grav);
+    [fig, h, ax] = start_plots(time, planetParams(3), Xc_t, ...
+    Xc_0, P0c_grav, Nbatch);
     
     total_inf = inv(P0c_grav(2:end, 2:end)); kmin = 1;
     for k = 2:Nt
@@ -98,7 +98,7 @@ function [X, Px, Xc, P0c_grav] = do_SLAM(time, state_true, planetParams, ...
        
         total_inf = total_inf + ((C'*hc)' * ((C'*R0*C)\(C'*hc)));
         
-         if mod(k,1000) == 0
+         if mod(k,Nbatch) == 0
             flag = 1;     % trigger
          else
             flag = 0;     % reset
@@ -138,7 +138,7 @@ function [X, Px, Xc, P0c_grav] = do_SLAM(time, state_true, planetParams, ...
         errNorm_bias, std_pos, std_vel, std_bias] = ...
         update_plots(time, k, state_true, X0, P, h, ax, errNorm_pos,...
         errNorm_vel, errNorm_bias, std_pos, std_vel, std_bias, ...
-        errC, sigmaC, Ncs);
+        errC, sigmaC, planetParams(3));
     
         % stop if figure is closed
         if ~ishandle(fig)

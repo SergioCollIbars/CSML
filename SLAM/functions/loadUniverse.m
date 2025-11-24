@@ -21,7 +21,7 @@ function [planetParams,poleParams, Cnm, Snm, ...
     planetParams = [GM, Re, n_max, normalized];
 
     % initial conditions
-    r      = 0.7E3;      % [m]
+    r      = 1.2E3;      % [m]
     phi    = pi/2;
     lambda = 0;
     theta  = pi/2 - phi;% Orbit colatitude [m]

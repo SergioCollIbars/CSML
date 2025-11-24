@@ -1,7 +1,7 @@
 function [errNorm_pos, errNorm_vel, ...
     errNorm_bias, std_pos, std_vel, std_bias] = ...
     update_plots(time, k, state_true, X0, P, h, ax, errNorm_pos,...
-    errNorm_vel, errNorm_bias, std_pos, std_vel, std_bias, errC, sigmaC, Ncs)
+    errNorm_vel, errNorm_bias, std_pos, std_vel, std_bias, errC, sigmaC, n_max)
         % state and bias errors
         e_k            = state_true(k, 1:6)'  - X0(1:6);
         e_b            = state_true(k, 7:12)' - X0(7:12); 
@@ -37,11 +37,16 @@ function [errNorm_pos, errNorm_vel, ...
             'LineWidth', 2, 'Color', 'k');
             set(ax.bias(f), 'YLim', [0, maxScale*std_bias(f, k)]);
         end
+        
+        % order values
+        [errC_order, xvals] = orderValues(errC(2:end), n_max);
+        [sigmaC_order, ~] = orderValues(sigmaC(2:end), n_max);
 
-        set(h.Err_c, 'XData', 1:Ncs-1, 'YData',...
-        errC(2:end), 'LineWidth', 1.5, 'Color', 'r');
-        set(h.Cov_c, 'XData', 1:Ncs-1, 'YData', 3.*sigmaC(2:end), ...
-        'LineWidth', 2, 'Color', 'k');
+        set(h.Err_c, 'XData', xvals, 'YData',...
+        errC_order, 'Color', 'r', 'Marker','*',...
+            "MarkerSize", 2, 'LineStyle','none');
+        set(h.Cov_c, 'XData', xvals, 'YData', 3.*sigmaC_order, ...
+            'LineWidth', 2, 'Color', 'r');
     
         drawnow limitrate;  % update the figure without killing performance
 end

@@ -1,14 +1,20 @@
-function [R0, P0, P0c, Q0, Qb, delta_state0, Cnm, Snm, smoothing] = ...
+function [R0, P0, P0c, Q0, Qb, delta_state0, Cnm, Snm, Nbatch, smoothing] = ...
     loadFilterParams(planetParams, instrumentParams, Cnm_t, Snm_t)
     
     % load gravity data
-    loadGrav = 1;                   % options: 1 / 0
+    loadGrav = 0;                   % options: 1 / 0
 
     % apply smoothing
     smoothing = 1;                  % options: 1 / 0;
 
+    % Batch arc for gravit field estimation [sec]
+    t_batch = 3 * 3600; % [sec]
+
     % Sampling frequency
     fs = instrumentParams(:, 5);
+
+    % Batch arc smaples number
+    Nbatch = round(t_batch * fs(1));
 
     % Measurement variance
     sigma_m = instrumentParams(:, 2);
