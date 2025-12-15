@@ -11,10 +11,10 @@ t_hours = time(:).'/3600;   % time in hours for x-axis limits
 
 idx = 1:Nbatch:length(t_hours);
 xv  = t_hours(idx);
-grayColor = [.7 .7 .7];
 
 fig = figure('Name','EKF Summary: State, Bias, Gravity',...
     'NumberTitle','off');
+fig.WindowState = 'maximized';
 
 tiledlayout(fig, 3, 3, 'TileSpacing','compact', 'Padding','compact');
 
@@ -54,11 +54,13 @@ h.BiasErr = gobjects(1, 6);
 h.BiasCov = gobjects(1, 6);
 ax.bias   = gobjects(1, 6);
 
+tt = ["xx", "xy", "xz", "yy", "yz", "zz"];
+
 for k = 1:6
     nexttile; hold on; grid on;
     h.BiasErr(k) = plot(nan, nan, '-', 'LineWidth', 1.5);
     h.BiasCov(k) = plot(nan, nan, '-', 'LineWidth', 1.5);
-    title(sprintf('Bias %d', k));
+    title('Bias ' + tt(k));
     xlabel('Time [hr]');
     ylabel('[mE]');
     xlim([0, t_hours(end)]);

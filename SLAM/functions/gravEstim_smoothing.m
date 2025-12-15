@@ -1,5 +1,5 @@
-function [X_final,P_final] = gravEstim_smoothing(time, Y_true, planetParams,...
-    poleParams, Xs_smooth, P0t, Cnm, Snm, sigmaPos, sigmaBias, R)
+function [X_final,P_final, err_mat] = gravEstim_smoothing(time, Y_true, planetParams,...
+    poleParams, Xs_smooth, P0t, Cnm, Snm, R, Px)
     % extract asteroid parameteres
     GM = planetParams(1); Re = planetParams(2);
     normalized = planetParams(4); 
@@ -23,7 +23,8 @@ function [X_final,P_final] = gravEstim_smoothing(time, Y_true, planetParams,...
     Pss = P0t(Nc_org+1:Nc_org+Ns, Nc_org+1:Nc_org+Ns);
 
     P0 = [Pcc, Pcs;Psc, Pss];
-
+    
+    sigmaPos = 1E-16; sigmaBias = 1E-16.*ones(1,6);
     Pc  = diag([ones(6, 1)*(sigmaPos^4);sigmaBias'.^2]);
     Pxc = zeros(Ncs-1, 12);
 
@@ -34,13 +35,19 @@ function [X_final,P_final] = gravEstim_smoothing(time, Y_true, planetParams,...
     iterMax = 10;
     err = 0;
     xnot_L = zeros(Ncs-1, 1);
+    err_mat = nan(iterMax, 1);
     while (count < iterMax) && (err < 1E3)
         % integrate state
         Ax_L = inv(P0);
         Nx_L = -inv(P0) * xnot_L;
 
         [~, Mxc, Mcc] = get_considerCov_apriori(P0, Pc, Pxc);
-        for j = 2:Nt-1        
+
+        [R_new, Y_cal] = compute_meas_weigth(time(1:Nt-1), ...
+         [rn;vn], Cnm, Snm, planetParams, poleParams, R, ...
+         Px, Y_true(:, 1:Nt-1));
+
+        parfor j = 1:Nt-1        
             % current position
             rn_ACI = rn(:, j);
     
@@ -84,12 +91,12 @@ function [X_final,P_final] = gravEstim_smoothing(time, Y_true, planetParams,...
             end
             
             % visibility matrix
-            H = C' * Hc;
+            H  = C' * Hc;
             Ha = C' * [H2pos_tot, eye(6)];
-            r = C' * R * C;
+            r  = C' * R_new(:, :, j) * C;
 
             % prefit residuals
-            dY = Y_true(:, j) - [Y_ACI(1:3); Y_ACI(5:6);Y_ACI(9)]./1E-12;
+            dY = Y_cal(:, j) - [Y_ACI(1:3); Y_ACI(5:6);Y_ACI(9)]./1E-12;
             dy = C' * dY;
 
             % solve normal equations
@@ -118,7 +125,7 @@ function [X_final,P_final] = gravEstim_smoothing(time, Y_true, planetParams,...
     
         % show error
         err = vecnorm(XNOT_L);
-        disp('  NSM update = '    + string(err));
+        err_mat(count + 1) = err;
     
         % update counter
         count = count + 1;

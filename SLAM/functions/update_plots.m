@@ -1,17 +1,20 @@
 function [errNorm_pos, errNorm_vel, ...
     errNorm_bias, std_pos, std_vel, std_bias] = ...
-    update_plots(time, k, state_true, X0, P, h, ax, errNorm_pos,...
+    update_plots(time, k, state_true, X, P, h, ax, errNorm_pos,...
     errNorm_vel, errNorm_bias, std_pos, std_vel, std_bias, errC, sigmaC, n_max)
         % state and bias errors
-        e_k            = state_true(k, 1:6)'  - X0(1:6);
-        e_b            = state_true(k, 7:12)' - X0(7:12); 
-        errNorm_pos(k) = norm(e_k(1:3)); errNorm_vel(k) = norm(e_k(4:6));
-        errNorm_bias(:, k) = abs(e_b);
+        e_k            = state_true(1:k, 1:6)'  - X(1:6, 1:k);
+        e_b            = state_true(1:k, 7:12)' - X(7:12, 1:k); 
+        errNorm_pos(1:k) = vecnorm(e_k(1:3, :)); 
+        errNorm_vel(1:k) = vecnorm(e_k(4:6, :));
+        errNorm_bias(:, 1:k) = abs(e_b);
 
         % state and bias std
-        std = diag(sqrt(P));
-        std_pos(k)     = 3*norm(std(1:3)); std_vel(k)   = 3*norm(std(4:6));
-        std_bias(:, k) = 3.*std(7:12);
+        for j = 1:k
+            std = diag(sqrt(reshape(P(j, :), [12, 12])));
+            std_pos(j)     = 3*norm(std(1:3)); std_vel(j)   = 3*norm(std(4:6));
+            std_bias(:, j) = 3.*std(7:12);
+        end
 
         % select time scale
         th = time(1:k)./3600;

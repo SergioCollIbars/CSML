@@ -1,0 +1,28 @@
+    # Bennu parameters
+########################################
+    GM = 5.2
+    n_max = 6
+    normalized = 1
+    
+    # orientation parameters
+########################################
+    W   = 4.06130329511851E-4
+    W0  = 0
+    RA  = 86.6388
+    DEC = -65.1086
+
+    # initial conditions
+########################################
+    r      = 2E3
+    phi    = 90
+    lambda = 0
+  
+    # path
+########################################
+    path = HARMCOEFS_BENNU_CD_1.txt
+
+    # time stamps [days]
+########################################
+    tmin = 0
+    tmax = 0.125
+    

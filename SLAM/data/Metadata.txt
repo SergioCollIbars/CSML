@@ -1,0 +1,13 @@
+# parent folder
+###########################################
+	folder = orbit_test
+
+# gravity data
+###########################################
+	gravity = orbit_1km/gravField_coeff.mat
+	cov     = orbit_1km/gravField_cov.mat
+
+
+# Final results: options 1 or 0
+###########################################
+	save   = 0

@@ -77,7 +77,7 @@ function [dx] = EOM_LRO_EPHEM(t, x, planetParams, C_mat, S_mat)
     % compute gravity acceleration
     Cmat1 = C_mat{1};
     Smat1 = S_mat{1};
-    [~, dU1, ~] = potentialGradient_nm(Cmat1, Smat1, 2, ...
+    [~, dU1, ddU1] = potentialGradient_nm(Cmat1, Smat1, 2, ...
                                                 J2000_EARTH'*r1, Re1(1), GM1, ...
                                                 normalized);
     Cmat2 = C_mat{2};
@@ -88,6 +88,7 @@ function [dx] = EOM_LRO_EPHEM(t, x, planetParams, C_mat, S_mat)
 
     % rotate back to inertial. Earth-Moon (EM) plane
     dU1  = J2000_EARTH  * dU1;
+    ddU2 = J2000_EARTH  * ddU1  * J2000_EARTH';
 
     dU2  = J2000_MOON  * dU2;
     ddU2 = J2000_MOON  * ddU2  * J2000_MOON';
@@ -96,14 +97,14 @@ function [dx] = EOM_LRO_EPHEM(t, x, planetParams, C_mat, S_mat)
     r_SS = r3;
     r_ME = Mpos - Epos;
     r_MS = Mpos - Spos;
-    a_tidial_E = - dU1 - GM1 * r_ME / (vecnorm(r_ME)^3);
+    a_tidial_E = + dU1 + GM1 * r_ME / (vecnorm(r_ME)^3);
     a_tidial_S = GM3 * (r_SS / (vecnorm(r_SS)^3) - r_MS / (vecnorm(r_MS)^3));
     
     % total acceleration
-    dU = dU2 - a_tidial_E + a_tidial_S;
+    dU = dU2 + a_tidial_E + a_tidial_S;
 
     % compute gravity position partials
-    T = ddU2;
+    T = ddU2 + ddU1;
     
     % compute Jacobian
     J = compute_jacobian(T);

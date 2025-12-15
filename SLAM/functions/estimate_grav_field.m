@@ -1,9 +1,12 @@
-function [X_final, P_final] = estimate_grav_field(n_solve, time, Nt, Y_true, ...
-    rn, vn, planetParams, poleParams, Cnm, Snm, P0t, R, sigmaPos, sigmaBias)
+function [X_final, P_final, err_mat] = estimate_grav_field(n_solve, time, Nt, Y_true, ...
+    rn, vn, planetParams, poleParams, Cnm, Snm, P0t, R, Px)
     % extract asteroid parameteres
     GM = planetParams(1); Re = planetParams(2); n_max = n_solve;
     normalized = planetParams(4); 
     t = time;
+
+    sigmaPos  = 1E-16;
+    sigmaBias = 1E-16.*ones(1, 6);
 
     % extract asteroid pole parameters
     W = poleParams(1); W0 = poleParams(2); RA = poleParams(3);
@@ -31,19 +34,25 @@ function [X_final, P_final] = estimate_grav_field(n_solve, time, Nt, Y_true, ...
     iterMax = 10;
     err = 0;
     xnot_L = zeros(Ncs-1, 1);
+    err_mat = nan(iterMax, 1);
     while (count < iterMax) && (err < 1E3)
         % integrate state
         Ax_L = inv(P0);
         Nx_L = -inv(P0) * xnot_L;
 
         [~, Mxc, Mcc] = get_considerCov_apriori(P0, Pc, Pxc);
+
+        % compute data
+        [R_new, Y_cal] = compute_meas_weigth(time, ...
+                 [rn;vn], Cnm, Snm, planetParams, poleParams, R, ...
+                 Px, Y_true);
         for j = 1:Nt        
             % current position
             rn_ACI = rn(:, j);
     
             % ACAF to ACI rotation matrix
             Wt = W0 + W * t(j);
-            ACAF_ACI =rotationMatrix(pi/2 + RA, pi/2 - DEC, Wt, [3, 1, 3]);
+            ACAF_ACI  = rotationMatrix(pi/2 + RA, pi/2 - DEC, Wt, [3, 1, 3]);
             B_ACI     = eye(3,3);
             ACAF_BODY = ACAF_ACI * B_ACI';
     
@@ -83,10 +92,10 @@ function [X_final, P_final] = estimate_grav_field(n_solve, time, Nt, Y_true, ...
             % visibility matrix
             H = C' * Hc;
             Ha = C' * [H2pos_tot, eye(6)];
-            r = C' * R * C;
+            r = C' * R_new * C;
 
             % prefit residuals
-            dY = Y_true(:, j) - [Y_ACI(1:3); Y_ACI(5:6);Y_ACI(9)]./1E-12;
+            dY = Y_cal(:, j) - [Y_ACI(1:3); Y_ACI(5:6);Y_ACI(9)]./1E-12;
             dy = C' * dY;
 
             % solve normal equations
@@ -115,7 +124,7 @@ function [X_final, P_final] = estimate_grav_field(n_solve, time, Nt, Y_true, ...
     
         % show error
         err = vecnorm(XNOT_L);
-        disp('  NSM update = '    + string(err));
+        err_mat(count + 1) = err;
     
         % update counter
         count = count + 1;

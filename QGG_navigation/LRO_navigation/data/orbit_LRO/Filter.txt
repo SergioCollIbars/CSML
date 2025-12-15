@@ -1,0 +1,23 @@
+# load gravity data: options 1 or 0
+########################################
+	loadGrav = 0                 
+
+
+# Process noise: [m/s^2]
+########################################
+	sigma_PN_x = 1E-12
+	sigma_PN_y = 1E-12
+	sigma_PN_z = 1E-12
+
+    
+# bias RW: [mE]
+########################################
+	sigma_RW = 0.00628317497175913
+
+
+# Filter uncertainty: [m], [m/s] & [mE]
+########################################
+	sigmaP = 10                
+	sigmaV = 1E-2          
+	sigmaB = 1E-8
+    

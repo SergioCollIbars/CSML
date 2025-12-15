@@ -1,4 +1,4 @@
-function [Y] = compute_measurements(instrumentParams, planetParams, ...
+function [Y, state] = compute_measurements(instrumentParams, planetParams, ...
     poleParams, time, state, Cnm, Snm, BN_mat)
     
     % extract params
@@ -21,8 +21,21 @@ function [Y] = compute_measurements(instrumentParams, planetParams, ...
 % %         [n] = generate_gradNoise(instrumentParams(k, :), Nt);
 % %         noise(k, :) = n';
 % %     end
+
+    % generate white noise
     sigma_m = sqrt(instrumentParams(1, 5)) * instrumentParams(1, 2);
-    noise = normrnd(0, sigma_m, [6, Nt]);
+    noise_white = normrnd(0, sigma_m, [6, Nt]);
+
+    % generate flicker (alpha = 2) noise
+    S_w        = instrumentParams(1, 2);                           % [mE/sqrt(Hz)]
+
+    fs         =  instrumentParams(1, 5);                          % [Hz]
+    f_min      =  instrumentParams(1, 6);                          % [Hz]
+
+    sigma_eta2 = 4 * S_w^2 * sin(pi * f_min / fs)^2;
+
+    eta             = sqrt(sigma_eta2) * randn(6, Nt);    % RW increments
+    noise_flicker   = cumsum(eta')';                      % random walk
 
     %% compute measurements
     Y = ones(6, Nt) * NaN;
@@ -38,14 +51,19 @@ function [Y] = compute_measurements(instrumentParams, planetParams, ...
         maxInd = 3 * k; minInd = maxInd - 2;
         BN = BN_mat(minInd:maxInd, :);
 
-        T_ACI = reshape(Y_ACI, [3, 3]);
+        T_ACI = [Y_ACI(1),Y_ACI(2),Y_ACI(3);Y_ACI(4),Y_ACI(5),Y_ACI(6);...
+                 Y_ACI(7),Y_ACI(8),Y_ACI(9)];
         T_B   = BN * T_ACI * BN';
 
         Y(:, k) = [T_B(1,1);T_B(1,2);T_B(1,3);T_B(2,2);T_B(2,3);T_B(3,3)]./1E-12;   % [mE]
     end
     
     % add noise
-    Y = Y + noise + instrumentParams(:, 3).*ones(6, Nt);
+    cnst_bias = instrumentParams(:, 3).*ones(6, Nt);
+    Y         = Y + noise_white + cnst_bias + noise_flicker;
+    
+    % update true bias
+    state(:, 7:12) = noise_flicker' + cnst_bias';
 end
 
 

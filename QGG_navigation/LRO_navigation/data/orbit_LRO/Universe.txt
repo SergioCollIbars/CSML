@@ -1,0 +1,22 @@
+    # Gravity simulation parameters
+########################################
+    n_max = 6
+    normalized = 1
+
+    # initial conditions
+########################################
+    tgt       = LUNAR RECONNAISSANCE ORBITER
+    observer  = MOON
+    ref_frame = J2000
+    utc_start = 2025-05-20 00:00:00
+  
+    # path
+########################################
+    path_Earth = data/orbit_LRO/HARMCOEFS_EARTH_1
+    path_Moon  = data/orbit_LRO/HARMCOEFS_MOON_1
+
+    # time stamps [days]
+########################################
+    tmin = 0
+    tmax = 1
+    

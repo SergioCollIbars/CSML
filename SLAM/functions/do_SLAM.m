@@ -1,4 +1,4 @@
-function [X, Px, Xc, P0c_grav] = do_SLAM(time, state_true, planetParams, ...
+function [X, Px, Xc, P0c_grav, h, ax] = do_SLAM(time, state_true, planetParams, ...
     poleParams, instrumentParams, BN_mat, Cnm_t, Snm_t, Y)
     
     % load filter parameters
@@ -49,6 +49,7 @@ function [X, Px, Xc, P0c_grav] = do_SLAM(time, state_true, planetParams, ...
     Xc_0, P0c_grav, Nbatch);
     
     total_inf = inv(P0c_grav(2:end, 2:end)); kmin = 1;
+    flag_count= 0; 
     for k = 2:Nt
         % initial conditions
         t_span = [time(k - 1), time(k)];
@@ -100,6 +101,7 @@ function [X, Px, Xc, P0c_grav] = do_SLAM(time, state_true, planetParams, ...
         
          if mod(k,Nbatch) == 0
             flag = 1;     % trigger
+            flag_count = flag_count + 1;
          else
             flag = 0;     % reset
          end
@@ -107,24 +109,27 @@ function [X, Px, Xc, P0c_grav] = do_SLAM(time, state_true, planetParams, ...
             n_solve = fix((rank(total_inf) + 4)^(1/2) - 1);
 
             Nt = k - kmin + 1;
-            sigmaPos  = max((std_pos(:,kmin:k)./3)');
-            sigmaBias = max((std_bias(:,kmin:k)./3)');
 
             % calibrated signal
             Y_cal = Y(:, kmin:k) - X(7:end, kmin:k);
 
-            [X_CS, P0c_new] = estimate_grav_field(n_solve, time(kmin:k), ...
+            [X_CS, P0c_new, NSM_err] = estimate_grav_field(n_solve, time(kmin:k), ...
                 Nt, Y_cal, X(1:3, kmin:k), X(4:6, kmin:k), ...
-                planetParams, poleParams, Cnm, Snm, P0c_grav, R0.*(100),...
-                sigmaPos, sigmaBias);
+                planetParams, poleParams, Cnm, Snm, P0c_grav, R0,...
+                Px(kmin:k, :));
+            delta_grav = (0.3).*abs(P0c_grav(2:end, 2:end) - P0c_new);
             
             % update uncertainty grav. field + coefficient value
             [Cnm, Snm, P0c, P0c_grav] = update_coeff(n_solve, planetParams(3), ...
-                X_CS, Cnm, Snm, P0c_new, P0c, P0c_grav);
+                X_CS, Cnm, Snm, delta_grav + P0c_new, P0c, P0c_grav);
             
             % update uncertainty navigation
             p = P(1:Ns,1:Ns);
             P = [p, Pxc;Pcx, P0c];
+
+            % display NSM filter error
+            fprintf('   Gravity estimation number %d. Initial error: %.2e. Final error: %.2e.\n', ...
+            flag_count, NSM_err(1), NSM_err(end));
 
             kmin = k+1;
         end
@@ -172,4 +177,6 @@ function [Cnm, Snm, P0c, P0c_grav] = update_coeff(n_solve, n_max, X_CS, Cnm, Snm
     P0c_grav(2:Nc, Nc_org+1:Ns+Nc_org) = P0cs;
     P0c_grav(Nc_org+1:Ns+Nc_org, 2:Nc) = P0sc;
     P0c_grav(Nc_org+1:Ns+Nc_org, Nc_org+1:Ns+Nc_org) = P0(Nc:Ncs-1, Nc:Ncs-1);
+
+    P0c_grav = diag(diag(P0c_grav));
 end
