@@ -1,14 +1,19 @@
-function [R0, P0, Q0, Qb, delta_state0, Cnm, Snm] = ...
-    loadFilterParams(metaData_file, planetParams, instrumentParams, ...
-    Cnm_list, Snm_list)
+function [R0, P0, P0c, Q0, Qb, delta_state0, Cnm, Snm] = ...
+    loadFilterParams(metaData_file, planetParams, instrumentParams)
     mtd = readParams("data/"+metaData_file);
     p = readParams("data/"+mtd.folder+"/Filter.txt");
     
     % load gravity data
     loadGrav = p.loadGrav;
 
+    % Batch arc for gravit field estimation [sec]
+    t_batch = p.t_batch * 3600;           % [sec]
+
     % Sampling frequency
     fs = instrumentParams(:, 5);
+
+    % Batch arc smaples number
+    Nbatch = round(t_batch * fs(1));
 
     % Measurement variance
     sigma_m = instrumentParams(:, 2);
@@ -39,31 +44,25 @@ function [R0, P0, Q0, Qb, delta_state0, Cnm, Snm] = ...
     delta_state0 = [deltaP; deltaV;...
         deltaB];
 
-    % coefficient perturbation (Earth & Moon)
-    Cnm_E  = Cnm_list{1}; Snm_E = Snm_list{1};
-    Cnm_M  = Cnm_list{2}; Snm_M = Snm_list{2};
-    n_max        = planetParams(5);
+    % coefficient perturbation
+    n_max        = planetParams(3);
     [Nc, Ns, ~]  = count_num_coeff(n_max); 
- 
-    C_S_coeffs_E   = mat2list(Cnm_E, Snm_E, Nc, Ns);
-    C_S_coeffs_M   = mat2list(Cnm_M, Snm_M, Nc, Ns);
+    C_S_coeffs   = mat2list(Cnm_t, Snm_t, Nc, Ns);
 
     K = 0;
-    n_E = 2:length(Cnm_E)-1; n_M = 2:length(Cnm_M)-1;
-    sigma_n_E = K./(n_E.^2); sigma_n_M = K./(n_M.^2);
+    n = 2:length(Cnm_t)-1;
+    sigma_n = K./(n.^2);
     if(loadGrav == 0)
-        
-        [Xp, ~]  = perturb_coeff(sigma_n_E, n_max, C_S_coeffs_E);
-        [Cnm_E, Snm_E] = list2mat(n_max, Nc, Ns, Xp);
-
-        [Xp, ~]  = perturb_coeff(sigma_n_M, n_max, C_S_coeffs_M);
-        [Cnm_M, Snm_M] = list2mat(n_max, Nc, Ns, Xp);
+        [Xp, Pc]  = perturb_coeff(sigma_n, n_max, C_S_coeffs);
+        [Cnm, Snm] = list2mat(n_max, Nc, Ns, Xp);
     
+        P0c  = Pc; P0c(1,1) = 0; 
     elseif(loadGrav == 1)
-        % WARNING: TBD
-    end
+        Xc       = load("data/"+mtd.gravity).Xg;
+        P0c_grav = load("data/"+mtd.cov).Pg;
 
-    % save coefficients as a list 
-    Cnm = {Cnm_E, Cnm_M}; Snm = {Snm_E, Snm_M};
+        [Cnm, Snm] = list2mat(n_max, Nc, Ns, Xc);
+        P0c = (1.3^2).*P0c_grav;
+    end
 end
 

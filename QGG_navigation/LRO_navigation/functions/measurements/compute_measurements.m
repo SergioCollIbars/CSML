@@ -53,5 +53,5 @@ function [Y, bias] = compute_measurements(instrumentParams, planetParams, ...
     Y         = Y + noise_white + cnst_bias + noise_flicker;
     
     % update true bias
-    bias = noise_flicker' + cnst_bias';
+    bias = noise_flicker + cnst_bias;
 end

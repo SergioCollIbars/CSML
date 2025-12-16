@@ -51,11 +51,12 @@ disp('Simulating measurements ...')
 [Y, bias] = compute_measurements(instrumentParams, planetParams, ...
     time, state, Cnm_list, Snm_list, BN_mat, NB_EARTH_mat, NB_MOON_mat);
 
-plot_measurements(time, Y) % WARNING: Here!!
+plot_measurements(time, Y, bias) 
 disp('  DONE ...')
 
-% SLAM process
-disp('Running SLAM ...')
-[Xs, Ps, Xg, Pg, h, ax] = do_SLAM_v3(metaData_path, time, state, ...
-    planetParams, poleParams, instrumentParams, BN_mat, Cnm, Snm, Y);
+% Filtering process
+disp('Running Filter ...')
+[Xf, Pf] = filter_measurements(metaData_path,time,state,BN_mat,...
+    NB_EARTH_mat, NB_MOON_mat, Cnm_list, Snm_list, Y, ...
+    planetParams, instrumentParams);
 disp('  DONE ...')

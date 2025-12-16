@@ -1,0 +1,19 @@
+function [Xf, Pf] = filter_measurements(metaData_file,time,state_true, ...
+    BN_mat, NB_EARTH_mat, NB_MOON_mat, Cnm_true, Snm_true, ...
+    Y_true, planetParams, instrumentParams)
+    %% FILTER GRADIOMETER MEASUREMENTS
+    
+    % load filter parameters
+    [R0, P0, Q0, Qb, delta_state0, Cnm_filt, Snm_filt] = ...
+        loadFilterParams(metaData_file, planetParams, instrumentParams,...
+        Cnm_true, Snm_true);
+
+    % runc CKF to initialize measurements
+    state0 = state_true(1, 1:12)';
+    [P0_new, state0_new] = initialize_filter(time, state0, Y_true, R0,...
+        P0, Nt_max, planetParams, Cnm_filt, Snm_filt, BN_mat, ...
+         NB_EARTH_mat, NB_MOON_mat);
+
+
+end
+

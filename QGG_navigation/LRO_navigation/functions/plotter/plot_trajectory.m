@@ -3,22 +3,25 @@ function [] = plot_trajectory(time,state)
     
     r = state(:, 1:3)'; v = state(:, 4:6)';
     
+    % Convert to datetime
+    utc = cspice_et2utc(time', 'ISOC', 6);
+    tUTC = datetime(utc, 'InputFormat', 'yyyy-MM-dd''T''HH:mm:ss.SSSSSS');
+
     % plot orbit radius & 3D trajectory
     figure()
     subplot(1, 2, 1)
-    plot(time./3600, vecnorm(r)./1E3, 'LineWidth', 2)
+    plot(tUTC, vecnorm(r)./1E3, 'LineWidth', 2)
     grid on;
     title('orbit radius norm')
-    xlabel('Time [hr]')
+    xlabel('Epoch')
     ylabel('[km]')
 
     subplot(1, 2, 2)
-    plot3(r(1, :)./1E3, r(2, :)./1E3, r(3, :)./1E3, 'LineWidth', 2)
+    plot(tUTC, vecnorm(v), 'LineWidth', 2)
     grid on;
-    title('3D trajectory ACI frame')
-    xlabel('X [Km]')
-    ylabel('Y [km]')
-    zlabel('Z [Km]')
+    title('orbit velocity norm')
+    xlabel('Epoch')
+    ylabel('[m/s]')
     hold all;
 
     figure()
@@ -34,11 +37,9 @@ function [] = plot_trajectory(time,state)
         'EdgeColor', 'none', ...
         'FaceColor', [0.8 0.8 0.8]); % light gray
     
-    axis equal;
-    xlabel('X [km]')
-    ylabel('Y [km]')
-    zlabel('Z [km]')
-    title('LRO Trajectory around the Moon. J2000 frame')
+    axis equal; grid on;
+    xlabel('X [km]'); ylabel('Y [km]'); zlabel('Z [km]');
+    title('LRO Trajectory around the Moon. J2000 frame');
 
     axis equal
 end

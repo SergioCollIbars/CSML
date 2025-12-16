@@ -1,6 +1,6 @@
     # Gravity simulation parameters
 ########################################
-    n_max = 6
+    n_max = 10
     normalized = 1
 
     # initial conditions

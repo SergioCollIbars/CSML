@@ -39,7 +39,7 @@ plot_trajectory(time, state)
 disp('  DONE ...')
 
 % trajectory error [m]
-sigmaP    = 10;    Nt = length(time);                    
+sigmaP    = 15;    Nt = length(time);                    
 deltaR    = normrnd(0, sigmaP, [3, Nt]);
 
 % compute S/C orientation
@@ -85,7 +85,9 @@ fxx = deltaR(1, :).*deltaR(1, :);
 dY_HOT = nan(6, Nt); dY_FOT = nan(6, Nt); dY_SOT = nan(6, Nt);
 mean_analy_HOT = nan(6, Nt);
 bound  = nan(6, Nt);
-for j = 1:Nt
+for k = 1:Nt
+    j = 10;
+
     % current position
     rn_ACI = rn(:, j);
     
@@ -96,6 +98,12 @@ for j = 1:Nt
     ACAF_BODY = ACAF_ACI * B_ACI';
 
     % computed measurements
+    [Y_true, ~] = gradiometer_meas(t(j) ,planetParams, ACAF_ACI,...
+    [rn(:, j)' + deltaR(:, k)', vn(:, j)'], ...
+        zeros(9,1), Cnm_t, Snm_t);
+
+    y_true = [Y_true(1:3); Y_true(5:6);Y_true(9)]./1E-12;
+
     [Y_ACI, ~] = gradiometer_meas(t(j) ,planetParams, ACAF_ACI,...
         [rn(:, j)', vn(:, j)'], ...
             zeros(9,1), Cnm_t, Snm_t);
@@ -111,16 +119,19 @@ for j = 1:Nt
      Hpos2     = Hpos2_tot./1E-12;
      Hpos2(abs(Hpos2) < 1E-5) = 0;
 
+     [ddU_dxyz] = compute_posPartials_2ndOrder(GM, rn_ACI(1), rn_ACI(2),...
+         rn_ACI(3))./1E-12;
+
     % compute Higher order residuals [mE]
-    dr_mat = deltaR(:, j) * deltaR(:, j)';
+    dr_mat = deltaR(:, k) * deltaR(:, k)';
     dr     = [dr_mat(1,1);dr_mat(1,2);dr_mat(1,3);...
               dr_mat(2,2);dr_mat(2,3);dr_mat(3,3)];
-    dY_HOT(:, j) = (Y_true(:, j) - y_nom) - (Hpos * deltaR(:, j));
-    dY_FOT(:, j) = Hpos * deltaR(:, j);
-    dY_SOT(:, j) = Hpos2 * dr;
+    dY_HOT(:, k) = (y_true - y_nom) - (Hpos * deltaR(:, k));
+    dY_FOT(:, k) = Hpos * deltaR(:, k);
+    dY_SOT(:, k) = Hpos2 * dr;
 
     % analytical mean
-    mean_analy_HOT(:, j) = Hpos2 * s_mean;
+    mean_analy_HOT(:, k) = Hpos2 * s_mean;
 end
 
 % compute mean for the HOT

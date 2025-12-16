@@ -41,4 +41,4 @@
 
 # Instrument orientation: Inertial, RTN
 ###########################################
-	orientation = Inertial
+	orientation = RTN
