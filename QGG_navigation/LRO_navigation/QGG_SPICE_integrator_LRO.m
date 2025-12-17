@@ -9,8 +9,8 @@ addpath('data/');
 cspice_furnsh('/Users/sergiocollibars/Documents/MATLAB/kernels/kernels_LRO.tm')
 
 
-utc_start = '2025-05-20 00:00:00';
-utc_stop  = '2025-05-20 04:00:00';
+utc_start = '2015-03-15 00:00:00';
+utc_stop  = '2015-04-15 04:00:00';
 N         = 2000;           % number of samples
 [GM] = cspice_bodvrd('MOON', 'GM', 1);    % Get GM for the Moon [km^3/s^2]
 GM_moon = GM * 1E9;                       % [m^3/s^2]

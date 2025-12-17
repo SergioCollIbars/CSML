@@ -25,9 +25,9 @@ function [R0, P0, Q0, Qb, delta_state0, Cnm, Snm] = ...
     Qb = diag((ones(6, 1).*sigma_RW).^2);
 
     % Filter uncertainty
-    sigmaP = p.sigmaP/3;                   % [m]
-    sigmaV = p.sigmaV/3;                   % [m/s]
-    sigmaB = p.sigmaB;                     % [mE]
+    sigmaP = p.sigmaP;                   % [m]
+    sigmaV = p.sigmaV;                   % [m/s]
+    sigmaB = p.sigmaB;                   % [mE]
 
     P0 = diag([sigmaP;sigmaP;sigmaP;sigmaV;sigmaV;sigmaV;...
         ones(6, 1).*sigmaB].^2);

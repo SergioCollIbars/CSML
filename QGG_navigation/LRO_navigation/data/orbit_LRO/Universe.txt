@@ -1,6 +1,6 @@
     # Gravity simulation parameters
 ########################################
-    n_max = 10
+    n_max = 0
     normalized = 1
 
     # initial conditions
@@ -8,7 +8,7 @@
     tgt       = LUNAR RECONNAISSANCE ORBITER
     observer  = MOON
     ref_frame = J2000
-    utc_start = 2025-05-20 00:00:00
+    utc_start = 2015-03-20 00:00:00
   
     # path
 ########################################
@@ -18,5 +18,5 @@
     # time stamps [days]
 ########################################
     tmin = 0
-    tmax = 1
+    tmax = 0.125
     

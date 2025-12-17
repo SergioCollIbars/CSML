@@ -1,6 +1,10 @@
-function [] = plot_measurements(time,Y, bias)
+function [] = plot_measurements(time,Y, bias, instrumentParams)
     % Description: plot measurements over time
     
+    % measurement mask
+    mask = instrumentParams(:, 1);
+    gray = [.7 .7 .7];
+
     % Number of measurements
     Nm = length(Y(:, 1));
     
@@ -12,8 +16,8 @@ function [] = plot_measurements(time,Y, bias)
     figure()
     for k = 1:Nm
         subplot(2, 3, k)
-        plot(tUTC, Y(k, :)./1E3, 'LineWidth', 2)
-        xlabel('Epoch')
+        if(mask(k)==1), color = 'b'; else, color = gray; end
+        plot(tUTC, Y(k, :)./1E3, 'LineWidth', 2, 'Color', color);
         ylabel('[Eotvos]')
         grid on;
         title(tt(k));
@@ -26,8 +30,8 @@ function [] = plot_measurements(time,Y, bias)
     figure()
     for k = 1:Nm
         subplot(2, 3, k)
-        plot(tUTC, bias(k, :), 'LineWidth', 2)
-        xlabel('Epoch')
+        if(mask(k)==1), color = 'b'; else, color = gray; end
+        plot(tUTC, bias(k, :), 'LineWidth', 2, 'Color', color)
         ylabel('[milli-Eotvos]')
         grid on;
         title(tt(k));

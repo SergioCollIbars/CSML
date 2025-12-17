@@ -5,9 +5,9 @@
 
 # Process noise: [m/s^2]
 ########################################
-	sigma_PN_x = 1E-12
-	sigma_PN_y = 1E-12
-	sigma_PN_z = 1E-12
+	sigma_PN_x = 1E-8
+	sigma_PN_y = 1E-8
+	sigma_PN_z = 1E-8
 
     
 # bias RW: [mE]
@@ -19,5 +19,5 @@
 ########################################
 	sigmaP = 10                
 	sigmaV = 1E-2          
-	sigmaB = 1E-8
+	sigmaB = 1E-1
     

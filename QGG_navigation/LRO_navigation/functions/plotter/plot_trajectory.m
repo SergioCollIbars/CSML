@@ -42,5 +42,12 @@ function [] = plot_trajectory(time,state)
     title('LRO Trajectory around the Moon. J2000 frame');
 
     axis equal
+
+    % Plot orbit altitude
+    figure();
+    H = vecnorm(r) - R_M;   % [m]
+    plot(tUTC, H./1E3, 'LineWidth', 2)
+    grid on; xlabel('Epoch'); ylabel('[Km]');
+    title('orbit altitude')
 end
 

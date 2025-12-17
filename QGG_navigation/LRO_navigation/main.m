@@ -37,7 +37,7 @@ X0      = state0;
     Cnm_list, Snm_list), t, [X0;PHI0], ...
     options);
 
-plot_trajectory(time, state)
+plot_trajectory(time, state);
 disp('  DONE ...')
 
 % compute S/C orientation
@@ -51,12 +51,17 @@ disp('Simulating measurements ...')
 [Y, bias] = compute_measurements(instrumentParams, planetParams, ...
     time, state, Cnm_list, Snm_list, BN_mat, NB_EARTH_mat, NB_MOON_mat);
 
-plot_measurements(time, Y, bias) 
+plot_measurements(time, Y, bias, instrumentParams); 
 disp('  DONE ...')
 
 % Filtering process
 disp('Running Filter ...')
 [Xf, Pf] = filter_measurements(metaData_path,time,state,BN_mat,...
     NB_EARTH_mat, NB_MOON_mat, Cnm_list, Snm_list, Y, ...
-    planetParams, instrumentParams);
+    bias, planetParams, instrumentParams);
 disp('  DONE ...')
+
+% Plot results
+disp('Plotting Results ...')
+mask = instrumentParams(:, 1);
+plot_results(time, state, bias, Xf, Pf, mask);

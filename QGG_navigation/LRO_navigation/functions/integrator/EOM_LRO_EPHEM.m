@@ -98,7 +98,7 @@ function [dx] = EOM_LRO_EPHEM(t, x, planetParams, C_mat, S_mat)
     dU = dU2 + a_tidial_E + a_tidial_S;
 
     % compute gravity position partials
-    T = ddU2 + ddU1;
+    T = ddU2;
     
     % compute Jacobian
     J = compute_jacobian(T);

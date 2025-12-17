@@ -9,16 +9,16 @@
 
 # measurement noise: [mE * sqrt(Hz)]
 ###########################################
-	sigma_xx = 1 
-	sigma_xy = 1
-	sigma_xz = 1
-	sigma_yy = 1
-	sigma_yz = 1
-	sigma_zz = 1     
+	sigma_xx = 1
+	sigma_xy = 1 
+	sigma_xz = 1 
+	sigma_yy = 1 
+	sigma_yz = 1 
+	sigma_zz = 1      
 
  # Measurement band [Hz]
 ###########################################
-	fmin = 0
+	fmin = 1E-4
 	fmax = 1
 
 # noise slope
@@ -27,12 +27,12 @@
 
 # measurement bias [mE]
 ###########################################
-	bias_xx = 0
-	bias_xy = 0
-	bias_xz = 0
-	bias_yy = 0
-	bias_yz = 0
-	bias_zz = 0
+	bias_xx = 100
+	bias_xy = 100
+	bias_xz = 100
+	bias_yy = 100
+	bias_yz = 100
+	bias_zz = 100
 
 # sampling frequency [Hz]
 ###########################################
