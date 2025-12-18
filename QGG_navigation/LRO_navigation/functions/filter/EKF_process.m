@@ -76,8 +76,8 @@ function [X_EKF, P_EKF] = EKF_process(time, planetParams, Y_N, ...
         dY          = Y - Yc - X0_N(Ns+1:end); 
     
         % Include process noise
-        Q_N = processNoise(Q0, Qb, At, Nx);
-        Q  = rotate_processNoise(BN,Q_N, 1);
+        Q = processNoise(Q0, Qb, At, Nx);
+        % % Q  = rotate_processNoise(BN,Q_N, 1);
 
         % apply measurement mask
         dY_used = dY(logical(mask));
@@ -114,6 +114,13 @@ function [X_EKF, P_EKF] = EKF_process(time, planetParams, Y_N, ...
         
         P_N  = A * P_old * A.';
         P_EKF(k, :) = reshape(P_N, [Nx*Nx, 1]);
+
+        % update Body frame definition
+        [BN_mat] = compute_orientation_SC(t_span, ...
+            X_EKF(1:Ns, k-1:k)', orientation);
+        BN     = BN_mat(4:6, :); 
+        A      = blkdiag(BN, BN, eye(6));
+        P_old  = A * P_N * A.'; 
     end
     fprintf('\n');
 end

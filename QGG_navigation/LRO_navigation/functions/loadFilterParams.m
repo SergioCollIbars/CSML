@@ -4,8 +4,8 @@ function [R0, P0, Q0, Qb, delta_state0, Cnm, Snm] = ...
     mtd = readParams("data/"+metaData_file);
     p = readParams("data/"+mtd.folder+"/Filter.txt");
     
-    % load gravity data
-    loadGrav = p.loadGrav;
+    % load filter data
+    loadData = p.loadData;
 
     % Sampling frequency
     fs = instrumentParams(:, 5);
@@ -51,18 +51,13 @@ function [R0, P0, Q0, Qb, delta_state0, Cnm, Snm] = ...
     K = 0;
     n_E = 2:length(Cnm_E)-1; n_M = 2:length(Cnm_M)-1;
     sigma_n_E = K./(n_E.^2); sigma_n_M = K./(n_M.^2);
-    if(loadGrav == 0)
-        
-        [Xp, ~]  = perturb_coeff(sigma_n_E, n_max, C_S_coeffs_E);
-        [Cnm_E, Snm_E] = list2mat(n_max, Nc, Ns, Xp);
 
-        [Xp, ~]  = perturb_coeff(sigma_n_M, n_max, C_S_coeffs_M);
-        [Cnm_M, Snm_M] = list2mat(n_max, Nc, Ns, Xp);
+    [Xp, ~]  = perturb_coeff(sigma_n_E, n_max, C_S_coeffs_E);
+    [Cnm_E, Snm_E] = list2mat(n_max, Nc, Ns, Xp);
+
+    [Xp, ~]  = perturb_coeff(sigma_n_M, n_max, C_S_coeffs_M);
+    [Cnm_M, Snm_M] = list2mat(n_max, Nc, Ns, Xp);
     
-    elseif(loadGrav == 1)
-        % WARNING: TBD
-    end
-
     % save coefficients as a list 
     Cnm = {Cnm_E, Cnm_M}; Snm = {Snm_E, Snm_M};
 end

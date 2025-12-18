@@ -3,20 +3,26 @@
     n_max = 10
     normalized = 1
 
-    # initial conditions
+    # Orbit type: CUSTOM or LRO
 ########################################
-    tgt       = LUNAR RECONNAISSANCE ORBITER
-    observer  = MOON
-    ref_frame = J2000
-    utc_start = 2015-03-20 00:00:00
+    tgt       = LRO
+    
+    # initial conditions a [Km], e [-], i [deg], RAAN [deg], omega [deg], f [deg]
+########################################
+    a         = 1790
+    e         = 0
+    i         = 90
+    RAAN      = 0
+    omega     = 0
+    f         = 0
   
-    # path
+    # path gravity data
 ########################################
     path_Earth = data/orbit_LRO/HARMCOEFS_EARTH_1
     path_Moon  = data/orbit_LRO/HARMCOEFS_MOON_1
 
     # time stamps [days]
 ########################################
-    tmin = 0
-    tmax = 1
+    utc_start = 2015-03-20 00:00:00
+    tmax      = 3
     

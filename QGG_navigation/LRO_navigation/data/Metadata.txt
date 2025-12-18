@@ -2,7 +2,7 @@
 ###########################################
 	folder = orbit_LRO
 
-# gravity data
+# filter data
 ###########################################
 	gravity = orbit_LRO/HARMCOEFS_EARTH_1
 	cov     = orbit_LRO/HARMCOEFS_MOON_1
@@ -11,3 +11,4 @@
 # Final results: options 1 or 0
 ###########################################
 	save   = 0
+	plot   = 1

@@ -82,8 +82,8 @@ function [P0_new, state0_new] = initialize_filter_CKF(time, state0, Y_N, ...
             dY             = Y(:, k) - Yc - X_bias(:, k);
             
             % Include process noise
-            Q_N = processNoise(Q0, Qb, At, Nx);
-            Q  = rotate_processNoise(BN_mat,Q_N, k);
+            Q  = processNoise(Q0, Qb, At, Nx);
+            % % Q  = rotate_processNoise(BN_mat,Q_N, k);
 
             % Augment STM to include the bias
             PHI_tot = [PHI_ij, zeros(6,6);...

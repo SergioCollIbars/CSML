@@ -19,9 +19,9 @@ function [X_EKF, P_EKF] = filter_measurements(metaData_file,time,state_true, ...
          signal_err, R0, P0, Nt_max, planetParams, Cnm_filt, Snm_filt,...
          instrument_alig, NB_EARTH_mat, NB_MOON_mat, Q0, Qb, mask);
 
-    % test initial error and uncertainty
-    err0      = abs(state0_new - state_true(:, 1));
-    sigma3    = 3.*sqrt(diag(P0_new));
+% %     % test initial error and uncertainty
+% %     err0      = abs(state0_new - state_true(:, 1));
+% %     sigma3    = 3.*sqrt(diag(P0_new));
 
     % run EKF
     X0 = state0_new; P0 = P0_new;

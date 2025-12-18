@@ -38,7 +38,6 @@ X0      = state0;
     Cnm_list, Snm_list), t, [X0;PHI0], ...
     options);
 
-plot_trajectory(time, state);
 disp('  DONE ...')
 
 % compute S/C orientation
@@ -62,12 +61,24 @@ state_true = [state(:, 1:6)';bias];
 disp('  DONE ...')
 
 % Plot results
-disp('Plotting Results ...')
-plot_measurements(time, Y, bias, signal_err, instrumentParams,...
-    Xf, instrument_alig); 
+if(mtd.plot)
+    disp('Plotting Results ...')
+    plot_trajectory(time, state);
+    
+    plot_measurements(time, Y, bias, signal_err, instrumentParams,...
+        Xf, instrument_alig); 
+    
+    mask = instrumentParams(:, 1);
+    plot_results(time, state, bias, Xf, Pf, mask, instrument_alig);
+    disp('  DONE ...')
+end
 
-mask = instrumentParams(:, 1);
-plot_results(time, state, bias, Xf, Pf, mask, instrument_alig);
+% Save results
+if(mtd.save)
+    disp('Saving Results ...')
+    save_results(Xf, Pf, mtd.folder);
+    disp('  DONE ...')
+end
 
 % clear kernels
 cspice_kclear
