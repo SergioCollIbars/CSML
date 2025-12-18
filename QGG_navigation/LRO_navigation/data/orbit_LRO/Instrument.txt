@@ -10,11 +10,11 @@
 # measurement noise: [mE * sqrt(Hz)]
 ###########################################
 	sigma_xx = 1
-	sigma_xy = 1 
+	sigma_xy = 1
 	sigma_xz = 1 
 	sigma_yy = 1 
 	sigma_yz = 1 
-	sigma_zz = 1      
+	sigma_zz = 1     
 
  # Measurement band [Hz]
 ###########################################
@@ -37,7 +37,6 @@
 # sampling frequency [Hz]
 ###########################################
 	fs = 0.1
-
 
 # Instrument orientation: Inertial, RTN
 ###########################################

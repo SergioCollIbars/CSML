@@ -1,6 +1,6 @@
 function [X_EKF, P_EKF] = filter_measurements(metaData_file,time,state_true, ...
-    BN_mat, NB_EARTH_mat, NB_MOON_mat, Cnm_true, Snm_true, ...
-    Y_true, bias_true, planetParams, instrumentParams)
+    instrument_alig, NB_EARTH_mat, NB_MOON_mat, Cnm_true, Snm_true, ...
+    Y_true, signal_err, planetParams, instrumentParams)
     %% FILTER GRADIOMETER MEASUREMENTS
     
     % load filter parameters
@@ -12,20 +12,22 @@ function [X_EKF, P_EKF] = filter_measurements(metaData_file,time,state_true, ...
     mask = instrumentParams(:, 1);
 
     % run CKF to initialize measurements
-    state0    = [state_true(1, 1:6)';bias_true(:, 1)] + delta_state0;
-    Nt_max    = 600; % [sec] 
-    [P0_new, state0_new] = initialize_filter_CKF(time, state0, Y_true, R0,...
-        P0, Nt_max, planetParams, Cnm_filt, Snm_filt, BN_mat, ...
-         NB_EARTH_mat, NB_MOON_mat, Q0, Qb,mask);
+    state0    = state_true(:, 1) + delta_state0;
+    Nt_max    = 600; % [sec]
 
-% %     % test initial error and uncertainty
-% %     err0      = abs(state0_new - [state_true(1, 1:6)';bias_true(:, 1)]);
-% %     sigma3    = 3.*sqrt(diag(P0_new));
+    [P0_new, state0_new] = initialize_filter_CKF(time, state0, Y_true,...
+         signal_err, R0, P0, Nt_max, planetParams, Cnm_filt, Snm_filt,...
+         instrument_alig, NB_EARTH_mat, NB_MOON_mat, Q0, Qb, mask);
+
+    % test initial error and uncertainty
+    err0      = abs(state0_new - state_true(:, 1));
+    sigma3    = 3.*sqrt(diag(P0_new));
 
     % run EKF
     X0 = state0_new; P0 = P0_new;
-    [X_EKF, P_EKF] = EKF_process(time, planetParams, Y_true, X0, P0, ...
-        BN_mat, NB_EARTH_mat, NB_MOON_mat, Cnm_filt, Snm_filt, Q0, ...
-        Qb, R0, mask);
+
+    [X_EKF, P_EKF] = EKF_process(time, planetParams, Y_true, signal_err,...
+        X0, P0, instrument_alig, NB_EARTH_mat, NB_MOON_mat, Cnm_filt,...
+        Snm_filt, Q0, Qb, R0, mask);
 end
 

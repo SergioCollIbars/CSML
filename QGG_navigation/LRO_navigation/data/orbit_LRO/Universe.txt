@@ -1,6 +1,6 @@
     # Gravity simulation parameters
 ########################################
-    n_max = 0
+    n_max = 10
     normalized = 1
 
     # initial conditions
@@ -18,5 +18,5 @@
     # time stamps [days]
 ########################################
     tmin = 0
-    tmax = 0.125
+    tmax = 1
     

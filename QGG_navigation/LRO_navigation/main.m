@@ -1,6 +1,7 @@
 clear;
 clc;
 close all;
+delete(findall(groot,'Type','figure'))
 
 addpath("data/")
 addpath(genpath("functions/"))
@@ -41,27 +42,32 @@ plot_trajectory(time, state);
 disp('  DONE ...')
 
 % compute S/C orientation
-disp('Computing S/C orientation ...')
-[BN_mat, NB_EARTH_mat, NB_MOON_mat] = ...
-    compute_orientation(time, state, instrument_alig);
+disp('Computing planet orientation ...')
+[NB_EARTH_mat, NB_MOON_mat] = compute_orientation_planets(time);
 disp('  DONE ...')
 
-% generate Measurements
+% generate Measurements (Inertial frame)
 disp('Simulating measurements ...')
-[Y, bias] = compute_measurements(instrumentParams, planetParams, ...
-    time, state, Cnm_list, Snm_list, BN_mat, NB_EARTH_mat, NB_MOON_mat);
+[Y, bias, signal_err] = compute_measurements(instrumentParams, planetParams, ...
+    time, state, Cnm_list, Snm_list, NB_EARTH_mat, NB_MOON_mat);
 
-plot_measurements(time, Y, bias, instrumentParams); 
 disp('  DONE ...')
 
 % Filtering process
 disp('Running Filter ...')
-[Xf, Pf] = filter_measurements(metaData_path,time,state,BN_mat,...
-    NB_EARTH_mat, NB_MOON_mat, Cnm_list, Snm_list, Y, ...
-    bias, planetParams, instrumentParams);
+state_true = [state(:, 1:6)';bias];
+[Xf, Pf]   = filter_measurements(metaData_path,time,state_true,...
+    instrument_alig, NB_EARTH_mat, NB_MOON_mat, Cnm_list, Snm_list, Y, ...
+    signal_err, planetParams, instrumentParams);
 disp('  DONE ...')
 
 % Plot results
 disp('Plotting Results ...')
+plot_measurements(time, Y, bias, signal_err, instrumentParams,...
+    Xf, instrument_alig); 
+
 mask = instrumentParams(:, 1);
-plot_results(time, state, bias, Xf, Pf, mask);
+plot_results(time, state, bias, Xf, Pf, mask, instrument_alig);
+
+% clear kernels
+cspice_kclear

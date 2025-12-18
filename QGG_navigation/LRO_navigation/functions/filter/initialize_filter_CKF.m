@@ -1,6 +1,6 @@
-function [P0_new, state0_new] = initialize_filter_CKF(time, state0, Y, R0,...
-    P0_N, Nt_max, planetParams, Cnm_list, Snm_list, ...
-    BN_mat, NB_EARTH, NB_MOON, Q0, Qb, mask)
+function [P0_new, state0_new] = initialize_filter_CKF(time, state0, Y_N, ...
+    signal_error, R0, P0_N, Nt_max, planetParams, Cnm_list, Snm_list, ...
+    orientation, NB_EARTH, NB_MOON, Q0, Qb, mask)
     
     % state mask (pos, vel & bias)
     mask_state = [ones(6, 1);mask];
@@ -14,11 +14,17 @@ function [P0_new, state0_new] = initialize_filter_CKF(time, state0, Y, R0,...
     PHI0 = reshape(eye(Ns,Ns), [Ns*Ns,1]);
     options = odeset('RelTol',1e-13,'AbsTol',1e-13);
 
-    Pt  = nan(length(time), Nx*Nx);  
+    Pt  = nan(length(time), Nx*Nx); 
+
+    if(orientation == "Inertial")
+        BN0 = eye(3);
+    elseif(orientation == "RTN")            
+        NB  = RTN2ECI(state0(1:3), state0(4:6));
+        BN0 = NB';
+    end
 
     % rotate initial uncertianty to body frame
-    P0  = rotate_P0(BN_mat,P0_N);
-    BN0 = BN_mat(1:3, :);
+    P0  = rotate_P0(BN0,P0_N);
     
     Xnot = zeros(Nx, 1); XNOT = Xnot; XNOT_N = XNOT;
     err  = 1; thrs = 1E-15; maxIter = 10; count = 0;
@@ -33,6 +39,15 @@ function [P0_new, state0_new] = initialize_filter_CKF(time, state0, Y, R0,...
         X_N      = STATE(:, 1:Ns)';
         X_bias   = X0_bias.*ones(Ns, Nt_max);
         STM_N    = STATE(:, Ns+1:end);
+
+        % compute orientation
+        if(orientation == "RTN")
+            NB       = RTN2ECI(X_N(1:3, 1), X_N(4:6, 1));
+            BN0      = NB';
+        end
+        [BN_mat] = compute_orientation_SC(time(1:Nt_max), X_N', orientation);
+        [Y]      = compute_orientation_Meas(time(1:Nt_max), BN_mat, Y_N, signal_error);
+
 
         % rotate state and STM to body frame
         [X]   = rotate_state(time(1:Nt_max), BN_mat, X_N);

@@ -1,6 +1,6 @@
-function [P0_new, state0_new] = initialize_filter_CKF(time, state0, Y, R0,...
-    P0_N, Nt_max, planetParams, Cnm_list, Snm_list, ...
-    BN_mat, NB_EARTH, NB_MOON, Q0, Qb, mask, state_true)
+function [P0_new, state0_new] = initialize_filter_CKF(time, state0, Y_N, ...
+    signal_error, R0, P0_N, Nt_max, planetParams, Cnm_list, Snm_list, ...
+    orientation, NB_EARTH, NB_MOON, Q0, Qb, mask)
     
     % state mask (pos, vel & bias)
     mask_state = [ones(6, 1);mask];
@@ -14,11 +14,18 @@ function [P0_new, state0_new] = initialize_filter_CKF(time, state0, Y, R0,...
     PHI0 = reshape(eye(Ns,Ns), [Ns*Ns,1]);
     options = odeset('RelTol',1e-13,'AbsTol',1e-13);
 
-    Pt  = nan(length(time), Nx*Nx);  
+    Pt  = nan(length(time), Nx*Nx); 
 
-    % rotate initial uncertianty
-    P0 = rotate_P0(BN_mat,P0_N);
+    if(orientation == "Inertial")
+        BN0 = eye(3);
+    elseif(orientation == "RTN")            
+        NB  = RTN2ECI(state0(1:3), state0(4:6));
+        BN0 = NB';
+    end
 
+    % rotate initial uncertianty to body frame
+    P0  = rotate_P0(BN0,P0_N);
+    
     Xnot = zeros(Nx, 1); XNOT = Xnot; XNOT_N = XNOT;
     err  = 1; thrs = 1E-15; maxIter = 10; count = 0;
     At = time(2) - time(1);
@@ -33,10 +40,18 @@ function [P0_new, state0_new] = initialize_filter_CKF(time, state0, Y, R0,...
         X_bias   = X0_bias.*ones(Ns, Nt_max);
         STM_N    = STATE(:, Ns+1:end);
 
+        % compute orientation
+        if(orientation == "Inertial")
+            
+        NB       = RTN2ECI(X_N(1:3, 1), X_N(4:6, 1));
+        BN0      = NB';
+        [BN_mat] = compute_orientation_SC(time(1:Nt_max), X_N', orientation);
+        [Y]      = compute_orientation_Meas(time(1:Nt_max), BN_mat, Y_N, signal_error);
+
+
         % rotate state and STM to body frame
         [X]   = rotate_state(time(1:Nt_max), BN_mat, X_N);
-        [X_t]   = rotate_state(time(1:Nt_max), BN_mat, state_true(1:Nt_max, 1:6)');
-        [STM] = rotate_STM(time(1:Nt_max),BN_mat,STM_N);
+        [STM] = rotate_STM(time(1:Nt_max),BN_mat,STM_N, BN0);
 
         % process measurements and obtain correction
         for k = 1:Nt_max
@@ -67,8 +82,8 @@ function [P0_new, state0_new] = initialize_filter_CKF(time, state0, Y, R0,...
             dY             = Y(:, k) - Yc - X_bias(:, k);
             
             % Include process noise
-            Q = processNoise(Q0, Qb, At, Nx);
-            % % Q  = rotate_processNoise(BN_mat,Q_N, k);
+            Q_N = processNoise(Q0, Qb, At, Nx);
+            Q  = rotate_processNoise(BN_mat,Q_N, k);
 
             % Augment STM to include the bias
             PHI_tot = [PHI_ij, zeros(6,6);...
@@ -120,8 +135,11 @@ function [P0_new, state0_new] = initialize_filter_CKF(time, state0, Y, R0,...
     % state in body frame
     Xf_B = [X(:, 1);X_bias(:, 1)];
     Pf_B = reshape(Pt(1, :), [Nx, Nx]);
-
-    P0_new      = reshape(Pt(1, :), [Nx, Nx]);
-    state0_new  = [X(:, 1);X_bias(:, 1)];
+    
+    % return state in inertial frame
+    BN0  = BN_mat(1:3, :);
+    A    = blkdiag(BN0', BN0', eye(6)); 
+    P0_new      = A * Pf_B * A.';
+    state0_new  = A * Xf_B;
 end
 

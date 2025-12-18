@@ -1,5 +1,6 @@
-function [X_EKF, P_EKF] = EKF_process(time, planetParams, Y, X0_N, P0_N, ...
-    BN_mat, NB_EARTH, NB_MOON, Cnm_list, Snm_list, Q0, Qb, R0, mask)
+function [X_EKF, P_EKF] = EKF_process(time, planetParams, Y_N, ...
+    signal_error, X0_N, P0_N, orientation, NB_EARTH, NB_MOON, Cnm_list,...
+    Snm_list, Q0, Qb, R0, mask)
     
     % state mask (pos, vel & bias)
     mask_state = [ones(6, 1);mask];
@@ -14,12 +15,19 @@ function [X_EKF, P_EKF] = EKF_process(time, planetParams, Y, X0_N, P0_N, ...
     PHI0 = reshape(eye(Ns,Ns), [Ns*Ns,1]);
     options = odeset('RelTol',1e-12,'AbsTol',1e-12);
 
+    if(orientation == "Inertial")
+        BN0 = eye(3);
+    elseif(orientation == "RTN")            
+        NB = RTN2ECI(X0_N(1:3), X0_N(4:6));
+        BN0= NB';
+    end
+
     % output variables
     X_EKF = ones(Nx, length(time)) * NaN;
     P_EKF = nan(length(time), Nx*Nx);
     
     % rotate initial uncertainty to body frame
-    P0          = rotate_P0(BN_mat,P0_N);
+    P0          = rotate_P0(BN0,P0_N);
     P_old       = P0;
 
     % assign initial values
@@ -42,13 +50,18 @@ function [X_EKF, P_EKF] = EKF_process(time, planetParams, Y, X0_N, P0_N, ...
         state_N   = STATE(end, 1:Ns);
         PHI_N     = reshape(STATE(end, Ns+1:end), [Ns, Ns]);
         
-        % compute predicted measurements (TBD)
+        % compute S/C orientation 
+        [BN_mat] = compute_orientation_SC(t_span, ...
+            [STATE(1, 1:Ns);STATE(end, 1:Ns)], orientation);
+
         maxInd         = 3 * k; minInd = maxInd - 2;
-        BN             = BN_mat(minInd:maxInd, :);
+        BN0            = BN_mat(1:3, :);
+        BN             = BN_mat(4:6, :);
         BODYMOON_J2000 = NB_MOON(minInd:maxInd, :)';
 
-        maxInd0        = 3 * (k-1); minInd0 = maxInd0 - 2;
-        BN0            = BN_mat(minInd0:maxInd0, :);
+        % cumpute true measurements in S/C body frame
+        [Y]      = compute_orientation_Meas(time(k), BN, Y_N(:, k), ...
+                   signal_error(:, k));
         
         % rotate to body frame
         state     = rotate_state(time(k), BN, state_N');
@@ -58,14 +71,13 @@ function [X_EKF, P_EKF] = EKF_process(time, planetParams, Y, X0_N, P0_N, ...
         PHI_tot   = [PHI, zeros(6,6);zeros(6,6), eye(6)];
         
         % actual RTN frame
-        % % NB = RTN2ECI(state_N(1:3)', state_N(4:6)'); BN = NB';
         [Yc, Hi, ~] = compute_measurements_filter(planetParams, time(k), ...
                       state_N, Cnm_list, Snm_list, BN, BODYMOON_J2000);
-        dY          = Y(:, k) - Yc - X0_N(Ns+1:end); 
+        dY          = Y - Yc - X0_N(Ns+1:end); 
     
         % Include process noise
         Q_N = processNoise(Q0, Qb, At, Nx);
-        Q  = rotate_processNoise(BN_mat,Q_N, k);
+        Q  = rotate_processNoise(BN,Q_N, 1);
 
         % apply measurement mask
         dY_used = dY(logical(mask));

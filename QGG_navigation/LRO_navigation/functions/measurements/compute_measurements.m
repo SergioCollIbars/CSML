@@ -1,5 +1,5 @@
-function [Y, bias] = compute_measurements(instrumentParams, planetParams, ...
-    time, state, Cnm, Snm, BN_mat, NB_EARTH_mat, NB_MOON_mat)
+function [Y, bias, noise] = compute_measurements(instrumentParams, planetParams, ...
+    time, state, Cnm, Snm, NB_EARTH_mat, NB_MOON_mat)
     
     % extract params
     Nt = length(time);
@@ -24,7 +24,7 @@ function [Y, bias] = compute_measurements(instrumentParams, planetParams, ...
     eta             = sqrt(sigma_eta2) * randn(6, Nt);    % RW increments
     noise_flicker   = cumsum(eta')';                      % random walk
 
-    %% compute measurements
+    %% compute measurements (Inertial frame)
     Y = ones(6, Nt) * NaN;
     for k = 1:Nt
         maxInd = 3 * k; minInd = maxInd - 2;
@@ -35,14 +35,9 @@ function [Y, bias] = compute_measurements(instrumentParams, planetParams, ...
             [GM_M, R_M, n_max, normalized],...
             BODYMOON_J2000, [r', v'], zeros(9, 1), Cnm{2}, Snm{2});
 
-        % rotation to Instrument frame
-        maxInd = 3 * k; minInd = maxInd - 2;
-        BN = BN_mat(minInd:maxInd, :);
-
-        T_ACI = [Y_J2000(1),Y_J2000(2),Y_J2000(3);...
-                 Y_J2000(4),Y_J2000(5),Y_J2000(6);...
-                 Y_J2000(7),Y_J2000(8),Y_J2000(9)];
-        T_B   = BN * T_ACI * BN';
+        T_B = [Y_J2000(1),Y_J2000(2),Y_J2000(3);...
+               Y_J2000(4),Y_J2000(5),Y_J2000(6);...
+               Y_J2000(7),Y_J2000(8),Y_J2000(9)];
 
         Y(:, k) = [T_B(1,1);T_B(1,2);T_B(1,3);T_B(2,2);...
                    T_B(2,3);T_B(3,3)]./1E-12;   % [mE]
@@ -50,7 +45,7 @@ function [Y, bias] = compute_measurements(instrumentParams, planetParams, ...
     
     % add noise
     cnst_bias = instrumentParams(:, 3).*ones(6, Nt);
-    Y         = Y + noise_white + cnst_bias + noise_flicker;
+    noise     = noise_white + cnst_bias + noise_flicker;
     
     % update true bias
     bias = noise_flicker + cnst_bias;
