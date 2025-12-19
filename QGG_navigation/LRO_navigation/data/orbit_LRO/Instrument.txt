@@ -18,7 +18,7 @@
 
  # Measurement band [Hz]
 ###########################################
-	fmin = 1E-4
+	fmin = 1E-6
 	fmax = 1
 
 # noise slope
@@ -36,7 +36,7 @@
 
 # sampling frequency [Hz]
 ###########################################
-	fs = 0.1
+	fs = 0.0333
 
 # Instrument orientation: Inertial, RTN
 ###########################################

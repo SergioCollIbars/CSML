@@ -10,10 +10,11 @@ function [X_EKF, P_EKF] = filter_measurements(metaData_file,time,state_true, ...
 
     % get measurement mask
     mask = instrumentParams(:, 1);
+    fs   = instrumentParams(1, 5); 
 
     % run CKF to initialize measurements
     state0    = state_true(:, 1) + delta_state0;
-    Nt_max    = 600; % [sec]
+    Nt_max    = round(3600 * fs);  % [sec]
 
     [P0_new, state0_new] = initialize_filter_CKF(time, state0, Y_true,...
          signal_err, R0, P0, Nt_max, planetParams, Cnm_filt, Snm_filt,...
