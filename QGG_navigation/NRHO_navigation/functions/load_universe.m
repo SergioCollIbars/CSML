@@ -65,8 +65,8 @@ function [planetParams, poleParams, Cmat_true, Smat_true, ...
     % time vector [-]
     TIME = [tmin, tmax];
     if(system == "EPHEM")
-        % % ET = cspice_str2et({'2020-01-10 12:00:00 TDB'});
-        ET = cspice_str2et({'2022-11-13 00:00:00 TDB'});
+        ET = cspice_str2et({'2020-01-10 12:00:00 TDB'});
+        % % ET = cspice_str2et({'2022-11-13 00:00:00 TDB'});
         TIME  = TIME  + ET(1)*planetParams(3);  % [-]
     end
     
