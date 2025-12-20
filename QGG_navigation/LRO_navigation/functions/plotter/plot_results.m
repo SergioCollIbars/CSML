@@ -1,5 +1,5 @@
 function plot_results(time, state_true, bias_true, X_EKF, P_EKF, ...
-                      mask, orientation)
+                      mask, orientation, folder_name)
     % Plot EKF results 
 
     %% --- Time / sizes
@@ -37,7 +37,8 @@ function plot_results(time, state_true, bias_true, X_EKF, P_EKF, ...
     errB = bias_true - X_EKF(7:end,:);
 
     %% --- UI figure + tabs
-    fig = uifigure('Name','Filter Results','Position',[100 100 1200 800]);
+    fig_title = folder_name + '/Filter Results';
+    fig = uifigure('Name',fig_title,'Position',[100 100 1200 800]);
 
     root = uigridlayout(fig,[1 1]);
     root.RowHeight = {'1x'};

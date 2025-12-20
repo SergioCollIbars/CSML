@@ -1,5 +1,5 @@
 function plot_measurements(time, Y_N, bias, signal_error, ...
-                           instrumentParams, Xf, orientation)
+                           instrumentParams, Xf, orientation, folder_name)
     % Plot gradiometer measurements and bias 
 
     % -------------------------
@@ -22,7 +22,8 @@ function plot_measurements(time, Y_N, bias, signal_error, ...
     % -------------------------
     % UI figure + layout
     % -------------------------
-    fig = uifigure('Name','Gradiometer Measurements','Position',[100 100 1200 800]);
+    fig_title = folder_name + '/Gradiometer Measurements';
+    fig = uifigure('Name',fig_title,'Position',[100 100 1200 800]);
 
     root = uigridlayout(fig,[1 1]);
     root.RowHeight    = {'1x'};

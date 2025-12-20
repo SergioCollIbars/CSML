@@ -1,9 +1,8 @@
 function [planetParams, Cnm_list, Snm_list, ...
-    initCond, t_range] = loadUniverse(metaData_file)
+    initCond, t_range] = loadUniverse(folder_Name)
     % Description: Load the planet / asteorid information and the
     % orientation information for the body
-    mtd = readParams("data/"+metaData_file);
-    params = readParams("data/"+mtd.folder+"/Universe.txt");
+    params = readParams("data/"+folder_Name+"/Universe.txt");
     
     % Bennu parameters
     n_max = params.n_max;

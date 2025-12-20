@@ -1,4 +1,4 @@
-function plot_trajectory(time, state)
+function plot_trajectory(time, state, folder_name)
 
     % -------------------------
     % Data (unchanged)
@@ -38,7 +38,8 @@ function plot_trajectory(time, state)
     % -------------------------
     % UI figure + tabs
     % -------------------------
-    fig = uifigure('Name','Trajectory Plots','Position',[100 100 1200 800]);
+    fig_title = folder_name + '/Trajectory Plots';
+    fig = uifigure('Name',fig_title,'Position',[100 100 1200 800]);
 
     root = uigridlayout(fig,[1 1]);
     root.RowHeight = {'1x'};

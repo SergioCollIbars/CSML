@@ -1,8 +1,7 @@
 function [R0, P0, Q0, Qb, delta_state0, Cnm, Snm] = ...
-    loadFilterParams(metaData_file, planetParams, instrumentParams, ...
+    loadFilterParams(folder_Name, planetParams, instrumentParams, ...
     Cnm_list, Snm_list)
-    mtd = readParams("data/"+metaData_file);
-    p = readParams("data/"+mtd.folder+"/Filter.txt");
+    p = readParams("data/"+folder_Name+"/Filter.txt");
     
     % load filter data
     loadData = p.loadData;

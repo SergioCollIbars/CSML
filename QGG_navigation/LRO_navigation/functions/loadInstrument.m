@@ -1,7 +1,6 @@
-function [instrumentParams, orientation] = loadInstrument(metaData_file)
+function [instrumentParams, orientation] = loadInstrument(folder_Name)
     % Description: give the instrument parameters
-    mtd = readParams("data/"+metaData_file);
-    p = readParams("data/"+mtd.folder+"/Instrument.txt");
+    p = readParams("data/"+folder_Name+"/Instrument.txt");
     
     % Measurement mask
     Mask = [p.mask_xx;p.mask_xy;p.mask_xz;...

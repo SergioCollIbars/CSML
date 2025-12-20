@@ -20,7 +20,6 @@ system = "EPHEM";
 consider_cov = 0;
 tmin = 0;                           % [rad]
 tmax = 1*1.4968 + tmin;             % [rad]
-tmax = 14.047;                      % [rad]
 frec = 1/60;                        % [Hz]
 
 % load universe
@@ -38,48 +37,6 @@ deltaX0 = X0.*[0,0,0,0,0,0]';
 n = round((tmax - tmin)/planetParams(3) * frec);
 time = linspace(TIME(1), TIME(2), n);
 
-% SPICE integration
-TIME = time;
-jd = 2451545 + TIME / planetParams(3) / 86400;
-humanReadableTime = datetime(jd, 'ConvertFrom', ...
-    'juliandate');
-humanReadableTime.Format = 'MMM dd, yyyy';
-date_init = string(humanReadableTime(1));
-date_end  = string(humanReadableTime(end));
-humanReadableTime.Format = 'MMM dd';
-
-date = humanReadableTime;
-
-time = TIME./planetParams(3);    % [s]
-
-[sc_SPICE, ~] = cspice_spkezr('-60000', time, 'J2000', 'NONE', '3');
-
-Xsc_SPICE = sc_SPICE(1, :);  Ysc_SPICE = sc_SPICE(2, :);
-Zsc_SPICE = sc_SPICE(3, :)';
-
-VXsc_SPICE = sc_SPICE(4, :)';  VYsc_SPICE = sc_SPICE(5, :)';
-VZsc_SPICE = sc_SPICE(6, :)';
-
-% plot SPICE trajectory
-figure()
-plot3(sc_SPICE(1, :) , sc_SPICE(2, :) , sc_SPICE(3, :), 'LineWidth', 2)
-axis equal;
-grid on; title('SPICE 3D trajectory J2000 frame');
-
-figure()
-plot(date, vecnorm(sc_SPICE(1:3, :)), 'LineWidth', 2);
-title('S/C orbit radius norm');
-
-
-% save trajectory
-traj_pos = [Xsc_SPICE;Ysc_SPICE;Zsc_SPICE];                                % [km]
-traj_vel = [VXsc_SPICE;VYsc_SPICE;VZsc_SPICE];                             % [km/s]
-t        = time;                                                           % Epoch [sec]
-traj = [traj_pos;traj_vel;t];
-name = "perturbation_4_NRHO.mat";
-save(name, "traj")
-
-%%
 % numerical integration
 tol = 1E-13;
 for j = 1:length(tol)
