@@ -3,14 +3,14 @@ clc;
 close all;
 format long g;
 set(0,'defaultAxesFontSize',16);
-addpath('simplified_functions/');
-addpath('data/');
+addpath('../simplified_functions/');
+addpath('../data/');
 
 cspice_furnsh('/Users/sergiocollibars/Documents/MATLAB/kernels/kernels_LRO.tm')
 
 
 utc_start = '2015-03-15 00:00:00';
-utc_stop  = '2015-04-15 04:00:00';
+utc_stop  = '2015-03-15 12:00:00';
 N         = 2000;           % number of samples
 [GM] = cspice_bodvrd('MOON', 'GM', 1);    % Get GM for the Moon [km^3/s^2]
 GM_moon = GM * 1E9;                       % [m^3/s^2]
@@ -77,6 +77,17 @@ for k = 1:6
     title(tt(k))
 end
 
+% compute RTN reference frame
+BN_mat  = nan(3 * N, 3);
+for k = 1:N
+    rk = sc_SPICE(1:3, k);
+    vk = sc_SPICE(4:6, k);
+    [NB] = RTN2ECI(rk, vk);
+    
+    maxInd = 3 * k; minInd = maxInd - 2;
+    BN_mat(minInd:maxInd, :) = NB';
+end
+
 %% Integrate trajectory with our integrator
 
 [planetParams, Cmat_true, Smat_true] = load_universe();
@@ -99,9 +110,39 @@ error_pos = state(:, 1:3)' - sc_SPICE(1:3, :);  % [m]
 error_vel = state(:, 4:6)' - sc_SPICE(4:6, :);  % [m/s]
 
 figure()
+subplot(1, 2, 1)
 plot(et, vecnorm(error_pos), 'LineWidth', 2)
-xlabel('time')
-ylabel('[m]')
+xlabel('time'); ylabel('[m]');
+
+subplot(1, 2, 2)
+plot(et, vecnorm(error_vel), 'LineWidth', 2)
+xlabel('time'); ylabel('[m/s]')
+
+% rotate error in the RNT frame
+error_pos_RNT = error_pos.*0; error_vel_RNT = error_vel.*0;
+for k = 1:N
+    maxInd = 3 * k; minInd = maxInd - 2;
+    BN     =  BN_mat(minInd:maxInd, :);
+
+    error_pos_RNT(:, k) = BN * error_pos(:, k);
+    error_vel_RNT(:, k) = BN * error_vel(:, k);
+end
+
+figure(); tt = ["R", "T", "N"];
+for j = 1:3
+    subplot(3, 1, j);
+    plot(et, error_pos_RNT(j, :), 'LineWidth', 2);
+    title(tt(j)); ylabel('[m]'); grid on;
+end
+sgtitle('Position error in RTN frame');
+
+figure(); tt = ["R", "T", "N"];
+for j = 1:3
+    subplot(3, 1, j);
+    plot(et, error_vel_RNT(j, :), 'LineWidth', 2);
+    title(tt(j)); ylabel('[m/s]'); grid on;
+end
+sgtitle('Velocity error in RTN frame');
 
 % close SPICE
 cspice_kclear

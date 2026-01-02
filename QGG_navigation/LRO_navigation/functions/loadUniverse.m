@@ -12,8 +12,7 @@ function [planetParams, Cnm_list, Snm_list, ...
     [GM_M] = cspice_bodvrd('MOON', 'GM', 1)*1E9; 
 
     % get Moon Radius [m]
-    [R]  = cspice_bodvrd('MOON', 'RADII', 3)*1E3;
-    R_M  = R(1);
+    R_M  = 1738*1E3;
     
     % Get GM for the Earth [m^3/s^2]
     [GM_E] = cspice_bodvrd('EARTH', 'GM', 1)*1E9; 

@@ -59,6 +59,10 @@ function [dx] = EOM_LRO_EPHEM(t, x, planetParams, C_mat, S_mat)
     [Sstate, ~] = cspice_spkezr(target, et, ref, abcorr, observer);     % [Km & Km/s]
     Spos = Sstate(1:3)*1E3;                                             % [m]
     r3 = [x(1)-Spos(1);x(2)-Spos(2);x(3)-Spos(3)];                      % SC-Sun
+    
+    % relative vector from Earth & Sun to Moon
+    r_ME = Mpos - Epos;
+    r_MS = Mpos - Spos;
 
     % compute orientation
     frame_to   = 'J2000';
@@ -71,9 +75,14 @@ function [dx] = EOM_LRO_EPHEM(t, x, planetParams, C_mat, S_mat)
     % compute gravity acceleration
     Cmat_E = C_mat{1};
     Smat_E = S_mat{1};
-    [~, dU1, ddU1] = potentialGradient_nm(Cmat_E, Smat_E, n_max, ...
+    [~, dU1, ddU1] = potentialGradient_nm(Cmat_E, Smat_E, 0, ...
                                                 J2000_EARTH'*r1, R_E, GM_E, ...
                                                 normalized);
+
+     [~, dU1_T, ~] = potentialGradient_nm(Cmat_E, Smat_E, 0, ...
+                                                J2000_EARTH'*r_ME, R_E, GM_E, ...
+                                                normalized);
+
     Cmat_M = C_mat{2};
     Smat_M = S_mat{2};
     [~, dU2, ddU2] = potentialGradient_nm(Cmat_M, Smat_M, n_max, ...
@@ -86,19 +95,19 @@ function [dx] = EOM_LRO_EPHEM(t, x, planetParams, C_mat, S_mat)
 
     dU2  = J2000_MOON  * dU2;
     ddU2 = J2000_MOON  * ddU2  * J2000_MOON';
+    
+    % Sun acceleration on the S/C. Point mass
+    dU3  = GM_S * (r3 / (vecnorm(r3)^3));    
 
     % Tidial acceleration
-    r_SS = r3;
-    r_ME = Mpos - Epos;
-    r_MS = Mpos - Spos;
-    a_tidial_E = dU1 + GM_E * r_ME / (vecnorm(r_ME)^3);
-    a_tidial_S = GM_S * (r_SS / (vecnorm(r_SS)^3) - r_MS / (vecnorm(r_MS)^3));
+    a_tidial_E = - J2000_EARTH  * dU1_T;
+    a_tidial_S = - GM_S * r_MS / (vecnorm(r_MS)^3);
     
     % total acceleration
-    dU = dU2 + a_tidial_E + a_tidial_S;
+    dU = dU2 + dU1 +  dU3 + a_tidial_E + a_tidial_S;
 
     % compute gravity position partials
-    T = ddU2;
+    T = ddU2 + ddU1;
     
     % compute Jacobian
     J = compute_jacobian(T);
