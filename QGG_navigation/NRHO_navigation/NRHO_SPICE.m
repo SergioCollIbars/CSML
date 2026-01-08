@@ -30,6 +30,23 @@ Zsc_SPICE = sc_SPICE(3, :);
 VXsc_SPICE = sc_SPICE(4, :);  VYsc_SPICE = sc_SPICE(5, :);
 VZsc_SPICE = sc_SPICE(6, :);
 
+% Earth & Moon ephemerides
+tgt       = 'MOON';
+observer  = '3';     % Earth & Moon barycenter
+ref_frame = 'J2000'; % J2000 inertial frame
+[Moon_SPICE, ~] = cspice_spkezr(tgt, time, ref_frame, 'NONE', observer);
+
+Xm_SPICE = Moon_SPICE(1, :);  Ym_SPICE = Moon_SPICE(2, :);
+Zm_SPICE = Moon_SPICE(3, :);
+
+tgt       = 'EARTH';
+observer  = '3';     % Earth & Moon barycenter
+ref_frame = 'J2000'; % J2000 inertial frame
+[Earth_SPICE, ~] = cspice_spkezr(tgt, time, ref_frame, 'NONE', observer);
+
+Xe_SPICE = Earth_SPICE(1, :);  Ye_SPICE = Earth_SPICE(2, :);
+Ze_SPICE = Earth_SPICE(3, :);
+
 % convert time to date
 jd = 2451545 + time / 86400;
 humanReadableTime = datetime(jd, 'ConvertFrom', 'juliandate');
@@ -41,7 +58,12 @@ date = humanReadableTime;
 
 % plot SPICE trajectory
 figure()
-plot3(sc_SPICE(1, :) , sc_SPICE(2, :) , sc_SPICE(3, :), 'LineWidth', 2)
+plot3(sc_SPICE(1, :) , sc_SPICE(2, :) , sc_SPICE(3, :), 'LineWidth', 2);
+hold all;
+plot3(Moon_SPICE(1, :) , Moon_SPICE(2, :) , Moon_SPICE(3, :), ...
+    'LineWidth', 1.2);
+plot3(Earth_SPICE(1, :) , Earth_SPICE(2, :) , Earth_SPICE(3, :), ...
+    'LineWidth', 1.2);
 axis equal;
 grid on; title('SPICE 3D trajectory J2000 frame');
 
@@ -55,6 +77,20 @@ traj_vel = [VXsc_SPICE;VYsc_SPICE;VZsc_SPICE];                             % [km
 t        = time;                                                           % Epoch [sec]
 traj = [traj_pos;traj_vel;t];
 name = "CAPSTONE_11_13_2022_to_05_18_2023.mat";
+save(name, "traj")
+
+% save Earth ephemerides
+traj_pos = [Xe_SPICE;Ye_SPICE;Ze_SPICE];                                   % [km]
+t        = time;                                                           % Epoch [sec]
+traj = [traj_pos;t];
+name = "EARTH_11_13_2022_to_05_18_2023.mat";
+save(name, "traj")
+
+% save Moon ephemerides
+traj_pos = [Xm_SPICE;Ym_SPICE;Zm_SPICE];                                   % [km]
+t        = time;                                                           % Epoch [sec]
+traj = [traj_pos;t];
+name = "MOON_11_13_2022_to_05_18_2023.mat";
 save(name, "traj")
 
 % close SPICE

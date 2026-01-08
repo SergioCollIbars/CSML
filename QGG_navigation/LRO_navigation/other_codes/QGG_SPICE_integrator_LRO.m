@@ -9,8 +9,8 @@ addpath('../data/');
 cspice_furnsh('/Users/sergiocollibars/Documents/MATLAB/kernels/kernels_LRO.tm')
 
 
-utc_start = '2015-03-15 00:00:00';
-utc_stop  = '2015-03-15 12:00:00';
+utc_start = '2025-03-16 04:30:00';
+utc_stop  = '2025-03-17 00:00:00';
 N         = 2000;           % number of samples
 [GM] = cspice_bodvrd('MOON', 'GM', 1);    % Get GM for the Moon [km^3/s^2]
 GM_moon = GM * 1E9;                       % [m^3/s^2]
@@ -30,9 +30,13 @@ R = R_planet(1)*1E3;                            % [m]
 sc_SPICE(1:3, :) = sc_SPICE(1:3, :).*1E3;    % [m]
 sc_SPICE(4:6, :) = sc_SPICE(4:6, :).*1E3;    % [m/s]
 
+% convert time
+utc  = cspice_et2utc(et, 'ISOC', 6);
+tUTC = datetime(utc, 'InputFormat', "yyyy-MM-dd'T'HH:mm:ss.SSSSSS");
+
 figure()
 plot3(sc_SPICE(1, :), sc_SPICE(2, :), sc_SPICE(3, :), 'LineWidth', 2)
-hold on;
+hold on; grid on;
 
 % Create a sphere
 [Xs, Ys, Zs] = sphere(100);      % resolution 100x100
@@ -49,13 +53,11 @@ title('LRO Trajectory around the Moon. J2000 frame')
 
 figure()
 subplot(1, 2, 1)
-plot(et, (vecnorm(sc_SPICE(1:3, :)) - R)./1E3, 'LineWidth', 2)
-xlabel('Time');
+plot(tUTC, (vecnorm(sc_SPICE(1:3, :)) - R)./1E3, 'LineWidth', 2)
 ylabel('[km]');
 
 subplot(1, 2, 2)
-plot(et, vecnorm(sc_SPICE(4:6, :)), 'LineWidth', 2)
-xlabel('Time');
+plot(tUTC, vecnorm(sc_SPICE(4:6, :)), 'LineWidth', 2)
 ylabel('[m/s]');
 sgtitle('postion & velocity norm w.r.t the Moon');
 
@@ -64,17 +66,18 @@ orb_elem = ones(6, N);
 for k = 1:N
    [alpha] = orbitalElem(sc_SPICE(1:3, k), sc_SPICE(4:6, k), GM_moon);
    a  = alpha(3);
-   n = sqrt(GM / a^3);
-   orb_elem(:, k) = [alpha(1), alpha(3)./1E3, wrapTo2Pi(rad2deg(alpha(6:8))),n];
+   n = sqrt(GM_moon / (a.^3)); % [rad/s]
+   T = (2*pi)./n;
+   angles = wrapTo2Pi(alpha(6:8)); % [rad]
+   orb_elem(:, k) = [alpha(1), alpha(3)./1E3, rad2deg(angles),T./3600];
 end
 figure()
-tt = ['e', 'a', 'i', "\omega", "\Omega", 'n'];
-time  = (et - et(1))./3600;
+tt = ['e', 'a', 'i', "\omega", "\Omega", 'T'];
+ylb = ["[-]", "[Km]", "[deg]", "[deg]", "[deg]", "[hr]"];
 for k = 1:6
     subplot(2, 3, k)
-    plot(time, orb_elem(k, :), 'LineWidth', 2);
-    xlabel('time')
-    title(tt(k))
+    plot(tUTC, orb_elem(k, :), 'LineWidth', 2);
+    title(tt(k)); ylabel(ylb(k));
 end
 
 % compute RTN reference frame
@@ -99,23 +102,26 @@ X0 = sc_SPICE(1:6, 1);  % [m] & [m/s]
 % % T = 1/ sqrt(GM / (vecnorm(X0(1:3))^3));
 
 % Integrator
-options = odeset('RelTol',1E-13,'AbsTol',1E-13);
-STM0 = reshape(eye(6,6), [36, 1]);
-
+options  = odeset('RelTol',1E-13,'AbsTol',1E-13);
+STM0     = reshape(eye(6,6), [36, 1]);
+time_vec = [et(1), et(end)]; 
 [t, state] = ode113(@(t, x) EOM_LRO_EPHEM(t, x, planetParams, ...
-    Cmat_true, Smat_true), et, [X0; STM0], options);
+    Cmat_true, Smat_true), time_vec, [X0; STM0], options);
 
+% interpolate results to SPICE time
+x_inter_pos = interp1(t, state(:, 1:3), et', 'spline'); % Nt x 3
+x_inter_vel = interp1(t, state(:, 4:6), et', 'spline'); % Nt x 3
 
-error_pos = state(:, 1:3)' - sc_SPICE(1:3, :);  % [m]
-error_vel = state(:, 4:6)' - sc_SPICE(4:6, :);  % [m/s]
+error_pos = x_inter_pos' - sc_SPICE(1:3, :);  % [m]
+error_vel = x_inter_vel' - sc_SPICE(4:6, :);  % [m/s]
 
 figure()
 subplot(1, 2, 1)
-plot(et, vecnorm(error_pos), 'LineWidth', 2)
+plot(tUTC, vecnorm(error_pos), 'LineWidth', 2)
 xlabel('time'); ylabel('[m]');
 
 subplot(1, 2, 2)
-plot(et, vecnorm(error_vel), 'LineWidth', 2)
+plot(tUTC, vecnorm(error_vel), 'LineWidth', 2)
 xlabel('time'); ylabel('[m/s]')
 
 % rotate error in the RNT frame
@@ -131,7 +137,7 @@ end
 figure(); tt = ["R", "T", "N"];
 for j = 1:3
     subplot(3, 1, j);
-    plot(et, error_pos_RNT(j, :), 'LineWidth', 2);
+    plot(tUTC, error_pos_RNT(j, :), 'LineWidth', 2);
     title(tt(j)); ylabel('[m]'); grid on;
 end
 sgtitle('Position error in RTN frame');
@@ -139,7 +145,7 @@ sgtitle('Position error in RTN frame');
 figure(); tt = ["R", "T", "N"];
 for j = 1:3
     subplot(3, 1, j);
-    plot(et, error_vel_RNT(j, :), 'LineWidth', 2);
+    plot(tUTC, error_vel_RNT(j, :), 'LineWidth', 2);
     title(tt(j)); ylabel('[m/s]'); grid on;
 end
 sgtitle('Velocity error in RTN frame');
