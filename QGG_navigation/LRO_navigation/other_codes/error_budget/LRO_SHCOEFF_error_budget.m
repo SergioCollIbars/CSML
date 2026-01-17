@@ -65,6 +65,14 @@ figure()
 plot3(sc_SPICE(1, :), sc_SPICE(2, :), sc_SPICE(3, :), 'LineWidth', 2)
 hold on; grid on; title('LRO SPICE orbit'); axis equal;
 
+for j = 1:N
+    frame_to   = 'J2000';
+    frame_from = 'MOON_PA';
+    J2000_MOON = cspice_pxform(frame_from, frame_to, et(j));
+
+    maxInd = 3 *j; minInd = maxInd - 2;
+    BODYMOON_J2000_mat(minInd:maxInd, :) = J2000_MOON';
+end
 %% GG measurements (true + perturbed)
 Monte_Carlo = 100; % number of monte carlo realizations
 n_max       = 100; [Nc, Ns, Ncs]    = count_num_coeff(n_max);
@@ -74,7 +82,8 @@ Y_nom       = nan(9, N, Monte_Carlo);
 
 [Cnm, Snm] = list2mat(n_max, Nc, Ns, SH_coeff);
 for j = 1:N
-    BODYMOON_J2000 = eye(3);
+    maxInd = 3 *j; minInd = maxInd - 2;
+    BODYMOON_J2000 = BODYMOON_J2000_mat(minInd:maxInd, :);
 
     r = sc_SPICE(1:3, j); v = sc_SPICE(4:6, j);                            
     [Y_J2000, ~] = gradiometer_meas(et(j) ,...
@@ -89,7 +98,8 @@ for k = 1:Monte_Carlo
 
     [Cnm, Snm] = list2mat(n_max, Nc, Ns, SH);
     for j = 1:N
-        BODYMOON_J2000 = eye(3);
+        maxInd = 3 *j; minInd = maxInd - 2;
+        BODYMOON_J2000 = BODYMOON_J2000_mat(minInd:maxInd, :);
     
         r = sc_SPICE(1:3, j); v = sc_SPICE(4:6, j);                            
         [Y_J2000, ~] = gradiometer_meas(et(j) ,...

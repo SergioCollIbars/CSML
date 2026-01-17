@@ -1,6 +1,6 @@
 function [P0_new, state0_new] = initialize_filter_CKF(time, state0, Y_N, ...
-    signal_error, R0, P0_N, Nt_max, planetParams, Cnm_list, Snm_list, ...
-    orientation, NB_EARTH, NB_MOON, Q0, Qb, mask)
+    signal_error, noise_att, R0, P0_N, Nt_max, planetParams, Cnm_list, ...
+    Snm_list, orientation, NB_EARTH, NB_MOON, Q0, Qb, mask)
     
     % state mask (pos, vel & bias)
     mask_state = [ones(6, 1);mask];
@@ -46,8 +46,8 @@ function [P0_new, state0_new] = initialize_filter_CKF(time, state0, Y_N, ...
             BN0      = NB';
         end
         [BN_mat] = compute_orientation_SC(time(1:Nt_max), X_N', orientation);
-        [Y]      = compute_orientation_Meas(time(1:Nt_max), BN_mat, Y_N, signal_error);
-
+        [Y]      = compute_orientation_Meas(time(1:Nt_max), BN_mat,...
+            Y_N, signal_error);
 
         % rotate state and STM to body frame
         [X]   = rotate_state(time(1:Nt_max), BN_mat, X_N);

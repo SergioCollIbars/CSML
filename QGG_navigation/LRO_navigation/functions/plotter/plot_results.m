@@ -1,6 +1,6 @@
 function plot_results(time, state_true, bias_true, X_EKF, P_EKF, ...
-                      mask, orientation, folder_name)
-    % Plot EKF results 
+                      posfit, mask, orientation, folder_name)
+    % Plot EKF results
 
     %% --- Time / sizes
     Nt = length(time);
@@ -22,7 +22,7 @@ function plot_results(time, state_true, bias_true, X_EKF, P_EKF, ...
     for k = 1:Nt
         p = reshape(P_EKF(k,:), [Nx, Nx]);
 
-        maxInd = 3*k; 
+        maxInd = 3*k;
         minInd = maxInd - 2;
         BN = BN_mat(minInd:maxInd, :);
 
@@ -47,9 +47,10 @@ function plot_results(time, state_true, bias_true, X_EKF, P_EKF, ...
 
     tg = uitabgroup(root);
 
-    tabP = uitab(tg,'Title','Position Error');
-    tabV = uitab(tg,'Title','Velocity Error');
-    tabB = uitab(tg,'Title','Bias Error');
+    tabP  = uitab(tg,'Title','Position Error');
+    tabV  = uitab(tg,'Title','Velocity Error');
+    tabB  = uitab(tg,'Title','Bias Error');
+    tabPo = uitab(tg,'Title','Posfit Measurement');
 
     %% =========================
     % Tab 1: Position error
@@ -120,7 +121,6 @@ function plot_results(time, state_true, bias_true, X_EKF, P_EKF, ...
             plot(ax, tUTC, +3*sigma(6+k,:), 'k', 'LineWidth', 2);
             plot(ax, tUTC, -3*sigma(6+k,:), 'k', 'LineWidth', 2);
         else
-            % If masked off, keep subplot but make it visually "inactive"
             title(ax, ttB(k) + " (off)");
             grid(ax,'on');
             ax.XColor = [0.6 0.6 0.6];
@@ -134,5 +134,43 @@ function plot_results(time, state_true, bias_true, X_EKF, P_EKF, ...
         xlabel(ax,'Epoch');
     end
 
-end
+    %% =========================
+    % Tab 4: Posit measurement (2x3) 
+    %% =========================
+    glPo = uigridlayout(tabPo,[2 3]);
+    glPo.RowHeight = {'1x','1x'};
+    glPo.ColumnWidth = {'1x','1x','1x'};
+    glPo.Padding = [10 10 10 10];
+    glPo.RowSpacing = 10;
+    glPo.ColumnSpacing = 10;
 
+    ttPo = ["xx","xy","xz","yy","yz","zz"];
+    maskPositIdx = 1:6;  % <-- adjust if posit uses different mask indices
+
+    for k = 1:6
+        ax = uiaxes(glPo);
+        hold(ax,'on');
+
+        isActive = (k <= numel(maskPositIdx)) && (mask(k) == 1);
+
+        if  isActive
+            rmsVal = rms(posfit(k,:), 'omitnan');
+            lgdStr = sprintf('RMS = %.3g',rmsVal);
+            plot(ax, tUTC, posfit(k,:), 'LineWidth', 2, ...
+                'DisplayName', lgdStr);
+            legend(ax,'show','Location','best');
+        else
+            title(ax, ttPo(k) + " (off)");
+            grid(ax,'on');
+            ax.XColor = [0.6 0.6 0.6];
+            ax.YColor = [0.6 0.6 0.6];
+            continue
+        end
+
+        grid(ax,'on');
+        title(ax, ttPo(k));
+        ylabel(ax,'[mE]');
+        xlabel(ax,'Epoch');
+    end
+
+end

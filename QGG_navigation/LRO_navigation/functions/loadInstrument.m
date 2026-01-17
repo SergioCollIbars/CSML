@@ -1,4 +1,4 @@
-function [instrumentParams, orientation] = loadInstrument(folder_Name)
+function [instrumentParams] = loadInstrument(folder_Name)
     % Description: give the instrument parameters
     p = readParams("data/"+folder_Name+"/Instrument.txt");
     
@@ -23,9 +23,6 @@ function [instrumentParams, orientation] = loadInstrument(folder_Name)
 
     % sampling frequency [Hz]
     fs = ones(6,1).*p.fs;
-
-    % orientation
-    orientation = p.orientation;
 
     instrumentParams = [Mask, sigma, bias, alpha, fs, fmin, fmax];
 end

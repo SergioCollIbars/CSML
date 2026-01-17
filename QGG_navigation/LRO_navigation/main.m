@@ -27,8 +27,8 @@ for fld = 1:length(mtd.folder)
 
     % start Simulation
     [planetParams, Cnm_list, Snm_list, ...
-        state0, t_range]                    = loadUniverse(mtd.folder{fld});
-    [instrumentParams, instrument_alig]     = loadInstrument(mtd.folder{fld});
+        state0, t_range]                = loadUniverse(mtd.folder{fld});
+    [instrumentParams]                  = loadInstrument(mtd.folder{fld});
     
     % integrate Trajectory
     disp('Simulating trajectory ...')
@@ -60,8 +60,8 @@ for fld = 1:length(mtd.folder)
     % Filtering process
     disp('Running Filter ...')
     state_true = [state(:, 1:6)';bias];
-    [Xf, Pf]   = filter_measurements(mtd.folder{fld},time,state_true,...
-        instrument_alig, NB_EARTH_mat, NB_MOON_mat, Cnm_list, Snm_list, Y, ...
+    [Xf, Pf, posfit, I_ALIG]   = filter_measurements(mtd.folder{fld},time,state_true,...
+        NB_EARTH_mat, NB_MOON_mat, Cnm_list, Snm_list, Y, ...
         signal_err, planetParams, instrumentParams);
     disp('  DONE ...')
     
@@ -71,11 +71,11 @@ for fld = 1:length(mtd.folder)
         plot_trajectory(time, state, folder_name);
         
         plot_measurements(time, Y, bias, signal_err, instrumentParams,...
-            Xf, instrument_alig, folder_name); 
+            Xf, I_ALIG, folder_name); 
         
         mask = instrumentParams(:, 1);
-        plot_results(time, state, bias, Xf, Pf, mask, ...
-            instrument_alig, folder_name);
+        plot_results(time, state, bias, Xf, Pf, posfit, mask, ...
+            I_ALIG, folder_name);
         disp('  DONE ...')
     end
     

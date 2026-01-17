@@ -1,16 +1,17 @@
-function [R0, P0, Q0, Qb, delta_state0, Cnm, Snm] = ...
+function [R0, P0, Q0, Qb, delta_state0, Cnm, Snm, instrument_alig, att_err] = ...
     loadFilterParams(folder_Name, planetParams, instrumentParams, ...
     Cnm_list, Snm_list)
     p = readParams("data/"+folder_Name+"/Filter.txt");
     
-    % load filter data
-    loadData = p.loadData;
+    % Instrument aligment
+    instrument_alig = p.orientation;
 
     % Sampling frequency
     fs = instrumentParams(:, 5);
 
-    % Measurement variance
-    sigma_m = instrumentParams(:, 2);
+    % Measurement std
+    sigma_m = [p.sigma_xx;p.sigma_xy;p.sigma_xz;...
+             p.sigma_yy;p.sigma_yz;p.sigma_zz];
     
     % Weight matrix
     R0 = diag((sigma_m.*sqrt(fs)).^2);
@@ -22,6 +23,11 @@ function [R0, P0, Q0, Qb, delta_state0, Cnm, Snm] = ...
     % bias RW
     sigma_RW = p.sigma_RW;               % [mE]
     Qb = diag((ones(6, 1).*sigma_RW).^2);
+
+    % attitude uncertainty
+    sigma_att = p.sigma_att * pi / (180 * 3600);           % [radians]
+    bias_att  = p.bias_att  * pi / (180 * 3600);           % [radians]
+    att_err   = [sigma_att, bias_att];
 
     % Filter uncertainty
     sigmaP = p.sigmaP;                   % [m]

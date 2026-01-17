@@ -1,6 +1,6 @@
     # Gravity simulation parameters
 ########################################
-    n_max = 10
+    n_max = 100
     normalized = 1
 
     # Orbit type: CUSTOM or LRO
@@ -11,7 +11,7 @@
 ########################################
     a         = 1790
     e         = 1E-3
-    i         = 45
+    i         = 90
     RAAN      = 0
     omega     = 0
     f         = 0

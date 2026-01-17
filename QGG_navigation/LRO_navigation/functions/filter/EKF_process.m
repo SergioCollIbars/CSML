@@ -1,6 +1,6 @@
-function [X_EKF, P_EKF] = EKF_process(time, planetParams, Y_N, ...
-    signal_error, X0_N, P0_N, orientation, NB_EARTH, NB_MOON, Cnm_list,...
-    Snm_list, Q0, Qb, R0, mask)
+function [X_EKF, P_EKF, posfit] = EKF_process(time, planetParams, Y_N, ...
+    signal_error, noise_att, offset_att, sigma_att, X0_N, P0_N, ...
+    orientation, NB_EARTH, NB_MOON, Cnm_list, Snm_list, Q0, Qb, R0, mask)
     
     % state mask (pos, vel & bias)
     mask_state = [ones(6, 1);mask];
@@ -29,10 +29,14 @@ function [X_EKF, P_EKF] = EKF_process(time, planetParams, Y_N, ...
     % rotate initial uncertainty to body frame
     P0          = rotate_P0(BN0,P0_N);
     P_old       = P0;
+    Pc          = eye(3).*(sigma_att)^2;
 
     % assign initial values
     P_EKF(1, :) = reshape(P0_N, [Nx*Nx, 1]);
     X_EKF(:, 1) =  X0_N;
+
+    % postfit measurements
+    posfit  = nan(6, length(time));
     
     At = time(2) - time(1);
     fprintf('  0%%');
@@ -60,7 +64,11 @@ function [X_EKF, P_EKF] = EKF_process(time, planetParams, Y_N, ...
         BODYMOON_J2000 = NB_MOON(minInd:maxInd, :)';
 
         % cumpute true measurements in S/C body frame
-        [Y]      = compute_orientation_Meas(time(k), BN, Y_N(:, k), ...
+        BT2_BT1     = rotationMatrix(noise_att(1, k), ...
+                    noise_att(2, k), noise_att(3, k), [1, 2, 3]); 
+        BT1_B       = rotationMatrix(offset_att(1, k), ...
+                    offset_att(2, k), offset_att(3, k), [1, 2, 3]); 
+        [Y]      = compute_orientation_Meas(time(k), BT2_BT1*BT1_B*BN, Y_N(:, k), ...
                    signal_error(:, k));
         
         % rotate to body frame
@@ -71,9 +79,9 @@ function [X_EKF, P_EKF] = EKF_process(time, planetParams, Y_N, ...
         PHI_tot   = [PHI, zeros(6,6);zeros(6,6), eye(6)];
         
         % actual RTN frame
-        [Yc, Hi, ~] = compute_measurements_filter(planetParams, time(k), ...
-                      state_N, Cnm_list, Snm_list, BN, BODYMOON_J2000);
-        dY          = Y - Yc - X0_N(Ns+1:end); 
+        [Yc, Hi, Hrot_i]  = compute_measurements_filter(planetParams, time(k), ...
+                       state_N, Cnm_list, Snm_list, BN, BODYMOON_J2000);
+        dY           = Y - Yc - X0_N(Ns+1:end); 
     
         % Include process noise
         Q = processNoise(Q0, Qb, At, Nx);
@@ -82,7 +90,12 @@ function [X_EKF, P_EKF] = EKF_process(time, planetParams, Y_N, ...
         % apply measurement mask
         dY_used = dY(logical(mask));
         Hi_used = Hi(logical(mask), logical(mask_state));
+        Hrot_i_used = Hrot_i(logical(mask), :);
         R0_used = R0(logical(mask), logical(mask));
+
+        % consider covarinace inflation
+        R_inflation = Hrot_i_used * Pc * Hrot_i_used';
+        R0_used     = R0_used + R_inflation;
 
         % apply state mask
         PHI_used = PHI_tot(logical(mask_state), logical(mask_state));
@@ -108,6 +121,9 @@ function [X_EKF, P_EKF] = EKF_process(time, planetParams, Y_N, ...
         XB_bias = X0_N(Ns+1:end) + X_hat(Ns+1:end);
 
         X_EKF(:, k)     = A * [XB;XB_bias];
+
+        % compute posfit
+        posfit(:, k) = dY - Hi * X_hat;
 
         % rotate to inertial state
         X0_N = X_EKF(:, k);   

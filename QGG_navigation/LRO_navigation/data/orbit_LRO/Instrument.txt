@@ -1,20 +1,20 @@
 # Measurement mask: xx, xy, xz, yy, yz, zz
 ###########################################
 	mask_xx = 1
-	mask_xy = 0
+	mask_xy = 1
 	mask_xz = 1
-	mask_yy = 0
+	mask_yy = 1
 	mask_yz = 1
 	mask_zz = 1
 
 # measurement noise: [mE * sqrt(Hz)]
 ###########################################
-	sigma_xx = 1
-	sigma_xy = 1
-	sigma_xz = 1
-	sigma_yy = 1
-	sigma_yz = 1
-	sigma_zz = 1    
+	sigma_xx = 4
+	sigma_xy = 4
+	sigma_xz = 4
+	sigma_yy = 4
+	sigma_yz = 4
+	sigma_zz = 4    
 
  # Measurement band [Hz]
 ###########################################
@@ -38,6 +38,3 @@
 ###########################################
 	fs = 0.1
 
-# Instrument orientation: Inertial, RTN
-###########################################
-	orientation = RTN
