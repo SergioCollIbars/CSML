@@ -22,7 +22,6 @@
 # attitude uncertainty: [arcseconds]
 ########################################
 	sigma_att = 1
-	bias_att  = 3
 
 
 # Filter uncertainty: [m], [m/s] & [mE]

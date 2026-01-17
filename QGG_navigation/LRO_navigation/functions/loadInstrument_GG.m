@@ -1,6 +1,6 @@
-function [instrumentParams] = loadInstrument(folder_Name)
-    % Description: give the instrument parameters
-    p = readParams("data/"+folder_Name+"/Instrument.txt");
+function [instrumentParams] = loadInstrument_GG(folder_Name)
+    % Description: give the Gravity Gradiometer (GG) instrument parameters
+    p = readParams("data/"+folder_Name+"/Instrument_GG.txt");
     
     % Measurement mask
     Mask = [p.mask_xx;p.mask_xy;p.mask_xz;...

@@ -1,4 +1,4 @@
-function [R0, P0, Q0, Qb, delta_state0, Cnm, Snm, instrument_alig, att_err] = ...
+function [R0, P0, Q0, Qb, delta_state0, Cnm, Snm, instrument_alig, sigma_att] = ...
     loadFilterParams(folder_Name, planetParams, instrumentParams, ...
     Cnm_list, Snm_list)
     p = readParams("data/"+folder_Name+"/Filter.txt");
@@ -26,8 +26,6 @@ function [R0, P0, Q0, Qb, delta_state0, Cnm, Snm, instrument_alig, att_err] = ..
 
     % attitude uncertainty
     sigma_att = p.sigma_att * pi / (180 * 3600);           % [radians]
-    bias_att  = p.bias_att  * pi / (180 * 3600);           % [radians]
-    att_err   = [sigma_att, bias_att];
 
     % Filter uncertainty
     sigmaP = p.sigmaP;                   % [m]

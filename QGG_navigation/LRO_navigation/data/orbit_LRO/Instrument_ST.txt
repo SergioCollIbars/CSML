@@ -1,0 +1,12 @@
+# measurement noise: [arcseconds * sqrt(Hz)]
+###########################################
+	sigma = 1  
+
+# measurement bias [arcseconds]
+###########################################
+	bias = 1
+
+# sampling frequency [Hz]
+###########################################
+	fs = 1
+
