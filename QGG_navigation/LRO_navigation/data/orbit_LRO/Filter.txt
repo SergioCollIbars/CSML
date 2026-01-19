@@ -1,4 +1,4 @@
-# measurement weight: [mE * sqrt(Hz)]
+ # measurement weight: [mE * sqrt(Hz)]
 ###########################################
 	sigma_xx = 6
 	sigma_xy = 4
