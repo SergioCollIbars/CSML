@@ -53,7 +53,7 @@ for fld = 1:length(mtd.folder)
     
     % generate Measurements (Inertial frame)
     disp('Simulating measurements ...')
-    [Y, bias, signal_err] = compute_measurements(instrumentParams_GG, ...
+    [Y, bias, signal_err, SF] = compute_measurements(instrumentParams_GG, ...
         planetParams, time, state, Cnm_list, Snm_list,...
         NB_EARTH_mat, NB_MOON_mat);
     
@@ -61,7 +61,7 @@ for fld = 1:length(mtd.folder)
     
     % Filtering process
     disp('Running Filter ...')
-    state_true = [state(:, 1:6)';bias];
+    state_true = [state(:, 1:6)';bias; SF];
     [Xf, Pf, posfit, I_ALIG]   = filter_measurements(mtd.folder{fld},time,state_true,...
         NB_EARTH_mat, NB_MOON_mat, Cnm_list, Snm_list, Y, ...
         signal_err, planetParams, instrumentParams_GG, instrumentParams_ST);
@@ -73,11 +73,11 @@ for fld = 1:length(mtd.folder)
         plot_trajectory(time, state, folder_name);
         
         plot_measurements(time, Y, bias, signal_err, instrumentParams_GG,...
-            Xf, I_ALIG, folder_name); 
+            Xf, I_ALIG, folder_name, NB_MOON_mat, SF); 
         
         mask = instrumentParams_GG(:, 1);
-        plot_results(time, state, bias, Xf, Pf, posfit, mask, ...
-            I_ALIG, folder_name);
+        plot_results(time, state, bias, SF, Xf, Pf, posfit, mask, ...
+            I_ALIG, folder_name, NB_MOON_mat);
         disp('  DONE ...')
     end
     

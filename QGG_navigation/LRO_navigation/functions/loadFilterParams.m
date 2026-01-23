@@ -1,8 +1,12 @@
-function [R0, P0, Q0, Qb, delta_state0, Cnm, Snm, instrument_alig, sigma_att] = ...
-    loadFilterParams(folder_Name, planetParams, instrumentParams, ...
+function [R0, P0, Q0, Qb, delta_state0, Cnm, Snm, instrument_alig,...
+    sigma_att, n_max] = ...
+    loadFilterParams(folder_Name, instrumentParams, ...
     Cnm_list, Snm_list)
     p = readParams("data/"+folder_Name+"/Filter.txt");
     
+    % degree and order gravity field
+    n_max        = p.n_max;
+
     % Instrument aligment
     instrument_alig = p.orientation;
 
@@ -28,38 +32,25 @@ function [R0, P0, Q0, Qb, delta_state0, Cnm, Snm, instrument_alig, sigma_att] = 
     sigma_att = p.sigma_att * pi / (180 * 3600);           % [radians]
 
     % Filter uncertainty
-    sigmaP = p.sigmaP;                   % [m]
-    sigmaV = p.sigmaV;                   % [m/s]
-    sigmaB = p.sigmaB;                   % [mE]
+    sigmaP  = p.sigmaP;                   % [m]
+    sigmaV  = p.sigmaV;                   % [m/s]
+    sigmaB  = p.sigmaB;                   % [mE]
+    sigmaSF = p.sigmaSF;                  % [-]
 
     P0 = diag([sigmaP;sigmaP;sigmaP;sigmaV;sigmaV;sigmaV;...
-        ones(6, 1).*sigmaB].^2);
+        ones(6, 1).*sigmaB; ones(6, 1).*sigmaSF].^2);
 
     % Initial errors
-    deltaP = normrnd(0, sigmaP, [3,1]); 
-    deltaV = normrnd(0, sigmaV, [3, 1]);
-    deltaB = normrnd(0, sigmaB, [6, 1]);
+    deltaP  = normrnd(0, sigmaP, [3,1]); 
+    deltaV  = normrnd(0, sigmaV, [3, 1]);
+    deltaB  = normrnd(0, sigmaB, [6, 1]);
+    deltaSF = normrnd(0, sigmaSF,[6, 1]);
     delta_state0 = [deltaP; deltaV;...
-        deltaB];
+        deltaB; deltaSF];
 
     % coefficient perturbation (Earth & Moon)
     Cnm_E  = Cnm_list{1}; Snm_E = Snm_list{1};
     Cnm_M  = Cnm_list{2}; Snm_M = Snm_list{2};
-    n_max        = planetParams(5);
-    [Nc, Ns, ~]  = count_num_coeff(n_max); 
- 
-    C_S_coeffs_E   = mat2list(Cnm_E, Snm_E, Nc, Ns);
-    C_S_coeffs_M   = mat2list(Cnm_M, Snm_M, Nc, Ns);
-
-    K = 0;
-    n_E = 2:length(Cnm_E)-1; n_M = 2:length(Cnm_M)-1;
-    sigma_n_E = K./(n_E.^2); sigma_n_M = K./(n_M.^2);
-
-    [Xp, ~]  = perturb_coeff(sigma_n_E, n_max, C_S_coeffs_E);
-    [Cnm_E, Snm_E] = list2mat(n_max, Nc, Ns, Xp);
-
-    [Xp, ~]  = perturb_coeff(sigma_n_M, n_max, C_S_coeffs_M);
-    [Cnm_M, Snm_M] = list2mat(n_max, Nc, Ns, Xp);
     
     % save coefficients as a list 
     Cnm = {Cnm_E, Cnm_M}; Snm = {Snm_E, Snm_M};

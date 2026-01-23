@@ -1,9 +1,9 @@
 function [X_EKF, P_EKF, posfit] = EKF_process(time, planetParams, Y_N, ...
-    signal_error, noise_att, offset_att, sigma_att, X0_N, P0_N, ...
+    signal_error, SF, noise_att, offset_att, sigma_att, X0_N, P0_N, ...
     orientation, NB_EARTH, NB_MOON, Cnm_list, Snm_list, Q0, Qb, R0, mask)
     
     % state mask (pos, vel & bias)
-    mask_state = [ones(6, 1);mask];
+    mask_state = [ones(6, 1);mask;mask];
 
     % Number of total states
     Nx = length(X0_N);
@@ -20,6 +20,11 @@ function [X_EKF, P_EKF, posfit] = EKF_process(time, planetParams, Y_N, ...
     elseif(orientation == "RTN")            
         NB = RTN2ECI(X0_N(1:3), X0_N(4:6));
         BN0= NB';
+    elseif(orientation == "ENU")
+        J2000_ECEF = NB_MOON(1:3, :);
+        X0_ECEF    = J2000_ECEF' * X0_N(1:3);
+        ENU_ECEF   = ecef2enu(X0_ECEF);
+        BN0        = ENU_ECEF * J2000_ECEF';
     end
 
     % output variables
@@ -56,7 +61,7 @@ function [X_EKF, P_EKF, posfit] = EKF_process(time, planetParams, Y_N, ...
         
         % compute S/C orientation 
         [BN_mat] = compute_orientation_SC(t_span, ...
-            [STATE(1, 1:Ns);STATE(end, 1:Ns)], orientation);
+            [STATE(1, 1:Ns);STATE(end, 1:Ns)], orientation, NB_MOON);
 
         maxInd         = 3 * k; minInd = maxInd - 2;
         BN0            = BN_mat(1:3, :);
@@ -68,30 +73,33 @@ function [X_EKF, P_EKF, posfit] = EKF_process(time, planetParams, Y_N, ...
                     noise_att(2, k), noise_att(3, k), [1, 2, 3]); 
         BT1_B       = rotationMatrix(offset_att(1, k), ...
                     offset_att(2, k), offset_att(3, k), [1, 2, 3]); 
-        [Y]      = compute_orientation_Meas(time(k), BT2_BT1*BT1_B*BN, Y_N(:, k), ...
-                   signal_error(:, k));
+        [Y]         = compute_orientation_Meas(time(k), BT2_BT1*BT1_B*BN, ...
+                        Y_N(:, k), signal_error(:, k), SF(:, k));
         
         % rotate to body frame
         state     = rotate_state(time(k), BN, state_N');
         PHI_vec   = rotate_STM(time(k), BN, reshape(PHI_N, [1, Ns*Ns]), BN0);
         PHI       = reshape(PHI_vec, [Ns, Ns]);
 
-        PHI_tot   = [PHI, zeros(6,6);zeros(6,6), eye(6)];
+        PHI_tot   = [PHI, zeros(6,12);zeros(12,6), eye(12)];
+
+        % nominal bias and SF
+        bias_nom = X0_N(Ns+1:12); SF_nom = X0_N(13:end);
         
         % actual RTN frame
-        [Yc, Hi, Hrot_i]  = compute_measurements_filter(planetParams, time(k), ...
-                       state_N, Cnm_list, Snm_list, BN, BODYMOON_J2000);
-        dY           = Y - Yc - X0_N(Ns+1:end); 
+        [Yc, Hi, Hrot_i] = compute_measurements_filter(planetParams, time(k), ...
+                       state_N, Cnm_list, Snm_list, BN, BODYMOON_J2000, SF_nom);
+        dY           = Y - SF_nom.*Yc - bias_nom; 
     
         % Include process noise
         Q = processNoise(Q0, Qb, At, Nx);
         % % Q  = rotate_processNoise(BN,Q_N, 1);
 
         % apply measurement mask
-        dY_used = dY(logical(mask));
-        Hi_used = Hi(logical(mask), logical(mask_state));
+        dY_used     = dY(logical(mask));
+        Hi_used     = Hi(logical(mask), logical(mask_state));
         Hrot_i_used = Hrot_i(logical(mask), :);
-        R0_used = R0(logical(mask), logical(mask));
+        R0_used     = R0(logical(mask), logical(mask));
 
         % consider covarinace inflation
         R_inflation = Hrot_i_used * Pc * Hrot_i_used';
@@ -116,7 +124,7 @@ function [X_EKF, P_EKF, posfit] = EKF_process(time, planetParams, Y_N, ...
         P_old(logical(mask_state), logical(mask_state))  = P_new;
                 
         % update nominal & save states (Inertial frame)
-        A       = blkdiag(BN', BN', eye(6));
+        A       = blkdiag(BN', BN', eye(6), eye(6));
         XB      = state + X_hat(1:Ns);
         XB_bias = X0_N(Ns+1:end) + X_hat(Ns+1:end);
 
@@ -133,9 +141,9 @@ function [X_EKF, P_EKF, posfit] = EKF_process(time, planetParams, Y_N, ...
 
         % update Body frame definition
         [BN_mat] = compute_orientation_SC(t_span, ...
-            X_EKF(1:Ns, k-1:k)', orientation);
+            X_EKF(1:Ns, k-1:k)', orientation, NB_MOON);
         BN     = BN_mat(4:6, :); 
-        A      = blkdiag(BN, BN, eye(6));
+        A      = blkdiag(BN, BN, eye(6), eye(6));
         P_old  = A * P_N * A.'; 
     end
     fprintf('\n');

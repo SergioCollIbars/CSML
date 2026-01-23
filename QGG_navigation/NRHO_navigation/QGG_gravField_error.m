@@ -125,6 +125,9 @@ for k = 1:Mc
 end
 disp('      DONE!')
 
+% save output
+save('disturbance_grav_error.mat', "dY");
+
 % plot error
 figure()
 idx = [1, 2, 3, 4, 5, 6];
@@ -137,7 +140,8 @@ for k = 1:Mc
         semilogy(date, ones(1, length(date)) * 3E-3 * sqrt(frec), ...
             'LineWidth', 3, 'Color','k')
         hold all;
-        semilogy(date, abs(data(j, :))./1E-9, 'Marker','*', 'Color', 'g');
+        semilogy(date, abs(data(j, :))./1E-9, 'Marker','.', 'Color', 'g', ...
+            'MarkerSize', 2);
         xlabel('date')
         ylabel(lb(j) + '[E]')
         grid on;

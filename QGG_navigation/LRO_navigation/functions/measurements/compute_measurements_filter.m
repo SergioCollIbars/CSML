@@ -1,5 +1,5 @@
 function [Y, H, Hr] = compute_measurements_filter(planetParams, ...
-                          time, state, Cnm, Snm, BN_mat, BN_MOON_mat)
+                          time, state, Cnm, Snm, BN_mat, BN_MOON_mat, SF)
     % extract params
     Nt = length(time);
 
@@ -34,12 +34,12 @@ function [Y, H, Hr] = compute_measurements_filter(planetParams, ...
     BODYMOON_BODY = BODYMOON_J2000 * BN'; r_ACI = r;
     [Hpos] = compute_posPartials(n_max, normalized, Cnm{2}, Snm{2}, R_M, GM_M, ...
                 r_ACI, BODYMOON_J2000, BODYMOON_BODY);
-    Hp     = [Hpos(1:3, :); Hpos(5:6, :);Hpos(9, :)]./1E-12;
-    H      = [Hp, zeros(6, 3), eye(6)];
+    Hp     = SF.*[Hpos(1:3, :); Hpos(5:6, :);Hpos(9, :)]./1E-12;
+    H      = [Hp, zeros(6, 3), eye(6), diag(Y(:, k))];
 
 
     %% compute attitude partials
     [Hrot] = compute_rotPartials_analy(Y_J2000, BN);
-    Hr     = [Hrot(1:3, :); Hrot(5:6, :);Hrot(9, :)]./1E-12;
+    Hr     = SF.*[Hrot(1:3, :); Hrot(5:6, :);Hrot(9, :)]./1E-12;
 end
 

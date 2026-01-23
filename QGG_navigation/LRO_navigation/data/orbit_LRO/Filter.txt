@@ -1,11 +1,15 @@
+ # Gravity field degree & order
+###########################################
+    	n_max = 10
+
  # measurement weight: [mE * sqrt(Hz)]
 ###########################################
-	sigma_xx = 6
+	sigma_xx = 4
 	sigma_xy = 4
 	sigma_xz = 4
-	sigma_yy = 6
-	sigma_yz = 6
-	sigma_zz = 6
+	sigma_yy = 4
+	sigma_yz = 4
+	sigma_zz = 4
 
 # Process noise: [m/s^2]
 ########################################
@@ -21,7 +25,7 @@
 
 # attitude uncertainty: [arcseconds]
 ########################################
-	sigma_att = 1
+	sigma_att = 10
 
 
 # Filter uncertainty: [m], [m/s] & [mE]
@@ -29,8 +33,9 @@
 	sigmaP = 10                
 	sigmaV = 1E-1       
 	sigmaB = 1E-1
+	sigmaSF= 1E-2
 
-# Instrument orientation: Inertial, RTN
+# Instrument orientation: Inertial, RTN, ENU
 ###########################################
-	orientation = RTN
+	orientation = Inertial
     

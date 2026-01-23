@@ -1,4 +1,4 @@
-function [Y_B] = compute_orientation_Meas(time, BN_mat, Y, signal_error)
+function [Y_B] = compute_orientation_Meas(time, BN_mat, Y, signal_error, SF)
     % Description: compute the S/C orientation over time.
 
     % time vector length
@@ -20,6 +20,6 @@ function [Y_B] = compute_orientation_Meas(time, BN_mat, Y, signal_error)
     end
 
     % Add error to true signal [mE]
-    Y_B = Y_B + signal_error;
+    Y_B = SF.*Y_B + signal_error;
 end
 

@@ -10,14 +10,13 @@ format long g;
 % INPUT
 addpath('./functions/');
 addpath('//Users/sergiocollibars/Desktop/');
-out_path   = './HARMCOEFS_MOON_GRGM1200.txt';
-input_path = 'gggrx_1200a_sha.txt';
+out_path   = './SIGMACOEFS_MOON_GRGM660PRIM.txt';
+input_path = 'gggrx_0660pm_sha.txt';
 
 normalized_ouput = 0;          % do you want normalized output coeff? 0 if input file is already normalized
 normalized       = 1;          % output file normalized?
-n = 1200;                       % max zonal harmonic
-R = 1.738E3;                   % Reference Radius [m]
-
+n = 660;                      % max zonal harmonic
+R = 0.1738000000000000E+07;   % Reference Radius [m]
 
 % count coeff
 [Nc, Ns] = countCoeff(n);
@@ -25,8 +24,8 @@ R = 1.738E3;                   % Reference Radius [m]
 %%file = table2array(readtable(input_path));
 file = readmatrix(input_path);
 
-Nc_col    = 3;     % line to extract C coeff
-Ns_col    = 4;     % line to extract S coeff
+Nc_col    = 5;     % line to extract C coeff
+Ns_col    = 6;     % line to extract S coeff
 init_line = 3;     % line to start file reading
 [M] = orderMatrix(file, Nc, Ns, Nc_col, Ns_col, init_line, ...
     normalized_ouput);

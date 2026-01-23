@@ -1,0 +1,40 @@
+# Measurement mask: xx, xy, xz, yy, yz, zz
+###########################################
+	mask_xx = 1
+	mask_xy = 0
+	mask_xz = 0
+	mask_yy = 1
+	mask_yz = 1
+	mask_zz = 1
+
+# measurement noise: [mE * sqrt(Hz)]
+###########################################
+	sigma_xx = 4
+	sigma_xy = 4
+	sigma_xz = 4
+	sigma_yy = 4
+	sigma_yz = 4
+	sigma_zz = 4    
+
+ # Measurement band [Hz]
+###########################################
+	fmin = 1E-4
+	fmax = 1
+
+# noise slope
+###########################################
+	alpha = 1
+
+# measurement bias [mE]
+###########################################
+	bias_xx = 100
+	bias_xy = 100
+	bias_xz = 100
+	bias_yy = 100
+	bias_yz = 100
+	bias_zz = 100
+
+# sampling frequency [Hz]
+###########################################
+	fs = 0.1
+

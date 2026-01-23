@@ -1,13 +1,14 @@
 function plot_measurements(time, Y_N, bias, signal_error, ...
-                           instrumentParams, Xf, orientation, folder_name)
+                           instrumentParams, Xf, orientation, folder_name, ...
+                           NB_MOON, SF)
     % Plot gradiometer measurements and bias 
 
     % -------------------------
     % Compute measurements (body frame)
     % -------------------------
-    BN_mat = compute_orientation_SC(time, Xf(1:6,:)', orientation);
+    BN_mat = compute_orientation_SC(time, Xf(1:6,:)', orientation, NB_MOON);
 
-    Y = compute_orientation_Meas(time, BN_mat, Y_N, signal_error);
+    Y = compute_orientation_Meas(time, BN_mat, Y_N, signal_error, SF);
 
     % Measurement mask
     mask = instrumentParams(:,1);

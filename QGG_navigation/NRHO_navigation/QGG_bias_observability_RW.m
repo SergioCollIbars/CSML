@@ -56,13 +56,13 @@ end
 dt = TIME(2) - TIME(1);                              % [-]
 
 % Measurement weights
-sigmaMeas = [1, 1] * 1E-12 * sqrt(frec);             % [1/s^2]
+sigmaMeas = [1, 1] * 1.5E-12 * sqrt(frec);             % [1/s^2]
 sigmaMeas = sigmaMeas./measDim *1E-3 ;                     % [E]
 R0 = diag([sigmaMeas(1), sigmaMeas(2), sigmaMeas(2), sigmaMeas(1), ...
 sigmaMeas(2), sigmaMeas(1)].^2);                     % [E^2]
 
 %  state process noise
-sigmaQ_s = 1E-11/ (planetParams(2)*planetParams(3)^2);% [-]
+sigmaQ_s = (5E-11 / sqrt(3)) / (planetParams(2)*planetParams(3)^2); % [-]
 qs       = diag([sigmaQ_s, sigmaQ_s, sigmaQ_s].^2).*1;
 I        = eye(3, 3);
 
@@ -87,7 +87,7 @@ Nt  = length(TIME);
 Nq         = 100;
 sigmaQVec  = logspace(-7, -2, Nq).*1E-3;             % [E/ sqrt(sec)]
 obsPercMat = ones(Nq, length(t));
-RMS_val    = ones(3, Nq);
+RMS_val    = ones(3, Nq); max_val = ones(1, Nq); min_val = ones(1, Nq);
 count      = 0;
 At         = t(2) - t(1);
 At_sec     = At / planetParams(3);
@@ -152,17 +152,42 @@ for j = 1:Nq
     idx = find(time_T > 3, 1);    % first index where t is greater than 3
 
     RMS_val(:, j) = rms(posUnc(:, idx:end), 2);
+    normUnct      = vecnorm(posUnc(:, idx:end));
+    max_val(:, j) = max(normUnct);
+    min_val(:, j) = min(normUnct);
 
     disp('Progress = ' + string(count/(Nq) * 100) + ' %')
 end
 
+% compute error bars for the values
+vals  = [1E-7 1E-6 1E-5 1E-4 1E-3];
+errB  = zeros(2, length(vals));
+yvals = zeros(1, length(vals)); 
+for j = 1:length(vals)
+    f = abs(sigmaQVec./1E-3 - vals(j));
+    [~, idx] = min(f);
+    
+    errB(1, j) = max_val(idx);
+    errB(2, j) = min_val(idx);
+
+    yvals(j)   = vecnorm(RMS_val(:, idx));
+end
 figure()
-loglog(sigmaQVec./1E-3, RMS_val, 'LineWidth', 2)
+loglog(sigmaQVec./1E-3, vecnorm(RMS_val), 'LineWidth', 2, 'Color', 'b');
+hold all;
+for k = 1:length(vals)
+    line([vals(k) vals(k)], [errB(2, k) errB(1, k)], ...
+        'LineWidth', 0.5, 'Color', 'b');
+end
+loglog(vals, yvals,    'ko', 'MarkerFaceColor','b', 'MarkerSize',6)   % nominal
+loglog(vals, errB(1, :), 'ksq', 'MarkerFaceColor','b', 'MarkerSize',6)   % max
+loglog(vals, errB(2, :), 'ksq', 'MarkerFaceColor','b', 'MarkerSize',6)   % min
 grid on;
 xlabel('bias rate [E $\sqrt{Hz}$]',  'Interpreter', 'latex');
-ylabel('[m]')
-legend('X', 'Y', 'Z');
-title('Formal error RMS value')
+ylabel('[m]');
+xlim([1E-7 1E-3]); ylim([0, 10000]);
+% % title('Formal error RMS value')
+set(gca, 'YTick', [1 10, 100, 1000, 10000]);
 
 % surface plot
 figure()
@@ -172,18 +197,40 @@ contourf(X, Y, obsPercMat, 'EdgeColor', 'none')
 colormap("winter")                      % Specify colormap
 c = colorbar;                                % Show color scale
 c.Label.String = 'Number of states';   % <-- Your label here
-xlabel('Orbit Period', 'Interpreter', 'latex')
+xlabel('Time [hr]', 'Interpreter', 'latex')
 ylabel('bias rate [E $\sqrt{Hz}$]',  'Interpreter', 'latex')
 set(gca, 'YScale', 'log')              % Set Y axis to log scale
-% % set(gca, 'YTick', [1E-8, 3E-8, 1E-7, 5E-7])  % Specify 4 Y tick values
-% % set(gca, 'XTick', [1, 2, 3, 4])  % Specify 4 X tick values
-% % ylim([1E-8, 5E-7]);
+
 ax.GridColor = [0 0 0];   % darker grid
 ax.GridAlpha = 1;         % more opaque
 title('System observability over time');
-view(2);
+view(2); xlim([1 90]);
+xline(78.680000000000007, 'Color','r', 'LineStyle','--', 'LineWidth', 2);
 
+% surface plot (v2)
+figure(); clf
+imagesc(time_h, sigmaQVec./1E-3, obsPercMat);  
+axis xy                         
+grid on
+nStates = 12;
+cmap = parula(nStates);   % or: lines(nStates)
+colormap(cmap)
 
+% Force discrete color mapping
+clim([0.5 nStates + 0.5]);
+
+cb = colorbar;
+cb.Ticks = 1:nStates;
+cb.TickLabels = string(1:nStates);
+cb.Label.String = 'Number of observable states';
+
+xlabel('Time [hr]', 'Interpreter', 'latex')
+ylabel('bias rate [E $\sqrt{Hz}$]',  'Interpreter', 'latex')
+set(gca, 'YScale', 'log')              % Set Y axis to log scale
+xlim([1, 90]);
+xline(78.680000000000007, 'Color','r', 'LineStyle','--', 'LineWidth', 2);
+ylim([1E-6 1E-2]);
+set(gca, 'YTick', [1E-6 1E-5, 1E-4, 1E-3, 1E-2])  % Specify 4 Y tick values
 
 %% FUNCTIONS
 function BigMatrix = diag_stack(varargin)

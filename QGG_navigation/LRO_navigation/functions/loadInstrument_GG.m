@@ -21,9 +21,13 @@ function [instrumentParams] = loadInstrument_GG(folder_Name)
     bias = [p.bias_xx;p.bias_xy;p.bias_xz;...
             p.bias_yy;p.bias_yz;p.bias_zz];
 
+    % Scale Factor (SF) [-]
+    SF = [p.SF_xx;p.SF_xy;p.SF_xz;...
+            p.SF_yy;p.SF_yz;p.SF_zz];
+
     % sampling frequency [Hz]
     fs = ones(6,1).*p.fs;
 
-    instrumentParams = [Mask, sigma, bias, alpha, fs, fmin, fmax];
+    instrumentParams = [Mask, sigma, bias, alpha, fs, fmin, fmax, SF];
 end
 

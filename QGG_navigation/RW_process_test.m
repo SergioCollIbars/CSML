@@ -8,15 +8,16 @@ N = round(tmax * f);
 TIME = linspace(0, tmax, N);
 dt = TIME(2) - TIME(1);
 
-S =(sqrt(2) * 1E-3)^2;                                  % [E^2 / Hz]
+S =(1E-3 / sqrt(2))^2;                                  % [E^2 / Hz]
 fc= 1E-3;
-q = S * 4 * sin(pi*fc/f)^2 * f^2;                        % [E^2 / s]
+q = S * 4 * sin(pi*fc/f)^2 * f^2;                       % [E^2 / s]
 
-% bais
+% bias
 b_RW = ones(1, N);                                         % [E]
 
 sigma_n = sqrt(S) * sqrt(f);                               % [E]
 noise = normrnd(0, sigma_n, [1, N]);
+q     = 1E-12;                                          % [E^2 / s]
 for j = 1:N-1
     w2 = normrnd(0, sqrt(q*dt), [1, 1]);
     b_RW(j + 1) = b_RW(j) + w2;

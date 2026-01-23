@@ -1,7 +1,11 @@
-# load filter data: options 1 or 0
-########################################
-	loadData = 0                 
-
+ # measurement weight: [mE * sqrt(Hz)]
+###########################################
+	sigma_xx = 6
+	sigma_xy = 4
+	sigma_xz = 4
+	sigma_yy = 6
+	sigma_yz = 6
+	sigma_zz = 6
 
 # Process noise: [m/s^2]
 ########################################
@@ -12,7 +16,12 @@
     
 # bias RW: [mE]
 ########################################
-	sigma_RW = 0.00628317497175913
+	sigma_RW = 0.0251326998870365
+
+
+# attitude uncertainty: [arcseconds]
+########################################
+	sigma_att = 1
 
 
 # Filter uncertainty: [m], [m/s] & [mE]
@@ -20,4 +29,8 @@
 	sigmaP = 10                
 	sigmaV = 1E-1       
 	sigmaB = 1E-1
+
+# Instrument orientation: Inertial, RTN
+###########################################
+	orientation = RTN
     

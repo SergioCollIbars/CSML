@@ -68,8 +68,8 @@ function plot_measurements(t, T, planetParams, r_sc_moon)
         T_norm(j) = norm(TT, 'fro'); 
     end
     figure()
-    plot(time, T_norm, 'LineWidth', 2, 'Color', color2);
-    hold all;
+    semilogy(time, T_norm*1E3, 'LineWidth', 2, 'Color', color2);
+    hold all; ylabel("[E]")
     if(sum(idx_min)~=0)
         xline(time(idx_min), 'LineWidth', 1.1, 'Color', 'r', ...
         'LineStyle', '--')

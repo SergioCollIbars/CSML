@@ -30,8 +30,8 @@ frec = 1/30; f_time = 1/30;
 
 % define system
 system = "CR3BP"; % options: 2BP, CR3BP, F2BP
-[planetParams, ~, ~, ~, ~, ~] = ...
-    load_universe(system, [tmin, tmax], frec);
+[planetParams, ~, ~, ~, ~] = ...
+    load_universe([tmin, tmax]);
 
 % normalization values
 measDim = planetParams(3)^2;

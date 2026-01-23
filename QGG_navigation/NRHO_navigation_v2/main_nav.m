@@ -22,14 +22,14 @@ cspice_furnsh('/Users/sergiocollibars/Documents/MATLAB/kernels/kernels.tm')
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % Initial configuration
-plotResults   = 0;                                      % options: 1 or 0
+plotResults   = 1;                                      % options: 1 or 0
 saveData      = 0;                                      % options: 1 or 0
 loadData      = 1;                                      % options: 1 or 0
 attitude      = "inertial";                             % options: inertial
 
 % time parameters
 tmin = 0;
-tmax = 0.01*1.4968 + tmin;                                 % [rad] 
+tmax = 1.2*1.4968 + tmin;                                 % [rad] 
 frec = 1/30;                                            % meas. freq. [Hz]
 
 if(loadData), [tmin,~,~,~, ~] = loadData_files(); ...

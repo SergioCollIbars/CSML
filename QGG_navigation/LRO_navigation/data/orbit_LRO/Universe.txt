@@ -1,6 +1,6 @@
     # Gravity simulation parameters
 ########################################
-    n_max = 50
+    n_max = 10
     normalized = 1
 
     # Orbit type: CUSTOM or LRO
@@ -24,5 +24,5 @@
     # time stamps [days]
 ########################################
     utc_start = 2015-03-20 00:00:00
-    tmax      = 0.1
+    tmax      = 0.5
     

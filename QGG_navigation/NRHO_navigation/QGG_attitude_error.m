@@ -19,6 +19,8 @@ consider_cov = 0;
 tmin = 0;                           % [rad]
 tmax = 1*1.4968;                    % [rad]
 frec = 1/30;                        % [Hz]
+orientation = "Inertial";           % Inertial / RTN
+MC   = 10;
 
 % load universe
 [planetParams, poleParams, Cmat_true, Smat_true, TIME, DOM] = ...
@@ -49,6 +51,35 @@ VXsc_ODE = state(:, 4)';
 VYsc_ODE = state(:, 5)';
 VZsc_ODE = state(:, 6)';
 
+% compute orientation
+BN_mat = nan(3 * length(TIME),  3);
+for j = 1:length(TIME)
+    et = TIME(j)./planetParams(3); % Convert UTC time to ephemeris time
+    ref = 'J2000';
+    abcorr = 'NONE';
+    observer = '3';                 % Set the observer to the Earth-Moon barycenter
+    
+    % Moon position
+    target = 'MOON';
+    [stateM, ~] = cspice_spkezr(target, et, ref, abcorr, observer);
+    posM = stateM(1:3)./planetParams(2) * 1E3;
+    velM = stateM(4:6)./(planetParams(2)*planetParams(3)) * 1E3;
+
+    x = [Xsc_ODE(j);Ysc_ODE(j);Zsc_ODE(j);VXsc_ODE(j);VYsc_ODE(j);...
+        VZsc_ODE(j)];
+    p_sc_moon = x(1:3) - posM; % S/C - Moon
+    v_sc_moon = x(4:6) - velM; % S/C - Moon
+
+    J2000_RTN = RTN2ECI(p_sc_moon, v_sc_moon);
+
+    maxIndx = 3 * j; minIndx = maxIndx - 2;
+    if(orientation == "RTN")
+        BN_mat(minIndx:maxIndx, :) = J2000_RTN';
+    elseif(orientation == "Inertial")
+        BN_mat(minIndx:maxIndx, :) = eye(3);
+    end
+end
+
 % time to date converter
 TIME = t';   % [-]
 jd = 2451545 + TIME / planetParams(3) / 86400;
@@ -61,64 +92,92 @@ humanReadableTime.Format = 'MMM dd';
 
 date = humanReadableTime;
 
-
 % compute attitude error effects along NRHO
 disp('Computing attitude error residuals ...')
 arcsec          = 1 * sqrt(frec);                      % [arcseconds]
 radians         = arcsec * pi / (180 * 3600);          % [rad]
-radias_per_sec  = 1E-6 * sqrt(frec);                   % [rad/s]
-Ath = normrnd(0, radians, [3,length(date)]);           % mean 0, std: radians
-Aw  = normrnd(0, radias_per_sec, [3,length(date)]);    % mean 0, std: radians
+radias_per_sec  = 8E-7 * sqrt(frec);                   % [rad/s]
+
 [b] = compute_FOMP(TIME./planetParams(3), radias_per_sec);
 dt = 1/frec;                                           % seconds
 
-deltaE_att = ones(6, length(date)) * NaN; deltaE_angVel = deltaE_att;
-for j = 1:length(date)
-    % current S/C position
-    x = [Xsc_ODE(j);Ysc_ODE(j);Zsc_ODE(j);VXsc_ODE(j);VYsc_ODE(j);...
-        VZsc_ODE(j)];
-
-    % Cumpute gradiometer measurement
-    [~, ~, ~, ~, ~, ~, ddU] = ...
-        compute_sc_acceleration(TIME(j), x, planetParams, Cmat_true, Smat_true);
-
-    % Attitude partials
-    Y   = reshape(ddU, [9, 1]); BN = eye(3,3);
-    [Hrot] = compute_rotPartials_analy(Y, BN);
-
-    % Measurement residual. Attitude error
-    deltaE_att(:, j) = ([Hrot(1:3, :);Hrot(5:6,:);Hrot(9, :)] * Ath(:, j))...
-        .* (planetParams(3)^2); % [1/s^2]
-
-    % Measurement residuals. Angular velocity error
-    omega_dyad    = dyad_operator(Aw(:, j));
-    omegaDot_dyad = dyad_operator(Aw(:, j)./dt);
-% %     omega_dyad = dyad_operator(b(:, j));
-    B = omega_dyad * omega_dyad;
-    deltaE_angVel(:, j) = [B(1,1);B(1,2);B(1,3);B(2,2);B(2,3);B(3,3)];
+deltaE_att = ones(6, length(date), MC) * NaN; deltaE_angVel = deltaE_att;
+for mc = 1:MC
+    Ath = normrnd(0, radians, [3,length(date)]);        % mean 0, std: radians
+    Aw  = normrnd(0, radias_per_sec, [3,length(date)]); % mean 0, std: radians
+    for j = 1:length(date)
+        % current S/C position
+        x = [Xsc_ODE(j);Ysc_ODE(j);Zsc_ODE(j);VXsc_ODE(j);VYsc_ODE(j);...
+            VZsc_ODE(j)];
+    
+        % Cumpute gradiometer measurement
+        [~, ~, ~, ~, ~, ~, ddU] = ...
+            compute_sc_acceleration(TIME(j), x, planetParams, Cmat_true, Smat_true);
+    
+        % Attitude partials
+        Y   = reshape(ddU, [9, 1]); 
+        
+        maxIndx = 3 * j; minIndx = maxIndx - 2;
+        BN = BN_mat(minIndx:maxIndx, :);
+    
+        [Hrot] = compute_rotPartials_analy(Y, BN);
+    
+        % Measurement residual. Attitude error
+        deltaE_att(:, j, mc) = ([Hrot(1:3, :);Hrot(5:6,:);Hrot(9, :)] * Ath(:, j))...
+            .* (planetParams(3)^2); % [1/s^2]
+    
+        % Measurement residuals. Angular velocity error
+        omega_dyad    = dyad_operator(Aw(:, j));
+        omegaDot_dyad = dyad_operator(Aw(:, j)./dt);
+        B = omega_dyad * omega_dyad;
+        deltaE_angVel(:, j, mc) = [B(1,1);B(1,2);B(1,3);...
+            B(2,2);B(2,3);B(3,3)];
+    end
 end
 disp('      DONE!')
+
+% load gravity errors
+dY = load("disturbance_grav_error.mat").dY;
 
 % plot error
 figure()
 idx = [1, 2, 3, 4, 5, 6];
 lb = ["\Gamma_{xx}", "\Gamma_{xy}", "\Gamma_{xz}", "\Gamma_{yy}", ...
     "\Gamma_{yz}", "\Gamma_{zz}"];
-for j = 1:6
-    subplot(2, 3, idx(j))
-    semilogy(date, ones(1, length(date)) * 3E-3 * sqrt(frec), 'LineWidth', 2, 'Color','k')
-    hold all;
-    semilogy(date, abs(deltaE_angVel(j, :))./1E-9, 'LineWidth', 2, 'Color', 'b', ...
-        'LineStyle','-')
-    semilogy(date, abs(deltaE_att(j, :))./1E-9, 'LineWidth', 2, 'Color', 'r', ...
-        'LineStyle','-')
-    xlabel('date')
-    ylabel(lb(j) + '[E]')
-    grid on;
-    ylim([1E-8, 1E-2]);
+for k = 1:MC
+    for j = 1:6
+        subplot(2, 3, idx(j))
+
+        if(k == 1)
+            semilogy(date, ones(1, length(date)) * 3E-3 * sqrt(frec), ...
+                'LineWidth', 2, 'Color','b'); hold all;
+            semilogy(date, ones(1, length(date)) * 3E-3 * sqrt(frec), ...
+                'LineWidth', 2, 'Color','r');
+            semilogy(date, ones(1, length(date)) * 3E-3 * sqrt(frec), ...
+                'LineWidth', 2, 'Color','g');
+                        semilogy(date, ones(1, length(date)) * 3E-3 * sqrt(frec), ...
+                'LineWidth', 2, 'Color','k');
+        end
+
+        semilogy(date, abs(deltaE_angVel(j, :, k))./1E-9, 'LineWidth', 2, 'Color', 'b', ...
+            'LineStyle','none', 'Marker', '.', 'MarkerSize', 2); 
+        semilogy(date, abs(deltaE_att(j, :, k))./1E-9, 'LineWidth', 2, 'Color', 'r', ...
+            'LineStyle','none', 'Marker', '.', 'MarkerSize', 2);
+        semilogy(date, abs(dY(j, :, k))./1E-9, 'LineWidth', 2, 'Color', 'g', ...
+            'LineStyle','none', 'Marker', '.', 'MarkerSize', 2);
+        if(k ==  1)
+            xlabel('date')
+            ylabel(lb(j) + '[E]')
+            grid on;
+            % % ylim([1E-8, 1E-2]);
+% %             legend('noise level', ...
+% %                 'angular velocity error', 'orientation error');
+        end
+    end
 end
-legend('mili-Eotvos', '\Delta Y');
 sgtitle('Observation error along NRHO orbit');
+legend('angular velocity errors','orientation errors',...
+    'gravity field errors','noise level')
 
 %% FUNCTIONS
 function [dUE, dUM, dUS, dUJ, dUEM, dUSRP, ddU] = compute_sc_acceleration(t, x, planetParams, C_mat, S_mat)

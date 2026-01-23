@@ -1,4 +1,4 @@
-function [Y, bias, noise] = compute_measurements(instrumentParams, planetParams, ...
+function [Y, bias, noise, SF] = compute_measurements(instrumentParams, planetParams, ...
     time, state, Cnm, Snm, NB_EARTH_mat, NB_MOON_mat)
     
     % extract params
@@ -43,6 +43,9 @@ function [Y, bias, noise] = compute_measurements(instrumentParams, planetParams,
                    T_B(2,3);T_B(3,3)]./1E-12;   % [mE]
     end
     
+    % specify Scale Factor (sinusoidal model)
+    SF        = instrumentParams(:, 8).*ones(6, length(time));
+
     % add noise
     cnst_bias = instrumentParams(:, 3).*ones(6, Nt);
     noise     = noise_white + cnst_bias + noise_flicker;
