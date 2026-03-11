@@ -1,6 +1,6 @@
 function [X, Pc, Xhat, Xnot, pref, posf] = EKF_solver_EPHEM(TIME, X0, P0, ...
                     R0, Q0, Qb, meas, planetParams, BN_matrix, Cmat, Smat, ...
-                    posE, posM, posS, gamma)
+                    posE, posM, posS, gamma, measMask)
     % Run EKF solver using only the EPHEMERIDES dynamics.
     % Date: 09/24/2025
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -8,6 +8,9 @@ function [X, Pc, Xhat, Xnot, pref, posf] = EKF_solver_EPHEM(TIME, X0, P0, ...
     % number of time steps
     Nt = length(TIME);
     Ns  = 12;
+
+    % state maks
+    stateMask = [ones(6, 1);measMask];
 
     % initiate filter
     STM0 = reshape(eye(Ns,Ns), [Ns*Ns,1]);
@@ -81,8 +84,17 @@ function [X, Pc, Xhat, Xnot, pref, posf] = EKF_solver_EPHEM(TIME, X0, P0, ...
         else
             Qp = Q;
         end
+        
+        % apply mask
+        dY_used    = dY(logical(measMask));
+        Hmeas_used = Hmeas(logical(measMask), logical(stateMask));
+        R0_used    = R0(logical(measMask), logical(measMask));
+        Q_used     = Qp(logical(stateMask), logical(stateMask));
+        PHI_used   = PHI_ij(logical(stateMask), logical(stateMask));
+        P_used     = P(logical(stateMask), logical(stateMask));
 
-        [X_hat, P, delta_x(:, k)] = EKF(dY, Hmeas, R0, P, PHI_ij, Qp);
+        [X_hat_new, P_new, delta_x(:, k)] = EKF(dY_used, Hmeas_used, R0_used, ...
+            P_used, PHI_used, Q_used);
 
         ee = sum(eig(P) < 0);
         if(ee > 0)
@@ -90,19 +102,19 @@ function [X, Pc, Xhat, Xnot, pref, posf] = EKF_solver_EPHEM(TIME, X0, P0, ...
         end
 
         % update nominal
-        X(:, k) = state' + X_hat;
+        X(logical(stateMask), k) = state(logical(stateMask))' + X_hat_new;
         X0 = X(:, k);
-        
-        % postfit
-        posf(:, k) = pref(:, k) - Hmeas * X_hat;
 
         % save covariance
-        C = (P + P.')/2;
-        P = C;
+        P_sym = (P_new + P_new.')/2;
+        P(logical(stateMask), logical(stateMask)) = P_sym;
         Pc(k, :) = reshape(P, [1, Ns*Ns]);
 
         % save correction
-        Xhat(:, k) = X_hat;
+        Xhat(logical(stateMask), k) = X_hat_new;
+
+        % postfit
+        posf(:, k) = pref(:, k) - Hmeas * Xhat(:, k);
     end
     close(f);
 

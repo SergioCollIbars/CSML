@@ -7,7 +7,7 @@ addpath("data/")
 addpath(genpath("functions/"))
 
 set(0,'defaultAxesFontSize',16);
-cspice_furnsh('/Users/sergiocollibars/Documents/MATLAB/kernels/kernels.tm');
+cspice_furnsh('/Users/sergiocollibars/Documents/MATLAB/kernels/kernels_LRO.tm');
 %%                      LOW LUNAR NAVIGATION CODE
 %
 % Date: 15/12/2025

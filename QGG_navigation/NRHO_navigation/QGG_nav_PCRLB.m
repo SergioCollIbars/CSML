@@ -27,8 +27,8 @@ tmin = 0;                                            % Phi = 0  [-]
 % % tmin = 0.75449775462963;                         % Phi = 180[-]
 % % tmin =  0.615368240740741;                       % Phi = 30 [-]
 T = 1.4968;                                          % [-]
-tmax = 1*T + tmin;                                   % [-]
-frec = 1/30;
+tmax = 3*T + tmin;                                   % [-]
+frec = 1/1;
 augmented_st = 0;
 bias  = 1;
 
@@ -53,7 +53,7 @@ X0 = load_initCond(system, planetParams);
 % %     -0.624211548421406;0.826244659528416;0.42190501223657];     % state @ phi = 30
 
 % compute measurement time
-f_time = 1/30;
+f_time = 1/1;
 n = round((TIME(end)-TIME(1))*(f_time/planetParams(3)) + 1);
 TIME = linspace(TIME(1), TIME(end), n);
 N = f_time / frec;
@@ -65,14 +65,14 @@ end
 dt = TIME(2) - TIME(1);                 % [-]
 
 % Measurement weights
-sigmaMeas = [1, 1/sqrt(2)] * 1E-12;                  % [1/s^2]
+sigmaMeas = [1, 1] * 1E-12;                  % [1/s^2]
 sigmaMeas = sigmaMeas./measDim;                      % [-]
 sAcc      = 1E-10./(planetParams(2)*planetParams(3)^2); % [-] 
 R0 = diag([sigmaMeas(1), sigmaMeas(2), sigmaMeas(2), sigmaMeas(1), ...
 sigmaMeas(2), sigmaMeas(1), sAcc, sAcc, sAcc].^2);    % [-]
 
 %  state process noise
-sigmaQ_s = 5E-8/ (planetParams(2)*planetParams(3)^2) ;% [-]
+sigmaQ_s = 0/ (planetParams(2)*planetParams(3)^2) ;% [-]
 qs = diag([sigmaQ_s, sigmaQ_s, sigmaQ_s].^2).*1;
 I = eye(3, 3);
 Nq = 6;
@@ -84,6 +84,7 @@ varQ   = sigmaQ^2;                                   % [E^2 / sec^2]
 q      = varQ * 1E-18;                               % [1 / sec^5]
 q      = q  / (timeDim^5);                           % [-]
 tau    = 1000 * timeDim;                             % [-]
+tau = 0;
 
 if(augmented_st), Nx = 7; Ns = 7; Nm = 6; 
 elseif(bias), Nx = 12; Ns = 6; Nm = 6;
@@ -190,6 +191,17 @@ plot(TIME/timeDim/86400, obs, 'LineWidth', 2)
 xlabel('TIME [days]')
 ylabel('[-]');
 title('system observability')
+
+% plot uncertainty in norm
+figure();
+subplot(2, 1, 1);
+time_axis = TIME./T;
+semilogy(time_axis, vecnorm(sigmaP(1:3, :)), 'LineWidth', 2);
+grid on; ylabel('[Km]'); xlabel('Orbit rev.'); title('Position');
+
+subplot(2, 1, 2);
+semilogy(time_axis, vecnorm(sigmaP(4:6, :)), 'LineWidth', 2);
+grid on; ylabel('[m/s]'); xlabel('Orbit rev.'); title('Velocity')
 
 % plot uncertainty
 figure()

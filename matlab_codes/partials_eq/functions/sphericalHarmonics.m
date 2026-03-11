@@ -94,7 +94,7 @@ function [U, dU, ddU] = sphericalHarmonics(GM, Re, n_max, C_mat, S_mat, rk, ...
             ddU = double(subs(ddU, {x, y, z}, {rk(1), rk(2), rk(3)}));
         elseif(coords == "spherical")
             rc = sqrt(rk(1)^2 + rk(2)^2 + rk(3)^2);
-            phic = atan2(z, sqrt(rk(1)^2 + rk(2)^2));
+            phic = atan2(rk(3), sqrt(rk(1)^2 + rk(2)^2));
             lambdac = atan2(rk(2), rk(1));
 
              % evaluate at current point
@@ -135,5 +135,5 @@ function [N] = NormFactor(n, m)
     end
     fac1 = factorial(n - m);
     fac2 = factorial(n + m);
-    N = ((2 - delta)*(2*n + 1) * fac1 /fac2)^(0.5);
+    N    =  ((2 - delta)*(2*n + 1) * fac1 /fac2)^(0.5);
 end

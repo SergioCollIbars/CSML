@@ -41,7 +41,6 @@ function [SH_N, sigma_N] = NSM_solver_att(planetParams, RotPlanet, B_ACI_mat, R,
             [Hrot_omega_dyad, H_omegaDot_dyad, ~, ~] = compute_angularDyadPartials_v2(angVel(:, j), Iner);
            
             % Null space method correcting for attitude
-            planetParams(3) = 0;
             [Y_ACI, Hc_ACI, ~] = gradiometer_meas(t(j) ,planetParams, ACAF_ACI, [rn(:, j)', vn(:, j)'], ...
                     zeros(9, Nt), Cp, Sp);
 

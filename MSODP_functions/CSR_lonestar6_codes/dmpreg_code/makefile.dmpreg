@@ -1,0 +1,12 @@
+OBJECTS = dmpreg.c
+CCFLAGS = -D_LARGEFILE64_SOURCE # added to fix compile warning for implicit declaration of fopen64
+
+dmpreg: $(OBJECTS)
+	cc $(CCFLAGS) -o dmpreg $(OBJECTS)
+
+remake :
+	rm -f dmpreg
+	make
+
+clean :
+	rm -f dmpreg

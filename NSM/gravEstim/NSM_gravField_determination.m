@@ -11,7 +11,7 @@ props = java.lang.System.getProperties;
 props.setProperty('mail.smtp.auth','true');
 props.setProperty('mail.smtp.starttls.enable','true'); % For TLS
 props.setProperty('mail.smtp.port','587'); % Common TLS port
-email = 1;  % send plots by email 1 = yes / 0 = no
+email = 0;  % send plots by email 1 = yes / 0 = no
 
 % Start diary logging
 diaryFile = fullfile(tempdir, 'console_log.txt');
@@ -48,7 +48,7 @@ saveData = 0;             % options: 0 / 1
 
 type_Attitude = "RTN";    % options: inertial / RTN / GRF
 type_posErr = "constant"; % options: constant / periodic / random
-type_attErr = "constant"; % options: constant / periodic / linear
+type_attErr = "random";   % options: constant / periodic / linear
 
 printConfig_console(Planet, Solver, Errors, measMode, saveData, ...
     type_Attitude, type_posErr, type_attErr);
@@ -68,7 +68,7 @@ DEC = poleParams(4);
 % Time options
 n   = sqrt(GM / r^3);    % Mean motion         [rad/s]
 T   = (2 * pi / n);
-rev = 10;
+rev = 20 * 30;
 f   = 1/10;
 t   = linspace(0, rev*T, rev*T * f);
 Nt  = length(t);
@@ -197,7 +197,7 @@ R = diag(std_devs(logical(mask)).^2);
     angAcc_true); 
 Ytrue  = Ytrue(logical(mask), :) + noise(logical(mask), :);
 
-% plot gradioemter signal
+% plot gradiometer signal
 if(length(Ytrue(:, 1)) > 6)
     plot_signal(Ytrue, t);
 end

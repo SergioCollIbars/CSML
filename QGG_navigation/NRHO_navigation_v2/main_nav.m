@@ -1,5 +1,5 @@
-% % clear;
-% % clc;
+clear;
+clc;
 close all;
 format short;
 
@@ -24,12 +24,13 @@ cspice_furnsh('/Users/sergiocollibars/Documents/MATLAB/kernels/kernels.tm')
 % Initial configuration
 plotResults   = 1;                                      % options: 1 or 0
 saveData      = 0;                                      % options: 1 or 0
-loadData      = 1;                                      % options: 1 or 0
+loadData      = 0;                                      % options: 1 or 0
 attitude      = "inertial";                             % options: inertial
+mask          = [1;0;0;1;0;1];                          % mask: xx, xy, xz, yy, yz zz;
 
 % time parameters
 tmin = 0;
-tmax = 1.2*1.4968 + tmin;                                 % [rad] 
+tmax = 4.5*1.4968 + tmin;                               % [rad] 
 frec = 1/30;                                            % meas. freq. [Hz]
 
 if(loadData), [tmin,~,~,~, ~] = loadData_files(); ...
@@ -107,7 +108,7 @@ while(abs(error) > epsilon && count < MaxIter)
                 [X_B, P_B, Xhat_B, XNOT, pref, posf] = ...
                     CKF_solver_EPHEM(t_batch, X0, Xnot, P0, R0, Q0, Qb,...
                     T, planetParams, BN_matrix_meas, ...
-                    Cmat_estim, Smat_estim, posE, posM, posS);
+                    Cmat_estim, Smat_estim, posE, posM, posS, mask);
                 
                 [Xnot, error, corr_iter, count, prefIter, posIter] = ...
                     check_err_save_post(Xnot, XNOT, corr_iter, count,...
@@ -125,7 +126,7 @@ while(abs(error) > epsilon && count < MaxIter)
         P0 = reshape(P_B(1, :), [Ns,Ns]);
         [X_E, P_E, Xhat_E, XNOT, pref, posf] = EKF_solver_EPHEM(t_EKF, X0, P0, ...
                     R0, Q0, Qb, T, planetParams, BN_matrix_meas, ...
-                    Cmat_estim, Smat_estim, posE, posM, posS, gamma);
+                    Cmat_estim, Smat_estim, posE, posM, posS, gamma, mask);
 
         X = X_E;
         P = P_E;

@@ -1,6 +1,6 @@
  # Gravity field degree & order
 ###########################################
-    	n_max = 10
+    n_max = 100
 
  # measurement weight: [mE * sqrt(Hz)]
 ###########################################
@@ -25,7 +25,7 @@
 
 # attitude uncertainty: [arcseconds]
 ########################################
-	sigma_att = 10
+	sigma_att = 0
 
 
 # Filter uncertainty: [m], [m/s] & [mE]
@@ -37,5 +37,5 @@
 
 # Instrument orientation: Inertial, RTN, ENU
 ###########################################
-	orientation = Inertial
+	orientation = RTN
     

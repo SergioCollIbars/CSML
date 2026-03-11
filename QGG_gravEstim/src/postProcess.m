@@ -19,10 +19,10 @@ addpath('../modules/orbital_module/functions/');
 set(0,'defaultAxesFontSize',16);
 
 % Input parameters
-plotOrbit = 0;                                       % plot orbit boolean
+plotOrbit = 1;                                       % plot orbit boolean
 plotAttitude = 0;                                    % plot Attitude boolean
-plotAcc = 1;                                         % plot acc boolean
-plotEstim = 1;                                       % plot estimation
+plotAcc = 0;                                         % plot acc boolean
+plotEstim = 0;                                       % plot estimation
 
 test = false;                                        % show test plots
 
@@ -383,6 +383,9 @@ if(plotEstim == true)
     % plot prefit && postfit
     plotPrefPosf(TIME, T2, T3);
 
+% %     plot_accErr_over_asteroid(X, n_max, Nc, Ns, Cnm_Bennu, Snm_Bennu, ...
+% %         GM, R_Bennu);
+
     % compute RMS value postfit
     r = table2array(T2);
     for j = 1:6
@@ -560,6 +563,121 @@ end
 
 
 %%                          FUNCTIONS
+function [V, F, VT, VN] = read_obj_vertices(filename)
+%READ_OBJ_VERTICES Read vertices/faces from a Wavefront OBJ file.
+%
+%   [V,F] = read_obj_vertices(filename)
+%   [V,F,VT,VN] = read_obj_vertices(filename)
+%
+% Outputs:
+%   V  : Nx3 vertex coordinates
+%   F  : Mx3 triangle faces (1-based indices into V)
+%   VT : Kx2 texture coordinates (optional, may be empty)
+%   VN : Lx3 vertex normals (optional, may be empty)
+%
+% Notes:
+% - Supports face formats:
+%       f v1 v2 v3 ...
+%       f v1/vt1 v2/vt2 v3/vt3 ...
+%       f v1//vn1 v2//vn2 v3//vn3 ...
+%       f v1/vt1/vn1 ...
+% - Triangulates polygon faces by fan triangulation.
+
+    arguments
+        filename (1,:) char
+    end
+
+    fid = fopen(filename, 'r');
+    if fid == -1
+        error('read_obj_vertices:FileOpenFailed', 'Cannot open file: %s', filename);
+    end
+
+    V  = zeros(0,3);
+    VT = zeros(0,2);
+    VN = zeros(0,3);
+    F  = zeros(0,3);
+
+    % Read line-by-line
+    while ~feof(fid)
+        line = fgetl(fid);
+        if ~ischar(line), break; end
+        line = strtrim(line);
+
+        % Skip empty or comment lines
+        if isempty(line) || startsWith(line, '#')
+            continue;
+        end
+
+        % --- Vertex positions
+        if startsWith(line, 'v ')
+            vals = sscanf(line(3:end), '%f');
+            if numel(vals) < 3
+                continue;
+            end
+            V(end+1,:) = vals(1:3).'; %#ok<AGROW>
+            continue;
+        end
+
+        % --- Texture coordinates
+        if startsWith(line, 'vt ')
+            vals = sscanf(line(4:end), '%f');
+            if numel(vals) >= 2
+                VT(end+1,:) = vals(1:2).'; %#ok<AGROW>
+            end
+            continue;
+        end
+
+        % --- Vertex normals
+        if startsWith(line, 'vn ')
+            vals = sscanf(line(4:end), '%f');
+            if numel(vals) >= 3
+                VN(end+1,:) = vals(1:3).'; %#ok<AGROW>
+            end
+            continue;
+        end
+
+        % --- Faces (polygon -> triangulate)
+        if startsWith(line, 'f ')
+            tokens = split(line(3:end));
+            if numel(tokens) < 3
+                continue;
+            end
+
+            vidx = zeros(1, numel(tokens));
+            for k = 1:numel(tokens)
+                % token can be: v, v/vt, v//vn, v/vt/vn
+                parts = split(tokens{k}, '/');
+                vstr = parts{1};
+                vidx(k) = str2double(vstr);
+            end
+
+            % Handle negative indices (OBJ: -1 means last vertex)
+            nV = size(V,1);
+            neg = vidx < 0;
+            vidx(neg) = nV + 1 + vidx(neg);
+
+            % Fan triangulation: (1,2,3), (1,3,4), ...
+            for t = 2:(numel(vidx)-1)
+                F(end+1,:) = [vidx(1), vidx(t), vidx(t+1)]; %#ok<AGROW>
+            end
+            continue;
+        end
+
+        % Ignore other lines: o, g, s, usemtl, mtllib, etc.
+    end
+
+    fclose(fid);
+
+    % Basic sanity checks
+    if isempty(V)
+        warning('read_obj_vertices:NoVertices', ...
+            'No vertices were found. Check that the file contains lines starting with "v ".');
+    end
+    if isempty(F)
+        warning('read_obj_vertices:NoFaces', ...
+            'No faces were found. Check that the file contains lines starting with "f ".');
+    end
+end
 
 function AccP(t, ad, Ub, d)
     % seconds 2 days
@@ -711,6 +829,72 @@ function AccP(t, ad, Ub, d)
 
 end
 
+% % function plot_accErr_over_asteroid(X, n_max, Nxc, Nxs, Ct, St, GM, Re)
+% %     scale =  600;  % Bennu object scale factor
+% %     [V, F, ~, ~] = read_obj_vertices('Bennu_v20_200k.obj');
+% %    
+% %     p = V * 2 * scale;
+% %     
+% %     x = p(:,1); y = p(:,2); z = p(:,3);
+% % 
+% %     % compute Cmat and Smat at nominal
+% %     C_mat = zeros(n_max + 1, n_max + 1);
+% %     S_mat = zeros(n_max + 1, n_max + 1);
+% % 
+% %     C_mat(1, 1) = 1;
+% %     
+% %     n = 2;
+% %     m = 0;
+% %     for j = 2:Nxc
+% %         N = n + 1;
+% %         M = m + 1;
+% %         C_mat(N, M) = X(j);
+% %         if(m < n)
+% %             m = m + 1;
+% %         else
+% %             m = 0;
+% %             n = n +1;
+% %         end
+% %     end
+% % 
+% %     n = 2;
+% %     m = 0;
+% %     for j = Nxc + 1:Nxs + Nxc
+% %         N = n + 1;
+% %         M = m + 2;
+% %         S_mat(N, M) = X(j);
+% %         if(m < n - 1)
+% %             m = m + 1;
+% %         else
+% %             m = 0;
+% %             n = n + 1;
+% %         end
+% %     end
+% %     
+% %     acc_err = nan(1, length(x));
+% %     for j = 1:length(x)
+% %             r_ACAF = [x(j);y(j);z(j)];
+% % 
+% %             if(vecnorm(r_ACAF) < Re)
+% %                 warning('Not valid point ... ')
+% %             end
+% % 
+% %             % compute estimated acceleration
+% %             [~, dU2, ~] = potentialGradient_nm(C_mat, S_mat, n_max, ...
+% %                                                 r_ACAF, Re, X(1), 0);
+% %             % compute true acceleration
+% %             [~, dU1, ~] = potentialGradient_nm(Ct, St, n_max, ...
+% %                                                 r_ACAF, Re, GM, 0);
+% %             acc_err(j) = vecnorm(dU2 - dU1);
+% %     end
+% % 
+% %     figure;
+% %     h = trisurf(F, p(:,1), p(:,2), p(:,3), acc_err, 'EdgeColor','none');
+% %     axis equal; view(3);
+% %     colormap("jet"); colorbar;
+% %     title('|a| on Bennu surface (vertex-evaluated)');
+% % end
+
 function OrbitP(t, ri, rb, rACAF, lon, lat, body)
 
 % gray color
@@ -755,10 +939,11 @@ if(body == "Earth")
 elseif(body == "Bennu")
     scale =  450;  % Bennu object scale factor
     obj = readObj('Bennu-Radar.obj');
+
     p = obj.v * 2 * scale;
     f = obj.f.v ; 
 
-    trisurf(f,p(:,1),p(:,2),p(:,3));
+    trisurf(F,p(:,1),p(:,2),p(:,3));
     colormap(gray);
     axis equal
 elseif(body == "Eros")
@@ -900,7 +1085,7 @@ function plotMapAccError(X, n_max, Nxc, Nxs, Ct, St, GM, Re, body)
     % orbit parameters
 
     Np = 300;
-    R = 1000;                           % Bennu SC radius
+    R = 300;                           % Bennu SC radius
 
     % longitude meshgrid
     lat = linspace(-pi/2, pi/2, Np);
@@ -957,12 +1142,14 @@ function plotMapAccError(X, n_max, Nxc, Nxs, Ct, St, GM, Re, body)
             % compute estimated acceleration
             [~, dU2, ~] = potentialGradient_nm(C_mat, S_mat, n_max, ...
                                                 r_ACAF, Re, X(1), 0);
+            [~, dU2_PM, ~] = potentialGradient_nm(C_mat, S_mat, 0, ...
+                                                r_ACAF, Re, X(1), 0);
             % compute true acceleration
             [~, dU1, ~] = potentialGradient_nm(Ct, St, n_max, ...
                                                 r_ACAF, Re, GM, 0);
-            err = vecnorm(dU2 - dU1) / vecnorm(dU1) * 100;
+            err = vecnorm(dU2 - dU1);
             acc_t(i, j) = vecnorm(dU1);
-            acc_e(i, j) = vecnorm(dU2);
+            acc_e(i, j) = vecnorm(dU2- dU2_PM);
             acc_err(i, j) = err;
         end
     end

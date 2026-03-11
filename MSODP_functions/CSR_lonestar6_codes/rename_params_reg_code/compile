@@ -1,0 +1,1 @@
+cc -lm -o rename_params_in_reg rename_params_in_reg.c

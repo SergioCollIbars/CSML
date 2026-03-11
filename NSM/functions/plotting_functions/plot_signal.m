@@ -27,7 +27,7 @@ function [] = plot_signal(dataVec, t)
         grid on;
         ylabel('[Eotvos]')
         title(tt(j))
-        xlim([datetime(2012,11,02,0,0,0), datetime(2012,11,03,0,0,0)])
+        %xlim([datetime(2012,11,02,0,0,0), datetime(2012,11,03,0,0,0)])
     end
     
 % %     % Compute PSD using Welch's method

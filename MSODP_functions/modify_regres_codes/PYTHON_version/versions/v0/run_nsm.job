@@ -1,0 +1,25 @@
+#!/bin/bash
+#SBATCH -J nsm_map
+#SBATCH -p grace   #normal                 # grace-serial      #  normal
+#SBATCH -N 1
+#SBATCH -n 1
+#SBATCH -t 02:00:00
+#SBATCH --mem=96G
+#SBATCH -o logs/%x_%j.out
+#SBATCH -e logs/%x_%j.err
+
+mkdir -p logs
+
+# load modules:
+module load python3
+
+# Define paths
+OBSERVATION_PATH="/scratch/11342/sergiocollibars1294/GG_apriori/"
+REGRESS_PATH="/scratch/11342/sergiocollibars1294/regress_reg/"
+OUTPUT_PATH="/scratch/11342/sergiocollibars1294/NSM_regress_reg/"
+
+echo "Starting the NSM mapping process..."
+
+python3 -u main.py "$OBSERVATION_PATH" "$REGRESS_PATH" "$OUTPUT_PATH"
+
+echo "Process completed successfully."

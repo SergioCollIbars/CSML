@@ -16,7 +16,7 @@ set(0,'defaultAxesFontSize',16);
 % Date: 10/09/24
 
 % Select body
-body = "Bennu";         % options: Bennu / Earth
+body = "Earth";         % options: Bennu / Earth
 if(body == "Bennu")
     % Asteroid parameters.
     path = "HARMCOEFS_BENNU_OSIRIS_1.txt";
@@ -24,88 +24,137 @@ if(body == "Bennu")
     GM = 5.2;
     n_max  = 6;
     normalized = 1;
+elseif(body == "Eros")
+    % Asteroid parameters.
+    path = "HARMCOEFS_EROS_CD_1.txt";
+    [Cnm, Snm, Re] = readCoeff(path);
+    GM =  459604.431484721;
+    n_max  = 10;
+    normalized = 1;
 else
     % Earth parameters
     path = "HARMCOEFS_EARTH_1.txt";
     [Cnm, Snm, Re] = readCoeff(path);
-    path = "SIGMACOEFS_EARTH_1.txt";
-    [sigma_Cnm, sigma_Snm, ~] = readCoeff(path);
     GM = 3.986004418E14;
-    n_max  = 300;
+    n_max  = 10;
     normalized = 1;
 end
 asterParams = [GM, Re, n_max, normalized];
+n_max_K     = 10; % kaula max degree
 
 % % % SH harmonics
-[Nc, Ns, Ncs] = count_num_coeff(n_max); 
+[Nc, Ns, ~] = count_num_coeff(n_max_K); 
 if(body == "Bennu")
+    K = 0.025;
+    [X_K] = compute_Kaula(n_max_K, K);
+    X_K_RMS = computeRMS_coeffErr(n_max_K, Nc, Ns, ...
+            X_K, zeros(n_max_K+1, n_max_K+1), zeros(n_max_K+1, n_max_K+1));
+    X_K_RMS(1) = nan;
+    
+    [Nc, Ns, ~] = count_num_coeff(n_max); 
     [X] = mat2list(Cnm, Snm, Nc, Ns);
-    X_RMS = computeRMS_coeffErr(n_max, Nc, Ns, ...
+    RMS_vals = computeRMS_coeffErr(n_max, Nc, Ns, ...
             X, zeros(n_max+1, n_max+1), zeros(n_max+1, n_max+1));
+
+    X_RMS = X_K_RMS.*nan;
+    X_RMS(1:length(RMS_vals)) = RMS_vals;
+
     % orbit radius
     r      = 1E3;
+elseif(body == "Eros")
+    K = 0.1;
+    [X_K] = compute_Kaula(n_max_K, K);
+    X_K_RMS = computeRMS_coeffErr(n_max_K, Nc, Ns, ...
+            X_K, zeros(n_max_K+1, n_max_K+1), zeros(n_max_K+1, n_max_K+1));
+    X_K_RMS(1) = nan;
+
+    [Nc, Ns, ~] = count_num_coeff(n_max);
+    [X] = mat2list(Cnm, Snm, Nc, Ns);
+    RMS_vals = computeRMS_coeffErr(n_max, Nc, Ns, ...
+            X, zeros(n_max+1, n_max+1), zeros(n_max+1, n_max+1));
+
+    X_RMS = X_K_RMS.*nan;
+    X_RMS(1:length(RMS_vals)) = RMS_vals;
+
+    % orbit radius
+    r      = 32E3;
 else
     % compute Kaula rule
     K = 10^-5;
-    [X] = compute_Kaula(n_max, K);
-    X_RMS = computeRMS_coeffErr(n_max, Nc, Ns, ...
+    [X_K] = compute_Kaula(n_max_K, K);
+    X_K_RMS = computeRMS_coeffErr(n_max_K, Nc, Ns, ...
+            X_K, zeros(n_max_K+1, n_max_K+1), zeros(n_max_K+1, n_max_K+1));
+    X_K_RMS(1) = nan;
+
+    [Nc, Ns, ~] = count_num_coeff(n_max);
+    [X] = mat2list(Cnm, Snm, Nc, Ns);
+    RMS_vals = computeRMS_coeffErr(n_max, Nc, Ns, ...
             X, zeros(n_max+1, n_max+1), zeros(n_max+1, n_max+1));
 
+    X_RMS = X_K_RMS.*nan;
+    X_RMS(1:length(RMS_vals)) = RMS_vals;
+
     % orbit radius
-    r      = 250E3 + Re; 
+    r      = 255E3 + Re; 
 end
 
 % time vector
 n = sqrt(GM / r^3);    % Mean motion         [rad/s]
 T = (2 * pi / n);
-rev = 3;
-f = 1/10;
+rev = 9;
+f = 1/1;
 Nt = rev*T * f;
+
+% specify number of meas assuming f = 1Hz
+Nt = 9 * 86400;
 
 % scale factor 
 S = 1E6;
 
 % weight matrix
-sigmaM  = 1E-12;
+sigmaM  = 10E-12;
 sigmaR  = 1 / S;
 
 % select measurement set
-set = 2;
+set = 1;
 
 % compute degree variance analytical
-[sigma2] = compute_gravDegreeVar(n_max, sigmaM, GM/(S^3), Re/S, r/S, Nt, set);
+[sigma2] = compute_gravDegreeVar(n_max_K, sigmaM, GM/(S^3), Re/S, r/S, Nt, set);
 [Sxc] = compute_sensitivity(n_max, sigmaR, r/S, X);
 [sigma2_r] = compute_gravDegreeVar_PE(n_max, sigmaM, GM/(S^3), Re/S, r/S, Nt, X, set);
 
 Sxc_RMS  = computeRMS_coeffErr(n_max, Nc, Ns, ...
-            Sxc, zeros(n_max+1, n_max+1), zeros(n_max+1, n_max+1)); 
-sigma_RMS  = computeRMS_coeffErr(n_max, Nc, Ns, ...
-            sqrt(sigma2), zeros(n_max+1, n_max+1), zeros(n_max+1, n_max+1)); 
+            Sxc, zeros(n_max+1, n_max+1), zeros(n_max+1, n_max+1));  
 sigmar_RMS  = computeRMS_coeffErr(n_max, Nc, Ns, ...
             sqrt(sigma2_r.*(S^2)), zeros(n_max+1, n_max+1), zeros(n_max+1, n_max+1)); 
 
+[Nc, Ns, Ncs] = count_num_coeff(n_max_K); 
+sigma_RMS  = computeRMS_coeffErr(n_max_K, Nc, Ns, ...
+            sqrt(sigma2), zeros(n_max_K+1, n_max_K+1), zeros(n_max_K+1, n_max_K+1));
+
 % plots
 figure()
-semilogy(1:n_max, sigma_RMS, 'LineWidth', 2)
+semilogy(1:n_max_K, sigma_RMS, 'LineWidth', 2)
 hold all;
-semilogy(1:n_max, X_RMS, 'LineWidth', 2, 'Color', 'k')
+semilogy(1:n_max_K, X_K_RMS, 'LineWidth', 1.2, 'Color', 'k', 'LineStyle','--')
+semilogy(1:n_max_K, X_RMS,   'LineStyle','none', 'Marker','*', 'Color','k')
 xlabel('degree')
 title('error degree variance')
 legend('degree variance', 'Kaula')
 grid on;
-
-figure()
-semilogy(1:n_max, sigmar_RMS, 'LineWidth', 2, 'color', 'b')
-xlabel('degree')
-title('Position error threshold')
-grid on;
-
-figure()
-semilogy(1:n_max, Sxc_RMS./X_RMS*100, 'LineWidth', 2, 'Color','g')
-xlabel('degree')
-ylabel('[%]')
-title('Sensitivity error')
-grid on;
+xlim([1, n_max_K])
+% % figure()
+% % semilogy(1:n_max, sigmar_RMS, 'LineWidth', 2, 'color', 'b')
+% % xlabel('degree')
+% % title('Position error threshold')
+% % grid on;
+% % 
+% % figure()
+% % semilogy(1:n_max, Sxc_RMS./X_RMS*100, 'LineWidth', 2, 'Color','g')
+% % xlabel('degree')
+% % ylabel('[%]')
+% % title('Sensitivity error')
+% % grid on;
 
 %% FUNCTIONS
 function [sigma2] = compute_gravDegreeVar(n_max, sigmaM, GM, Re, r, Nt, set)

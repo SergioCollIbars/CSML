@@ -2,7 +2,7 @@ function [ax, nx, mxc, mcc] = NSM_method(Y, Yc, Hc, R, Hpr)
     dY = Y - Yc;
     % % C = null(Hpr');
     [~,~,d] = svd(Hpr');
-    C = d(:, 6);
+    C = d(:, 2);
 
     % project measurements
     y  = C' * dY;

@@ -4,7 +4,7 @@ function [Hpos] = compute_posPartials(n_max, normalized, Cmat, Smat, Re, GM, r, 
     ACI_ACAF = ACAF_ACI';
     B_ACI = ACAF_B' * ACAF_ACI;
 
-    eps = 1E-6;
+    eps = 1E-3;
     for j = 1:3
         Ar = zeros(3, 1);
         Ar(j) = eps;

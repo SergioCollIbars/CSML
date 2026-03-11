@@ -1,6 +1,6 @@
 function [X, Pt, Xhat, Xnot, pref, posf] = CKF_solver_EPHEM(TIME, X0, ...
     Xnot, P0, R0, Q0, Qb, meas, planetParams, BN_matrix, C_mat, ...
-    S_mat,posE, posM, posS)
+    S_mat,posE, posM, posS, measMask)
     % Run CKF solver using only the EPHEMERIDES dynamics.
     % Date: 09/24/2025
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -8,6 +8,9 @@ function [X, Pt, Xhat, Xnot, pref, posf] = CKF_solver_EPHEM(TIME, X0, ...
     % Number of parameters
     Nt = length(TIME);
     Ns = 12;
+
+    % state maks
+    stateMask = [ones(6, 1);measMask];
 
     % state values
     X0 = X0 + Xnot;
@@ -62,19 +65,29 @@ function [X, Pt, Xhat, Xnot, pref, posf] = CKF_solver_EPHEM(TIME, X0, ...
         if(j== 1)
             Q = Q.*0;
         end
-
+        
+        % apply mask
+        dY_used    = dY(logical(measMask));
+        Hmeas_used = Hmeas(logical(measMask), logical(stateMask));
+        R0_used    = R0(logical(measMask), logical(measMask));
+        Q_used     = Q(logical(stateMask), logical(stateMask));
+        PHI_used   = PHI_ij(logical(stateMask), logical(stateMask));
+        P_used     = P(logical(stateMask), logical(stateMask));
+        X_hat_used = X_hat(logical(stateMask));
 
         % run CKF
-        [X_hat, P, ~, ~] = CKF(dY, ...
-             Hmeas, R0, P, X_hat, PHI_ij, Q);
-        Xhat(:, j) = X_hat;
+        [X_hat_new, P_new, ~, ~] = CKF(dY_used, ...
+             Hmeas_used, R0_used, P_used, X_hat_used, PHI_used, Q_used);
+
+        Xhat(logical(stateMask), j) = X_hat_new;
+        X_hat(logical(stateMask))   = X_hat_new;
 
         % update current state
-        X(:, j) = X(:, j) + X_hat;
+        X(logical(stateMask), j) = X(logical(stateMask), j) + X_hat_new;
 
         % current uncertainty
-        C = (P + P.')/2;
-        P = C;
+        P_sym = (P_new + P_new.')/2;
+        P(logical(stateMask), logical(stateMask)) = P_sym;
         Pt(j, :) = reshape(P, [1, Ns*Ns]);
     end
     

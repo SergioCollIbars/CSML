@@ -17,28 +17,30 @@ set(0,'defaultAxesFontSize',16);
 
 threshold = "attitude";     % option: position / attitude
 
-% % Asteroid parameters.
-path = "HARMCOEFS_BENNU_OSIRIS_1.txt";
-[Cnm, Snm, Re] = readCoeff(path);
-GM = 5.2;
-n_max  = 6;
-normalized = 1;
-W = 4.06130329511851E-4;  % Rotation ang. vel   [rad/s]
-W0 = 0;                   % Initial asteroid longitude
-RA = deg2rad(86.6388);    % Right Ascension     [rad]
-DEC = deg2rad(-65.1086);  % Declination         [rad]
-
-% % % % Eros parameters
-% % path = "HARMCOEFS_EROS_CD_1.txt";
-% % name = "EROS";
+% % % % Asteroid parameters.
+% % path = "HARMCOEFS_BENNU_OSIRIS_1.txt";
 % % [Cnm, Snm, Re] = readCoeff(path);
-% % n_max  = 10;
+% % GM = 5.2;
+% % n_max  = 6;
 % % normalized = 1;
-% % GM =  459604.431484721;          % Point mass value    [m^3/s^2]
-% % W = 1639.38928 * pi/180 /86400;  % Rotation ang. vel   [rad/s]
-% % W0 = 0;                          % Initial asteroid longitude
-% % RA = deg2rad(11.363);            % Right Ascension     [rad]
-% % DEC = deg2rad(17.232);           % Declination         [rad]
+% % W = 4.06130329511851E-4;  % Rotation ang. vel   [rad/s]
+% % W0 = 0;                   % Initial asteroid longitude
+% % RA = deg2rad(86.6388);    % Right Ascension     [rad]
+% % DEC = deg2rad(-65.1086);  % Declination         [rad]
+% % min_radius = 1.4;
+
+% % Eros parameters
+path = "HARMCOEFS_EROS_CD_1.txt";
+name = "EROS";
+[Cnm, Snm, Re] = readCoeff(path);
+n_max  = 10;
+normalized = 1;
+GM =  459604.431484721;          % Point mass value    [m^3/s^2]
+W = 1639.38928 * pi/180 /86400;  % Rotation ang. vel   [rad/s]
+W0 = 0;                          % Initial asteroid longitude
+RA = deg2rad(11.363);            % Right Ascension     [rad]
+DEC = deg2rad(17.232);           % Declination         [rad]
+min_radius = 1.5;
 
 poleParams = [W, W0, RA, DEC];
 asterParams = [GM, Re, n_max, normalized];
@@ -49,13 +51,18 @@ asterParams = [GM, Re, n_max, normalized];
 
 % Initial conditions
 Nthrs = 10;
-radius = linspace(6*Re, 1.4*Re, Nthrs);
+radius = linspace(6*Re, min_radius*Re, Nthrs);
 meanThrs = ones(n_max-1, Nthrs) * NaN;
 for k = 1:length(radius)
+    phi    = pi/2;
+    lambda = 0;
+    theta  = pi/2 - phi;% Orbit colatitude [m]
+    Rot = [sin(theta)*cos(lambda), cos(theta)*cos(lambda), -sin(lambda);...
+        sin(theta)*sin(lambda), cos(theta)*sin(lambda), cos(lambda);...
+        cos(theta), -sin(theta), 0];
     r = radius(k);
-    % % r       = 1E3;               % [m]
-    r0      = [r;0;0];           % [ACI]
-    v0      = [0;0;sqrt(GM/r)];  % [ACI]
+    r0      = Rot * [r;0;0];           % [ACI]
+    v0      = Rot * [0;0;sqrt(GM/r)];  % [ACI]
     
     % time vector
     n = sqrt(GM / r^3);    % Mean motion         [rad/s]
@@ -66,7 +73,7 @@ for k = 1:length(radius)
     Nt = length(t);
     
     % measurement uncertianty
-    sigma = 1E-12;                          % [1/s^2]
+    sigma = 1E-11 * sqrt(f);                          % [1/s^2]
     noise0 = zeros(9, Nt);
     
     % Integrate trajectory
@@ -97,7 +104,7 @@ for k = 1:length(radius)
     [~, Mxc, Mcc] = get_considerCov_apriori(P0, Pc, Pxc);
     [~, Mxc_NSM, Mcc_NSM] = get_considerCov_apriori(P0, Pc_NSM, Pxc_NSM);
     Ax = 0;  Ax_NSM = 0;
-    R0 = diag([sigma, sigma, sigma, sigma, sigma].^2);
+    R0 = diag([1,1/2,1/2,1,1/2,1])*sigma^2;
     for j = 1:Nt
         fprintf('Loading ... %.2f\n % ', j/Nt * 100);
         % current position
@@ -109,40 +116,41 @@ for k = 1:length(radius)
         ACAF_ACI =rotationMatrix(pi/2 + RA, pi/2 - DEC, Wt, [3, 1, 3]);
     
         % computed meas. partials
-        [~, Hx_ACI, ~] = gradiometer_meas(t(j) ,asterParams, ACAF_ACI, [rn(:, j)', vn(:, j)'], ...
+        [~, Hx_ACI, ~] = gradiometer_meas(t(j) ,asterParams, ACAF_ACI,...
+            [rn(:, j)', vn(:, j)'], ...
                 noise0, Cnm, Snm);
         hx = [Hx_ACI(1, 2:end); Hx_ACI(2, 2:end); Hx_ACI(3, 2:end);Hx_ACI(5, 2:end);...
-            Hx_ACI(6, 2:end)];
+            Hx_ACI(6, 2:end); Hx_ACI(9, 2:end)];
     
         % compute Consider Params partials for LS and NSM 
-        [Hc] = compute_posPartials(n_max, normalized, Cnm, Snm, Re, GM, rn_ACI, ACAF_ACI, ACAF_ACI);
-        hpos = [Hc(1, :);Hc(2,:);Hc(3,:);Hc(5, :);Hc(6, :)];
+        [Hc] = compute_posPartials(n_max, normalized, Cnm, Snm, Re, GM,...
+            rn_ACI, ACAF_ACI, ACAF_ACI);
+        hpos = [Hc(1, :);Hc(2,:);Hc(3,:);Hc(5, :);Hc(8, :);Hc(9, :)];
         hap = compute_posPartials_2ndOrder(GM, rn_ACI(1), rn_ACI(2), rn_ACI(3));
         
         if(threshold == "attitude")
             % compute attitude partials. % Inertially fixed
-            [Hrot_grad] = compute_rotPartials(n_max, normalized, Cnm, Snm, Re, GM, rn_ACI, ACAF_ACI, ACAF_ACI);
+            [Hrot_grad] = compute_rotPartials(n_max, normalized,...
+                Cnm, Snm, Re, GM, rn_ACI, ACAF_ACI, ACAF_ACI);
             Hrot = Hrot_grad;
-            hrot = [Hrot(1, :);Hrot(2,:);Hrot(3,:);Hrot(5, :);Hrot(6, :)];
+            hrot = [Hrot(1, :);Hrot(2,:);Hrot(3,:);...
+                Hrot(5, :);Hrot(6, :);Hrot(9, :)];
             hc = hrot;
         else
-             hc = hpos; % consider parameters matrix. Position NSM
+            hc = hpos; % consider parameters matrix. Position NSM
         end
     
         % LS covariance
-        Ax  = Ax  + (hx' * inv(R0) * hx);
-        Mxc = Mxc + (hx' * inv(R0) * hc);
-        Mcc = Mcc + (hc' * inv(R0) * hc); 
+        Ax  = Ax  + (hx' * (R0 \ hx));
+        Mxc = Mxc + (hx' * (R0 \ hc));
+        Mcc = Mcc + (hc' * (R0 \ hc)); 
     
         % NSM covariance
         C = null(hc');
         hx_NSM = C' * hx;
-        hap_NSM = C' * hap;
-        r  = C' * R0 * C;
+        r_NSM  = C' * R0 * C;
         
-        Ax_NSM = Ax_NSM + hx_NSM' * inv(r) * hx_NSM;
-        Mxc_NSM = Mxc_NSM + (hx_NSM' * inv(r) * hap_NSM);
-        Mcc_NSM = Mcc_NSM + (hap_NSM' * inv(r) * hap_NSM); 
+        Ax_NSM = Ax_NSM + hx_NSM' * (r_NSM \ hx_NSM);
     end
     if(rank(Ax) ~= Ncs -1)
         disp('NOT ALL STATES OBSERVABLE');
@@ -153,24 +161,19 @@ for k = 1:length(radius)
     
     % compute final covariance at epoch time. NSM
     Px_NSM = inv(Ax_NSM);
-    Sxc_NSM = -Px_NSM * Mxc_NSM;
     
     % compute analytical sigma pos value
     C = diag(Px_NSM - Px);
-    A = diag(Sxc_NSM * Sxc_NSM');
     B = diag(Sxc * Sxc');
-    sigmaTh1 = A.*0;
-    for j = 1:length(A)
+    sigmaTh1 = B.*0;
+    for j = 1:length(B)
         c = C(j);
         b = B(j);
-        a = A(j);
        
         % approximation including only 'b'
         if(threshold == "position")
-% %             sigmaTh1(j) = (1/sigma)*sqrt(c/b) * 1E-9;                    % [m / E]
             sigmaTh1(j) = sqrt(c/b);                                         % [m]
         else
-% %             sigmaTh1(j) = (1/sigma)*sqrt(c/b) * 1E-9 * 3600 * 180 / pi;  % [arcSec / E]
             sigmaTh1(j) = sqrt(c/b) * 3600 * 180 / pi;                       % [arcSec]
         end
     end
@@ -187,14 +190,14 @@ for k = 1:length(radius)
     meanThrs(:, k) = RMS_thrs(2:end)';
 end
 
-p = polyfit(radius, log10(mean(meanThrs)), 4);
-log_y_fit = polyval(p, radius);
+p = polyfit(radius./1E3, log10(mean(meanThrs)), 4);
+log_y_fit = polyval(p, radius./1E3);
 y_fit = 10.^(log_y_fit);
 
 % Plot
 figure;
 hold all;
-x = radius; y = log10(y_fit);
+x = radius./1E3; y = log10(y_fit);
 % Fill below the curve (from ymin to y)
 y_fill_bottom = [repmat(min(y)-2, size(y)) fliplr(y)];
 fill([x fliplr(x)], y_fill_bottom, 'g', 'FaceAlpha', 0.2, 'EdgeColor', 'none')
@@ -203,11 +206,11 @@ fill([x fliplr(x)], y_fill_bottom, 'g', 'FaceAlpha', 0.2, 'EdgeColor', 'none')
 y_fill_top = [y fliplr(repmat(max(y)+2, size(y)))];
 fill([x fliplr(x)], y_fill_top, 'b', 'FaceAlpha', 0.1, 'EdgeColor', 'none')
 
-plot(radius, log10(y_fit), 'LineStyle', '--', 'Color', 'k', 'LineWidth', 2);
+plot(radius./1E3, log10(y_fit), 'LineStyle', '--', 'Color', 'k', 'LineWidth', 2);
 
 colors = lines(n_max -1); % 'lines' gives visually distinct colors
 for i = 1:n_max-1
-    plot(radius, log10(meanThrs(i,:)), '-s', ... % -s means line with square marker
+    plot(radius./1E3, log10(meanThrs(i,:)), '-s', ... % -s means line with square marker
         'Color', colors(i,:), ...
         'MarkerFaceColor', colors(i,:), ...
         'MarkerEdgeColor', colors(i,:), ...
@@ -223,7 +226,7 @@ set(gca, 'YTickLabel', yticklabels);
 
 xlabel('orbit radius [m]');
 if(threshold == "position"), ylabel('[m]'); else, ylabel('[arcseconds]'); end
-xlim([1.4*Re, 6*Re]);
+xlim([min_radius*Re, 6*Re]./1E3);
 legend('Location','best');
 grid on;
 hold off;

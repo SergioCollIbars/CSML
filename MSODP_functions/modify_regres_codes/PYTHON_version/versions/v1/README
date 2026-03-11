@@ -1,0 +1,18 @@
+################################################
+#       	Modify regres files with NSM   #    	
+################################################
+#
+# Author: 	Sergio Coll-Ibars
+#
+# Date:   	03/04/2026
+#
+# Description:  Python script to modify the regress files
+#		with the NSM method. Eliminating the attitude errors.
+#		Includes the XX XY XZ YY YZ ZZ observations and reduces
+#		the available observation sets to 3.
+#		Modification from v0. Reads the regress files observation 
+#		in a batch sequence. This slows the codes but reduces the 
+#		RAM memory needed.
+#		NOTE: this version runs in lonestar6 (run_nsm.job)
+#		NOTE: to run the script in the local machine (launch_NSM_regres_local.sh) 
+

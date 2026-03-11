@@ -1,10 +1,9 @@
 function [planetParams, poleParams, Kaula, r, coeffs, I] = loadPlanet(option)
     if(option == "Earth") % select Earth
-        path = "HARMCOEFS_EARTH_1.txt";
+        path = "HARMCOEFS_EARTH_GGM05c.txt";
         [Cnm, Snm, Re] = readCoeff(path);
-        path = "SIGMACOEFS_EARTH_1.txt";
         GM = 3.986004418E14;
-        n_max  = 10;
+        n_max  = 5;
         normalized = 1;
         W = 2 * pi / (24*3600);     % Rotation ang. vel   [rad/s]
         W0 = 0;                     % Initial asteroid longitude
@@ -13,6 +12,7 @@ function [planetParams, poleParams, Kaula, r, coeffs, I] = loadPlanet(option)
 
         % orbit radius
         r = Re + 250E3;         % [m] 
+        r = Re + 500E3;         % [m] 
 
         % Kaula rule
         [Kaula] = compute_Kaula(n_max, 1E-5);

@@ -1,4 +1,4 @@
-function [theta, M_ext] = SC_orientation(t, state_t, type, ACI_GRF, Iner)
+function [theta, M_ext] = SC_orientation(t, state_t, type, ACI_GRF, ECEF_ACI, Iner)
     % Description: compute S/C orientation over time given the time vector
     % and its position in the inertial frame. Theta is a 9 x Nt vector
     % which describes the attitude deviation from the inertial frame over
@@ -28,6 +28,30 @@ function [theta, M_ext] = SC_orientation(t, state_t, type, ACI_GRF, Iner)
             maxPos = 3 * j; minPos = maxPos - 2;
             R(:, :, j) = ACI_GRF(minPos:maxPos, :); % [GRF_ACI matrix]
         end
+    elseif(type == "ENU")
+     for j = 1:Nt
+        r = state_t(j, 1:3)';    % [m]   ACI frame
+
+        maxVal = 3 *j; minVal = maxVal -2;
+        ECEF_ACI_R = ECEF_ACI(minVal:maxVal, :);
+        r_ECEF = ECEF_ACI_R * r;
+        x = r_ECEF(1); y = r_ECEF(2); z = r_ECEF(3);
+
+        % Longitude
+        lambda = atan2(y, x);
+        
+        % Geocentric latitude
+        phi = atan2(z, sqrt(x^2 + y^2));
+        
+        % Rotation matrix: ENU <- ECEF
+        ENU_ECEF = [ -sin(lambda),              cos(lambda),               0;
+                  -sin(phi)*cos(lambda),    -sin(phi)*sin(lambda),     cos(phi);
+                   cos(phi)*cos(lambda),     cos(phi)*sin(lambda),     sin(phi) ];
+        ENU_ACI  = ENU_ECEF * ECEF_ACI_R;
+    
+        R(:, :, j) = ENU_ACI;
+    end
+
     else
         warning('Please, select a correct Instrument Frame (IF)')
     end
