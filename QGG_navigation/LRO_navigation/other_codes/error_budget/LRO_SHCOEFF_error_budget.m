@@ -68,7 +68,7 @@ time_sec  = et1 - et0;
 
 frec      = 1 /(10*60); % [Hz]
 N         = round(time_sec * frec);   % number of samples
-N         = 1;
+N         = 10;
 
 et        = linspace(et0, et1, N);
 
@@ -103,7 +103,7 @@ for j = 1:N
 end
 %% GG measurements (true + perturbed)
 Monte_Carlo = 1; % number of monte carlo realizations
-n_max       = 800; [Nc, Ns, Ncs]    = count_num_coeff(n_max);
+n_max       = 1199; [Nc, Ns, Ncs]    = count_num_coeff(1200);
 
 Y_true      = nan(9, N, Monte_Carlo);
 Y_nom       = nan(9, N, Monte_Carlo);
@@ -111,25 +111,22 @@ Y_nom       = nan(9, N, Monte_Carlo);
 % trajectory points
 x = sc_SPICE(1, :); y = sc_SPICE(2, :); z = sc_SPICE(3, :);
 
+scale_dist = 1E3;
+x = x / scale_dist; y = y /scale_dist; z = z /scale_dist;
+R_M = R_M / scale_dist;
+GM_moon = GM_moon / (scale_dist^3);
+GM_sigma = GM_sigma/ (scale_dist^3);
+
 disp('Computing reference gravity field');
-[Cnm, Snm] = list2mat(n_max, Nc, Ns, SH_coeff);
+[Cnm, Snm] = list2mat(1200, Nc, Ns, SH_coeff);
 for j = 1:N
     maxInd = 3 *j; minInd = maxInd - 2;
     BODYMOON_J2000 = BODYMOON_J2000_mat(minInd:maxInd, :);
 
-     r = [x(j);y(j);z(j)]; v = zeros(3, 1);                            
+    r = [x(j);y(j);z(j)]; v = zeros(3, 1);                            
     [Y_J2000, ~] = gradiometer_meas(et(j) ,...
         [GM_moon, R_M, n_max, normalized],...
         BODYMOON_J2000, [r', v'], zeros(9, 1), Cnm, Snm);
-
-    % lon lat
-    r_ECEF = BODYMOON_J2000 * r;
-    lat    = atan2(r_ECEF(3), sqrt(r_ECEF(1)^2 + r_ECEF(2)^2));
-    lon    = atan2(r_ECEF(2), r_ECEF(1));
-
-    [V_LNOF] = compute_GGT_LNOF(vecnorm(r_ECEF), lat, lon, n_max,...
-        Cnm, Snm, GM_moon, R_M);
-
 
     % rotate to ENU coordinates
     ENU_ECEF = ecef2enu(BODYMOON_J2000 * r);
@@ -138,7 +135,6 @@ for j = 1:N
     T_ENU    = ENU_ECEF * T_ECEF * ENU_ECEF';
 
     Y_ENU    = reshape(T_ENU', [9, 1]);
-    Y_ENU    = reshape(V_LNOF', [9, 1]);
 
     Y_nom(:, j, :) = Y_ENU.*ones(9, Monte_Carlo);
 end
@@ -162,22 +158,12 @@ for k = 1:Monte_Carlo
             [GM_moon_2, R_M, n_max, normalized],...
             BODYMOON_J2000, [r', v'], zeros(9, 1), Cnm, Snm);
 
-         % lon lat
-        r_ECEF = BODYMOON_J2000 * r;
-        lat    = atan2(r_ECEF(3), sqrt(r_ECEF(1)^2 + r_ECEF(2)^2));
-        lon    = atan2(r_ECEF(2), r_ECEF(1));
-    
-        [V_LNOF] = compute_GGT_LNOF(vecnorm(r_ECEF), lat, lon, n_max,...
-            Cnm, Snm, GM_moon_2, R_M);
-
         % rotate to ENU coordinates
         ENU_ECEF = ecef2enu(BODYMOON_J2000 * r);
         T_J2000  = reshape(Y_J2000, [3,3]);
         T_ECEF   = BODYMOON_J2000 * T_J2000 * BODYMOON_J2000';
         T_ENU    = ENU_ECEF * T_ECEF * ENU_ECEF';
         Y_ENU    = reshape(T_ENU', [9, 1]);
-
-        Y_ENU    = reshape(V_LNOF', [9, 1]);
     
 
         Y_true(:, j, k) = Y_ENU;
@@ -211,104 +197,4 @@ for k = 1:9
     subplot(3, 3, k)
     plot(tUTC, squeeze(disturbance(k, :, :)), '.', 'Color', 'g');
     title(tt(k)); grid on; ylabel("[mE]")
-end
-
-
-%% FUNCTIONS
-function [V_LNOF] = compute_GGT_LNOF(r, lat, lon, max_degree, Cnm, Snm, GM, R_ref)
-    % Inputs:
-    % r, lat, lon: Radius (m), Latitude (deg), Longitude (deg)
-    % Cnm, Snm: (max_deg+1) x (max_deg+1) fully normalized matrices
-    
-    theta = deg2rad(90 - lat); % Colatitude
-    phi = deg2rad(lon);
-    cos_t = cos(theta);
-    sin_t = sin(theta);
-    
-    % 1. Precompute Fully Normalized Legendre Polynomials and Derivatives
-    % We need Pnm, Pnm', and Pnm''
-    [P, dP, ddP] = normalized_legendre_derivatives(max_degree, cos_t, sin_t);
-    
-    % 2. Initialize Spherical Derivatives
-    % Vr: dV/dr, Vtt: d2V/dtheta2, etc.
-    Vrr = 0; Vtt = 0; Vpp = 0; Vrt = 0; Vrp = 0; Vtp = 0;
-    Vr = 0; Vt = 0; Vp = 0;
-
-    for n = 0:max_degree
-        rho_n = (R_ref / r)^n;
-        term_common = (GM / r) * rho_n;
-        
-        for m = 0:n
-            cos_mphi = cos(m * phi);
-            sin_mphi = sin(m * phi);
-            CS = Cnm(n+1, m+1) * cos_mphi + Snm(n+1, m+1) * sin_mphi;
-            dCS = m * (-Cnm(n+1, m+1) * sin_mphi + Snm(n+1, m+1) * cos_mphi);
-            ddCS = -m^2 * CS;
-
-            % Radial derivatives
-            Vr  = Vr  - term_common * (n+1)/r * CS * P(n+1, m+1);
-            Vrr = Vrr + term_common * (n+1)*(n+2)/(r^2) * CS * P(n+1, m+1);
-            
-            % Angular derivatives
-            Vt  = Vt  + term_common * CS * dP(n+1, m+1);
-            Vtt = Vtt + term_common * CS * ddP(n+1, m+1);
-            Vp  = Vp  + term_common * dCS * P(n+1, m+1);
-            Vpp = Vpp + term_common * ddCS * P(n+1, m+1);
-            
-            % Mixed derivatives
-            Vrt = Vrt - term_common * (n+1)/r * CS * dP(n+1, m+1);
-            Vrp = Vrp - term_common * (n+1)/r * dCS * P(n+1, m+1);
-            Vtp = Vtp + term_common * dCS * dP(n+1, m+1);
-        end
-    end
-
-    % 3. Transform from Spherical to LNOF (Local North-Oriented Frame)
-    % x=North, y=East, z=Up
-    Vxx = (1/r^2)*Vtt + (1/r)*Vr;
-    Vyy = (1/(r^2 * sin_t^2))*Vpp + (cot(theta)/r^2)*Vt + (1/r)*Vr;
-    Vzz = Vrr;
-    
-    Vxy = (1/(r^2 * sin_t))*Vtp - (cos_t/(r^2 * sin_t^2))*Vp;
-    Vxz = (1/r)*Vrt - (1/r^2)*Vt;
-    Vyz = (1/(r*sin_t))*Vrp - (1/(r^2*sin_t))*Vp;
-
-    V_LNOF = [Vxx, Vxy, Vxz; 
-              Vxy, Vyy, Vyz; 
-              Vxz, Vyz, Vzz];
-end
-
-function [P, dP, ddP] = normalized_legendre_derivatives(N, cos_t, sin_t)
-    P = zeros(N+1, N+1);
-    dP = zeros(N+1, N+1);
-    ddP = zeros(N+1, N+1);
-    
-    P(1,1) = 1;
-    for n = 1:N
-        % Sectorials m = n
-        P(n+1, n+1) = sqrt((2*n+1)/(2*n)) * sin_t * P(n, n);
-        % m = n-1
-        P(n+1, n) = sqrt(2*n+1) * cos_t * P(n, n);
-        
-        for m = n-2:-1:0
-            anm = sqrt(((2*n-1)*(2*n+1))/((n-m)*(n+m)));
-            bnm = sqrt(((2*n+1)*(n+m-1)*(n-m-1))/((2*n-3)*(n+m)*(n-m)));
-            P(n+1, m+1) = anm * cos_t * P(n, m+1) - bnm * P(n-1, m+1);
-        end
-    end
-    
-    % Derivatives using standard identities for normalized Pnm
-    for n = 1:N
-        for m = 0:n
-            if m == 0
-                dP(n+1, 1) = -sqrt(n*(n+1)/2) * P(n+1, 2);
-            elseif m < n
-                dP(n+1, m+1) = 0.5 * (sqrt((n+m)*(n-m+1))*P(n+1, m) - sqrt((n+m+1)*(n-m))*P(n+1, m+2));
-            else % m == n
-                dP(n+1, m+1) = 0.5 * sqrt(2*n) * P(n+1, n);
-            end
-        end
-    end
-    % ddP (2nd derivative) can be derived similarly via dP relations
-    % (Included here as a placeholder; for GGT, Vtt uses ddP)
-    % Note: Laplace condition Vxx+Vyy+Vzz=0 is used to validate precision.
 end

@@ -1,6 +1,7 @@
 clear; clc;
 close all;
 format long g;
+addpath('functions/');
 
 %% COMPUTE ATTITUDE NOISE from the nominal vs true observation attitude 
 % Files generated with MSODP
@@ -34,6 +35,13 @@ for k =1:Nt
     err_rpy(:, k) = [r;p;y];
 end
 
+% compute error PSD
+dt = 5; % seconds
+[f, PSD_r] = compute_PSD(err_rpy(1, :), dt);
+[~, PSD_p] = compute_PSD(err_rpy(2, :), dt);
+[~, PSD_y] = compute_PSD(err_rpy(3, :), dt);
+
+%% plot time series. Noise
 figure;
 plot(att_noise.t, err_rpy(1, :))
 xlabel('Time since first sample [s]')
@@ -52,6 +60,15 @@ xlabel('Time since first sample [s]')
 ylabel('Yaw [rad]')
 grid on
 
+%% plot PSD Noise
+figure(); lw = 1.2;
+semilogy(f, PSD_r, 'LineWidth', lw); hold on;
+semilogy(f, PSD_p, 'LineWidth', lw); 
+semilogy(f, PSD_y, 'LineWidth', lw); 
+legend('roll', 'pitch', 'yaw'); grid on;
+title('Attitude error PSD'); xlabel('Hz'); ylabel('[rad^2 / Hz]')
+
+%% plot yaw-pitch-roll orientation w.r.t inertial frame
 figure;
 plot(att_noise.t,  att_noise_free.roll)
 xlabel('Time since first sample [s]')
