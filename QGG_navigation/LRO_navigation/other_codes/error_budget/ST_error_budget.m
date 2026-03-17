@@ -21,7 +21,7 @@ SH_coeff         = file(4:end);
 GM_E   = 3.986004418e14;     % Earth GM [m^3/s^2]
 GM_M   = 4.9048695e12;       % Moon GM  [m^3/s^2]
 GM_S   = 1.32712440018E20;   % Sun GM  [m^2/s^2]​​
-R_M    = 1737.4e3;           % Moon mean radius [m]
+R_M    = 1738.0e3;           % Moon mean radius [m]
 
 r_EM_min = 3.633E8;          % mis distance Moon - Earth [m]
 r_SM_min = 1.471E11;         % min distance Moon - Sun [m]
