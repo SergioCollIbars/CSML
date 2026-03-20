@@ -49,7 +49,7 @@ ATTITUDE
 				        % Omega = C1 + C2t + C3cos(C4t + C5)
 -------------------------------------------------------------------------------------------------------------------------------------------------
 ESTIMATION
-	estimation = 1;		     	% estimation module yes = 1 / no = 0
+	estimation = 0;		     	% estimation module yes = 1 / no = 0
 	n = 6;			        % max harmonic estimation
 	sigma_n_ii = 6.32e-11;   	% sensor weights STD diagonal [1/s^2]
 	sigma_n_ij = 2.52e-9;   	% sensor weights STD out diagonal [1/s^2]

@@ -40,7 +40,7 @@ estimObj = estimationClass;
 
 % call config_module
 file = "phaseB.txt";
-SH_path = "HARMCOEFS_Bennu_OSIRIS_0.txt";
+SH_path = "HARMCOEFS_Bennu_CD_1.txt";
 [SimData, OrbitData, AttitudeData, estimData] = config_module(file);
 
 

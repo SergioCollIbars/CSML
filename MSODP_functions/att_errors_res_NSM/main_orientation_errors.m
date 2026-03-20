@@ -13,8 +13,11 @@ set(0,'defaultAxesFontSize',16);
 %           xx xy xz yx yy yz zx zy zz
 mask     =  [1, 1, 1, 0, 1, 1, 0, 0, 1]';
 
+%%             Read or compute attitude errors
+read = 1;
+
 %% Extract GG observations
-folderPath = "/Users/sergiocollibars/Desktop/CSML/MSODP_functions/GG_apriori";
+folderPath = "/Users/sergiocollibars/Documents/GG_observations";
 [GG_obs]   = parser_GG_obs_MSODP(folderPath);
 
 %% plot GG
@@ -34,14 +37,35 @@ sgtitle('GG Observations from ' + string(t_dateTime(1)) + ' to ' + ...
     string(t_dateTime(end)));
 
 %% Compute state errors
-disp('  Generating state errors ... ')
 fs = 1 / (t(2) -t(1)); % Hz
-plotCommand = 0;
-[At1] = create_noise_from_PSD(fs, Nt/fs, plotCommand); % yaw error
-[At2] = create_noise_from_PSD(fs, Nt/fs, plotCommand); % pitch error
-[At3] = create_noise_from_PSD(fs, Nt/fs, plotCommand); % roll error
+if(read == 0)
+    disp('  Generating state errors ... ')
+    
+    plotCommand = 0;
+    [At1] = create_noise_from_PSD(fs, Nt/fs, plotCommand); % yaw error
+    [At2] = create_noise_from_PSD(fs, Nt/fs, plotCommand); % pitch error
+    [At3] = create_noise_from_PSD(fs, Nt/fs, plotCommand); % roll error
+    
+    att_Err = [At1,At2,At3]';
+else
+    disp('  Reading state errors ...')
+    path = '/Users/sergiocollibars/Documents/att_residuals/';
+    file = 'attitude_residuals_xx400.txt';
+    data = readmatrix(strcat(path,file));
+    
+    At1 = data(:, 1); % yaw error
+    At2 = data(:, 2); % pitch error
+    At3 = data(:, 3); % roll error
+    
+    att_Err = [At1,At2,At3]';
+end
 
-att_Err = [At1,At2,At3]';
+figure(); tt = ["yaw error", "pitch error", "roll error"];
+for j = 1:3
+    subplot(1, 3, j)
+    plot(t_dateTime, att_Err(j, :), 'LineWidth', 2); grid on;
+    title(tt(j)); ylabel('[rad]');
+end
 
 %% Add angular errors
 [GG_rot, GG_nom] = rotate_GG_obs(GG_obs,att_Err);
@@ -57,6 +81,7 @@ noise            = normrnd(0, GG_sigma * sqrt(fs), [9, Nt]);
 noise_mask       = noise(logical(mask), :);
 
 %% Apply NSM to eliminate 1st order orientation errors
+disp('  Computing NSM')
 idx        = [4 5 6];  
 Nm         = sum(logical(mask)) - length(idx);
 dY_NSM     = zeros(Nm, Nt); signal_NSM = dY_NSM; noise_NSM = dY_NSM;

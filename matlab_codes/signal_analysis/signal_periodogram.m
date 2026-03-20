@@ -3,7 +3,7 @@ clc;
 close all;
 
 % Input
-addpath("data/")
+addpath("/Users/sergiocollibars/Desktop/CSML/QGG_gravEstim/data_files")
 set(0,'defaultAxesFontSize',16);
 
 % data

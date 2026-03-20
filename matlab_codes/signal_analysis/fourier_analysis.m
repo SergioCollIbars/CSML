@@ -5,12 +5,13 @@ close all;
 %%      FOURIER ANALYSIS OF THE 2ND ORDER TENSOR SIGNAL
 
 % Input
-addpath("data/")
+addpath("/Users/sergiocollibars/Desktop/CSML/QGG_gravEstim/data_files")
 set(0,'defaultAxesFontSize',16);
 
 % data
-phaseB_data = readtable('accData.txt');
-GM = load("GM_periodogram.mat").A;
+% % phaseB_data0 = readtable('accData_prev.txt');
+phaseB_data  = readtable('accData.txt');
+GM = 5.2;
 mission = "GOCE";       % GOCE / GRACE_FO
 
 B_time = phaseB_data.TIME;
@@ -19,13 +20,23 @@ Fs = 1/At;
 nfft = 2^nextpow2(length(B_time));
 f = 0 : Fs/(nfft-1) : Fs/2;
 
+% % T_xx = detrend(phaseB_data.ad_xx - phaseB_data0.ad_xx);
+% % T_xy = detrend(phaseB_data.ad_xy - phaseB_data0.ad_xy);
+% % T_xz = detrend(phaseB_data.ad_xz - phaseB_data0.ad_xz);
+% % T_yy = detrend(phaseB_data.ad_yy - phaseB_data0.ad_yy);
+% % T_yz = detrend(phaseB_data.ad_yz - phaseB_data0.ad_yz);
+% % T_zz = detrend(phaseB_data.ad_zz - phaseB_data0.ad_zz);
+
 T_xx = detrend(phaseB_data.ad_xx);
 T_xy = detrend(phaseB_data.ad_xy);
 T_xz = detrend(phaseB_data.ad_xz);
 T_yy = detrend(phaseB_data.ad_yy);
 T_yz = detrend(phaseB_data.ad_yz);
 T_zz = detrend(phaseB_data.ad_zz);
+
 N = length(T_xx);
+signal_vec = [T_xx, T_xy, T_xz, T_yy, T_yz, T_zz] ;
+signal_norm = vecnorm(signal_vec')';
 
 % fourier espectra
 FFT_xx = fft(T_xx, nfft);
@@ -34,6 +45,7 @@ FFT_xz = fft(T_xz, nfft);
 FFT_yy = fft(T_yy, nfft);
 FFT_yz = fft(T_yz, nfft);
 FFT_zz = fft(T_zz, nfft);
+FFT_sg = fft(signal_norm, nfft);
 
 % compute periodogram
 [P_xx] = compute_periodogram(FFT_xx, Fs, N, nfft);
@@ -42,6 +54,7 @@ FFT_zz = fft(T_zz, nfft);
 [P_yy] = compute_periodogram(FFT_yy, Fs, N, nfft);
 [P_yz] = compute_periodogram(FFT_yz, Fs, N, nfft);
 [P_zz] = compute_periodogram(FFT_zz, Fs, N, nfft);
+[P_sg] = compute_periodogram(FFT_sg, Fs, N, nfft);
 
 % signal noise
 noise_ii = zeros(1, length(f));
@@ -120,6 +133,22 @@ ylim([1E-4, 1E4])
 yticks([1e-4 1e0 1e4]);
 yticklabels({'10^{-4}','10^0','10^4'});
 sgtitle("Signal frequency analysis. Phase A")
+
+figure()
+
+figure();
+loglog(f, sqrt(P_sg)/1E-9, 'LineWidth', 1.5)
+hold all;
+plot(f, noise_ii, '--', 'color', 'k', 'LineWidth', 1.5)
+if(mission == "GRACE_FO")
+    plot(ones(1,length(f))*5E-5, MB, 'r--', 'LineWidth', 1.5)
+elseif(mission == "GOCE")
+    plot(ones(1,length(f))*5E-3, MB, 'r--', 'LineWidth', 1.5)
+    plot(ones(1,length(f))*0.1, MB, 'r--', 'LineWidth', 1.5)
+end
+xlabel('frequency [Hz]')
+ylabel('PSD^{1/2} [E / √HZ]')
+
 
 % plot periodogram. All signals together
 figure();

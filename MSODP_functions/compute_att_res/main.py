@@ -21,10 +21,9 @@ def main():
     folder_AttObs_nom  = Path(args.folder_AttObs_nom)
     folder_AttObs_true = Path(args.folder_AttObs_true)
 
-    # output file
-    output_file = "GG_attitude_residuals.txt"
-
     blocks = []
+    blocks_2 = []
+    blocks_3 = []
     # Iterate through OBS files
     for obs_file in sorted(folder_GG_obs.glob("*.ggr")):
         # Extract date from filename (e.g. 2008-08-01)
@@ -85,25 +84,40 @@ def main():
 
         # Compute and store GG residual due to 1st-order attitude errors
         dY = np.zeros((N, 6))
+        tr = np.zeros((N, 1))
+        at = np.zeros((N, 3))
 
         for k in range(N):
             yaw_err = att_err[2, k]
             pitch_err = att_err[1, k]
             roll_err = att_err[0, k]
 
+            at[k, :] = np.array([yaw_err, pitch_err, roll_err])
+
             obs = G[k, 1:7]   # 6 GG components
             H = GG_rotation_partials(obs)   # expected shape (6, 3)
 
             dY[k, :] = H @ np.array([yaw_err, pitch_err, roll_err])
+            tr[k, 0] = np.abs(dY[k, 0] + dY[k, 3] + dY[k, 5])
 
         # Append as (N x 6) block
         blocks.append(dY)
 
+        # Append trace
+        blocks_2.append(tr)
+
+        # Append attitude errors
+        blocks_3.append(at)
+
     # Stack all days into one big array
     if blocks:
         big_array = np.vstack(blocks)
+        trc_array = np.vstack(blocks_2)
+        att_array = np.vstack(blocks_3)
     else:
         big_array = np.empty((0, 6))
+        trc_array = np.empty((0, 1))
+        att_array = np.empty((0, 3))
 
     print("Final shape of big_array:", big_array.shape)
 
@@ -119,13 +133,19 @@ def main():
 
     # save file
     np.savetxt(
-        output_file,
+        "GG_attitude_residuals.txt",
         big_array,
         fmt="%.12e", 
         delimiter=" "
     )
-
-    print(f"big_array saved to {output_file}")
+    np.savetxt(
+    "attitude_residuals.txt",
+    att_array,
+    fmt="%.12e", 
+    delimiter=" "
+    )
+    
+    print(f"maximum trace value = {np.max(trc_array)}")
 
     # plot residuals
     for k in range(0, 6):

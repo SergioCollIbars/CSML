@@ -82,8 +82,8 @@ function [AccObj] = acc_module(AttitudeObj, OrbitObj, AccObj, Time,  save,...
         * 1E-9/(86400)*2; % [1/s^2/s]
 % %     D = [0.0065,-0.0103,-0.0001;-3.1275,0.2029,0.9381;0.001,-2.9892,0.0033] * 1E-9/(86400)*2;
     
-% %     B = zeros(3, 3);
-% %     D = B;
+    B = zeros(3, 3);
+    D = B;
 
     % noise value
     noise = zeros(9, T);
