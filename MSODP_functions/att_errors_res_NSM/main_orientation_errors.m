@@ -17,7 +17,7 @@ mask     =  [1, 1, 1, 0, 1, 1, 0, 0, 1]';
 read = 1;
 
 %% Extract GG observations
-folderPath = "/Users/sergiocollibars/Documents/GG_observations";
+folderPath = "/Users/sergiocollibars/Documents/GG_observations/nonoisev6.980_ft";
 [GG_obs]   = parser_GG_obs_MSODP(folderPath);
 
 %% plot GG

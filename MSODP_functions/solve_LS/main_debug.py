@@ -3,17 +3,13 @@ from functions.read_reg_file_partials import read_reg
 from functions.load_grav_field import load_matrix
 from functions.read_apriori_reg import read_reg_apriori
 
-import argparse
 import numpy as np
 import os
 
-def main():
-    # 1. Initialize parser
-    parser = argparse.ArgumentParser()
-    parser.add_argument("input_regress_folder", help="The path to the regress folder")
-    args = parser.parse_args()
+# Folder with regress files
+INPUT_FOLDER = "/Users/sergiocollibars/Documents/regres_2008_5by5"
 
-    INPUT_FOLDER = args.input_regress_folder
+def main():
     all_files = [f for f in os.listdir(INPUT_FOLDER) if os.path.isfile(os.path.join(INPUT_FOLDER, f))]
 
     # 2. Load Reference/GEO data
@@ -126,9 +122,9 @@ def main():
     for i in range(len(X_stm)):
         e_c = vals_GEO[i] - X_stm[i]
         s_c = np.sqrt(cov[i+6, i+6]) # Variance from covariance matrix diagonal
-        SNR[0, i] = e_c / s_c
+        SNR[0, i] = e_c[0] / s_c
         sig[0, i] = s_c
-        err[0, i] = e_c
+        err[0, i] = e_c[0]
 
     # 8. Save output
     if not os.path.exists("data"):
