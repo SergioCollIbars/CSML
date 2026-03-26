@@ -14,8 +14,8 @@ addpath("/Users/sergiocollibars/Desktop/CSML/MSODP_functions/att_errors_res_NSM/
 output_file = "NS_MATLAB_2008_08_01.txt";
 
 % Observation file
-GG_obs_file = "/Users/sergiocollibars/Desktop/CSML/MSODP_functions/" + ...
-    "GG_observations/goce_eggreg_2008-08-01_RL5061_RL05surpv6.980.001.ggr";
+GG_obs_file = "/Users/sergiocollibars/Documents/GG_observations/120by120/" + ...
+    "goce_eggreg_2008-08-01_RL5061_RL05surpv6.980.001.ggr";
 
 % Read observation data
 G = read_GG_obs(GG_obs_file);

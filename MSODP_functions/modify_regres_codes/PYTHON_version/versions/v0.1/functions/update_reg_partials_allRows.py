@@ -11,7 +11,7 @@ def reg_update_partials(
     newVals: np.ndarray,
     *,
     extra_doubles: int = 5,
-    partials_start_in_record: Optional[int] = None,  # 1-based like MATLAB; default => extra_doubles+1
+    partials_start_in_record: Optional[int] = None, 
     endianness: str = "ieee-le",
     format_check_only: bool = False,
 ) -> Dict[str, object]:
@@ -23,7 +23,7 @@ def reg_update_partials(
     inReg, outReg : str
         Input/output .reg files (binary).
     parCols : sequence of int
-        1-based indices (1..npar) of the parameter partials to overwrite.
+        1-based indices (1..npar) of the parameter partials to overwrite. (res & sigam are always written)
     newVals : ndarray (Nobs x (K+2))
         Columns:
           - 0..K-1 : partials corresponding to parCols
@@ -67,11 +67,11 @@ def reg_update_partials(
     if extra_doubles < 5:
         raise ValueError("extra_doubles must be >= 5 to overwrite residual/sigma at record(4:5).")
 
-    # MATLAB rec(4) and rec(5) -> Python indices 3 and 4
+    # residual and sigma indexing
     i_res = 3
     i_sig = 4
 
-    # --- small binary helpers (nested so this stays a single function) ---
+    # --- small binary helpers ---
     def read_exact(f, n: int) -> bytes:
         b = f.read(n)
         if len(b) != n:

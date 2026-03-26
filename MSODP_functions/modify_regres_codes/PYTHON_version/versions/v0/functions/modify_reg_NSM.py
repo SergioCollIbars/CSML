@@ -9,12 +9,10 @@ def modify_reg_NSM(GG_obs, reg_files, outDir):
     """
     from the regress files for the XX, XY, XZ, YY, YZ, ZZ components and 
     the GG observations, construct the Null Space and modify the partials
-    in the regres fields.
+    in the regress fields.
 
     Save the new regress files in the output folder location
     name: 
-
-    <original_XX_name.reg> --> <original_NSM_i_name.reg>
 
     Returns
     ----------
@@ -42,7 +40,7 @@ def modify_reg_NSM(GG_obs, reg_files, outDir):
     H_3_proj = np.zeros((Nt, Npart))
 
     # project partials
-    print("Computing NSM projection to regres files")
+    print("Computing NSM projection to regress files")
     for k in range(Nt):
         # partials
         h = np.array([H_XX[k, 0:Npart-2],H_XY[k, 0:Npart-2],H_XZ[k, 0:Npart-2],\
@@ -61,12 +59,12 @@ def modify_reg_NSM(GG_obs, reg_files, outDir):
 
         # SVD for the H_rot
         U, S, Vh = np.linalg.svd(Hrot.T)
-        V = Vh.T # NOTE: Pyhton returns the Hermitian. (need to transpose for left NS)
+        V = Vh.T # NOTE: Pyhton returns the Hermitian. We need to transpose
 
-        # contstrunc projector (Orthogonal version)
+        # contstrunc projector (Idempotent version)
         P = V[:, 3:6]
         
-        # project partials, residuals & sigmas
+        # project partials & residuals
         h_p  = P.T @  h
         r_p  = P.T @  r
         n_ax = n @ P
@@ -80,17 +78,17 @@ def modify_reg_NSM(GG_obs, reg_files, outDir):
     print(" Finished!")
 
     # Write new regress with projected partials
-    org_name = os.path.basename(reg_files[0])
+    org_name = os.path.basename(reg_files[0]);
 
-    reg_out = outDir + '/' + org_name.replace('XX', 'NSM_1')
+    reg_out = outDir + '/' + org_name.replace('XX', 'NSM1')
     print("Writing: " + os.path.basename(reg_out))
     reg_update_partials(reg_files[0],reg_out,np.arange(0,Npart - 2) + 1,H_1_proj)
     
-    reg_out = outDir + '/' + org_name.replace('XX', 'NSM_2')
+    reg_out = outDir + '/' + org_name.replace('XX', 'NSM2')
     print("Writing: " + os.path.basename(reg_out))
     reg_update_partials(reg_files[1],reg_out,np.arange(0,Npart - 2) + 1,H_2_proj)
     
-    reg_out = outDir + '/' + org_name.replace('XX', 'NSM_3')
+    reg_out = outDir + '/' + org_name.replace('XX', 'NSM3')
     print("Writing: " + os.path.basename(reg_out))
     reg_update_partials(reg_files[2],reg_out,np.arange(0,Npart - 2) + 1,H_3_proj)
 

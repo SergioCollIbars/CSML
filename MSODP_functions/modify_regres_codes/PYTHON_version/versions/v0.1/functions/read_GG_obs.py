@@ -6,12 +6,12 @@ import os
 
 def read_GG_obs(file_path: str) -> np.ndarray:
     """
-    Python equivalent of MATLAB read_GG_obs(files)
+    READ Grav. Grad (GG) observations
 
     Parameters
     ----------
     file_path : str
-        Path to the .txt/.ggr file. The filename must contain a date 'YYYY-MM-DD'.
+        Path to the .txt/.ggr file. The filename contains the date 'YYYY-MM-DD'.
 
     Returns
     -------
@@ -49,8 +49,6 @@ def read_GG_obs(file_path: str) -> np.ndarray:
     # --- load all floats (like textscan %f) ---
     raw = np.loadtxt(file_path, dtype=float)  # may be 2D already if well-formed
 
-    # If numpy already read it as (Nrows, nCols), keep it.
-    # If it's 1D (all numbers in one vector), reshape like MATLAB.
     if raw.ndim == 1:
         if raw.size % nCols != 0:
             raise ValueError(
@@ -60,7 +58,7 @@ def read_GG_obs(file_path: str) -> np.ndarray:
     else:
         data = raw
         if data.shape[1] != nCols:
-            # If inconsistent, fall back to flatten+reshape (closest to MATLAB behavior)
+            
             flat = data.ravel()
             if flat.size % nCols != 0:
                 raise ValueError(
@@ -68,16 +66,15 @@ def read_GG_obs(file_path: str) -> np.ndarray:
                 )
             data = flat.reshape((-1, nCols))
 
-    # MATLAB: time_day_sec = data(:,3) + secJ2K
-    # Python 0-based => column 3 is index 2
+    # time_day_sec = data[]:,2] + secJ2K
     time_day_sec = data[:, 2] + secJ2K
 
-    # MATLAB: data(:,21:26) => Python indices 20..25
+    # data(:,20:25) 
     gg_cols = data[:, 20:26]  # 6 columns
 
     out = np.column_stack([time_day_sec, gg_cols])  # (N, 7)
 
-    # MATLAB: idx = find(~isnan(dataOutput(:,1)));
+    # find(~isnan(dataOutput(:,1)));
     mask = ~np.isnan(out[:, 0])
     out = out[mask, :]
 

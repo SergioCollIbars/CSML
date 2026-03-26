@@ -14,7 +14,7 @@ Description: Use the obervation files to compute the
         Otherwise, just save the partials in a txt file.
 """
 
-INPUT_OBS = "/Users/sergiocollibars/Desktop/CSML/MSODP_functions/GG_observations/" + \
+INPUT_OBS = "/Users/sergiocollibars/Documents/GG_observations/120by120/" + \
             "goce_eggreg_2008-08-01_RL5061_RL05surpv6.980.001.ggr"
 
 MATLAB_NS = "/Users/sergiocollibars/Desktop/CSML/MSODP_functions/modify_regres_codes/MATLAB_version/"+\

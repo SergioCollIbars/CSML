@@ -10,16 +10,19 @@
 
 mkdir -p logs
 
-# load modules:
+# If you use modules / conda, activate here (examples):
 module load python3
 
 # Define paths
-OBSERVATION_PATH="/scratch/11342/sergiocollibars1294/GG_apriori/"
-REGRESS_PATH="/scratch/11342/sergiocollibars1294/regress_reg/"
-OUTPUT_PATH="/scratch/11342/sergiocollibars1294/NSM_regress_reg/"
+OBSERVATION_PATH="/work/11342/sergiocollibars1294/ls6/nonoisev6.980_ft"
+#REGRESS_PATH="/scratch/11342/sergiocollibars1294/REG_GOCE_RL05_v6.980_10uE/regres_2008_08"
+REGRESS_PATH="/scratch/11342/sergiocollibars1294/REG_GOCE_RL05_v6.980_10uE/regres_2008_08_5by5"
+#OBSERVATION_PATH="/scratch/11342/sergiocollibars1294/QPI_NSM/data_files_samples/GG_data_nonoise"
+#REGRESS_PATH="/scratch/11342/sergiocollibars1294/QPI_NSM/data_files_samples/QGG_regress_files/regres_2008_08"
+OUTPUT_PATH="/work/11342/sergiocollibars1294/ls6/NSM_regres_files_5by5/"
 
 echo "Starting the NSM mapping process..."
 
 python3 -u main.py "$OBSERVATION_PATH" "$REGRESS_PATH" "$OUTPUT_PATH"
 
-echo "Process completed successfully."
+echo "Process completed."

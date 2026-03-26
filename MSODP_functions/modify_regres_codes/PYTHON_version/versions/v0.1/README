@@ -6,6 +6,8 @@
 #
 # Date:   	03/04/2026
 #
+# Version: v0.1
+#
 # Description:  Python script to modify the regress files
 #		with the NSM method. Eliminating the attitude errors.
 #		Includes the XX XY XZ YY YZ ZZ observations and reduces

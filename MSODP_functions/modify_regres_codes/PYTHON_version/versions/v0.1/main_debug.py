@@ -1,29 +1,25 @@
 import re
-from pathlib import Path
-import argparse
 from functions.modify_reg_NSM import modify_reg_NSM
+import numpy as np
+from pathlib import Path
 
-# Define your folders
-# folder_obs = Path("/Users/sergiocollibars/Desktop/CSML/MSODP_functions/GG_apriori/")
-# folder_reg = Path("/Users/sergiocollibars/Desktop/CSML/MSODP_functions/regress_reg/")
-# folder_out = Path("/Users/sergiocollibars/Desktop/CSML/MSODP_functions/NSM_regress_reg")
+"""
+MODIFY REGRES FILES WITH NSM
+
+Description: launch the modification of the regres files based on 
+            the NSM approach. 
+            Read observations for a particular date. 
+            Look for regres files in that date. Need all components: 
+            XX, XY, XZ, YY, YZ, ZZ. Otherwise skip the date
+            Save the modified regres
+"""
 
 def main():
-    # initialize parser
-    parser = argparse.ArgumentParser()
-    
-    # 2. Add the arguments you want to receive
-    # 'path' is the name of the variable, 'help' is what shows up if you type -h
-    parser.add_argument("input_obs_folder", help="The path to the observation folder")
-    parser.add_argument("input_regress_folder", help="The path to the regress folder")
-    parser.add_argument("output_folder", help="The path where results should be saved")
-
-    # 3. Parse the arguments from the terminal
-    args = parser.parse_args()
-
-    folder_obs = Path(args.input_obs_folder).resolve()
-    folder_reg = Path(args.input_regress_folder).resolve()
-    folder_out = Path(args.output_folder).resolve()
+    folder_obs = Path("/Users/sergiocollibars/Documents/GG_observations/120by120").resolve()
+    folder_reg = Path("/Users/sergiocollibars/Documents/regres_files").resolve()
+    folder_out = Path("./folder_out").resolve()
+    mask       = np.array([1, 1, 1, 1, 1, 1])
+    NS_dir     = np.array([1, 1, 1, 0, 0, 0])
 
     # Ensure output folder exists
     folder_out.mkdir(parents=True, exist_ok=True)
@@ -60,7 +56,7 @@ def main():
             # Process only if we have the full set of 6
             if found_all:
                 # Modify regress files with NSM
-                modify_reg_NSM(str(obs_file), day_reg_paths, str(folder_out))
+                modify_reg_NSM(str(obs_file), day_reg_paths, str(folder_out), mask, NS_dir)
 
 if __name__ == "__main__":
     main()

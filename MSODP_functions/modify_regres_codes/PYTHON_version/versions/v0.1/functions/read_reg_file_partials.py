@@ -14,12 +14,7 @@ def read_reg(
 
     Returns
     -------
-    dict with:
-        records  -> (Nobs, rowsize)
-        npar
-        rowsize
-        nObs
-        igrps
+    records  -> (Nobs, rowsize)
     """
     reg_name = os.path.basename(filename)
     print(f"Loading: {reg_name}")
