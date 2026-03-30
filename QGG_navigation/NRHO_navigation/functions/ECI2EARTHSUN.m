@@ -5,9 +5,9 @@ function [EARTH_ECI] = ECI2EARTHSUN(r_Earth, r_Sun, r_SC)
     e_vec = r_Sun - r_SC;
     e     = e_vec./vecnorm(e_vec);
 
-    z_B = (r_Earth - r_SC)./vecnorm(r_Earth - r_SC);
+    z_B = - (- r_Earth + r_SC)./vecnorm(- r_Earth + r_SC);
     
-    y_B = cross(e, z_B)./ vecnorm(cross(e, z_B));
+    y_B = cross(z_B, e)./ vecnorm(cross(z_B, e));
     
     x_B = cross(y_B, z_B);
 

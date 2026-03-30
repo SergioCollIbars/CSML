@@ -51,10 +51,10 @@ def main():
         print(f'Mean sigma {np.max(sigma)}')
         
         # Design Matrix H
-        H = regres[:, 0:N]
-        Hb = H[:, 0:6]                # bias partials
-        Hcs = H[:, 12:] * 1E6         # SH coefficient partials
-        h = np.hstack((Hb, Hcs))
+        H   = regres[:, 0:N]
+        Hb  = H[:, 0:6]                # bias partials
+        Hcs = H[:, 12:] * 1E6          # SH coefficient partials
+        h   = np.hstack((Hb, Hcs))
         
         # Memory-efficient weighting
         W_vec = 1 / (sigma**2)

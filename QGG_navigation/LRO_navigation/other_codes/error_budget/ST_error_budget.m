@@ -13,7 +13,6 @@ input_gravField  = "HARMCOEFS_MOON_GRGM1200.txt";
 
 file             = readmatrix(input_gravField);
 normalized       = file(3);
-n_max            = file(1);
 
 SH_coeff         = file(4:end);
 
@@ -36,14 +35,14 @@ love_numb_list      = [k20, k21, k22, k30];
 love_numb_list_unct = [s_k20, s_k21, s_k22, s_k30];
 
 %% GG measurements (true + perturbed)
-Monte_Carlo = 100;  % number of monte carlo realizations
-NH          = 40;   % number of altitudes
-NS          = 1000;  % number of points in the sphere
-n_sim       = 4; [Nc, Ns, Ncs]    = count_num_coeff(n_max);
+Monte_Carlo = 200;  % number of monte carlo realizations % 200
+NH          = 40;   % number of altitudes   % 40
+NS          = 1000;  % number of points in the sphere % 1000
+n_sim       = 4; [Nc, Ns, Ncs]    = count_num_coeff(1200);
 altitudes   = linspace(1E3, 100E3, NH);
 
-mean_distubance = nan(NH, 1);
-std_distubance  = nan(NH, 1);
+mu_h_xx = nan(NH, 1); mu_h_yy = nan(NH, 1); mu_h_zz = nan(NH, 1);
+sigma_h_xx = nan(NH, 1); sigma_h_yy = nan(NH, 1); sigma_h_zz = nan(NH, 1);
 for h = 1:NH
     disp('Computing altitude = ' + string(h) + '/' + string(NH));
     Y_true      = nan(9, NS, Monte_Carlo);
@@ -53,7 +52,7 @@ for h = 1:NH
     [x,y,z] = fibonacci_sphere(NS, R_M + altitudes(h));
 
     % compute nominal measurements
-    [Cnm_t, Snm_t] = list2mat(n_max, Nc, Ns, SH_coeff);
+    [Cnm_t, Snm_t] = list2mat(1200, Nc, Ns, SH_coeff);
     for j = 1:NS
         r = [x(j); y(j); z(j)];  % ECEF coordinates
 
@@ -69,14 +68,14 @@ for h = 1:NH
 
     for k = 1:Monte_Carlo
         % perturb solid tides (static)
-        [love_numb] = create_love_matrix(n_max, love_numb_list, ...
+        [love_numb] = create_love_matrix(1200, love_numb_list, ...
                     love_numb_list_unct);
 
         % perturb monthly variations
-        [deltaC_month, deltaS_month] = Max_solid_tide_monthly_var(n_max);
+        [deltaC_month, deltaS_month] = Max_solid_tide_monthly_var(1200);
         
         % Max gravity field perturbation due to solid tides
-        [deltaC, deltaS] = Max_solid_tidial_var(n_max,n_sim, love_numb, ...
+        [deltaC, deltaS] = Max_solid_tidial_var(1200,n_sim, love_numb, ...
                                 R_M, GM_M, GM_E, GM_S, r_EM_min, r_SM_min);
 
         Cnm = Cnm_t + deltaC + deltaC_month; 
@@ -98,50 +97,48 @@ for h = 1:NH
     disturbance_2 = [disturbance_1(1, :, :);disturbance_1(5, :, :);...
         disturbance_1(9, :, :)];
 
-    % disturbance_h is 9 x NS x MC (2-D norm)
-    D  = squeeze(vecnorm(disturbance_2, 2, 1) );   % NS x MC
-
-    % area weigths (quasi-uniform)
-    w = ones(NS, 1)./NS;
+     % disturbance_h is 9 x NS x MC (2-D norm)
+    D_XX  = squeeze(disturbance_2(1, :, :));          % NS x MC
+    D_YY  = squeeze(disturbance_2(2, :, :));          % NS x MC
+    D_ZZ  = squeeze(disturbance_2(3, :, :));          % NS x MC
     
-    % mean MC per point on the globe. 
-    mu_pt    = mean(D, 2);          % NSx1
+    M_D_XX = nan(1, NS); S_D_XX = nan(1, NS);
+    M_D_YY = nan(1, NS); S_D_YY = nan(1, NS);
+    M_D_ZZ = nan(1, NS); S_D_ZZ = nan(1, NS);
 
-    % mean and std over the globe
-    mu_global     = sum(w .* mu_pt);
-    std_mu_global = sqrt( sum(w .* (mu_pt - mu_global).^2) );
+    % mean and std for MC distribution per point.
+    for i = 1:NS
+        M_D_XX(i) = mean(D_XX(i, :));
+        M_D_YY(i) = mean(D_YY(i, :));
+        M_D_ZZ(i) = mean(D_ZZ(i, :));
 
-    mean_distubance(h)    = mu_global;
-    std_distubance(h)     = std_mu_global;
+        S_D_XX(i) = std(D_XX(i, :));
+        S_D_YY(i) = std(D_YY(i, :));
+        S_D_ZZ(i) = std(D_ZZ(i, :));
+    end
+
+    % overall mean (equally weight)
+    MO_D_XX = mean(M_D_XX);
+    MO_D_YY = mean(M_D_YY);
+    MO_D_ZZ = mean(M_D_ZZ);
+
+    % Total total variance law
+    SO_D_XX = sqrt( mean(S_D_XX.^2) + mean((M_D_XX - MO_D_XX).^2) );
+    SO_D_YY = sqrt( mean(S_D_YY.^2) + mean((M_D_YY - MO_D_YY).^2) );
+    SO_D_ZZ = sqrt( mean(S_D_ZZ.^2) + mean((M_D_ZZ - MO_D_ZZ).^2) );
+
+    mu_h_xx(h) = MO_D_XX;
+    mu_h_yy(h) = MO_D_YY;
+    mu_h_zz(h) = MO_D_ZZ;
+
+    sigma_h_xx(h) = SO_D_XX;
+    sigma_h_yy(h) = SO_D_YY;
+    sigma_h_zz(h) = SO_D_ZZ;
 end
 
-% plot disturbance RMS value
-figure(); hold on; grid on;
-
-colorPalet = ['b', 'g'];
-for n = 1
-x = altitudes./1e3;
-mu  = mean_distubance(:, n)';
-sig = std_distubance(:, n)';
-
-% --- Shaded ±1σ band ---
-x_fill = [x, fliplr(x)];
-y_fill = [mu - sig, fliplr(mu + sig)];
-
-hfill = fill(x_fill, y_fill, colorPalet(n), ...
-    'FaceAlpha', 0.20, ...
-    'EdgeColor', 'none');
-
-% --- Mean curve on top ---
-semilogy(x, mu, colorPalet(n), 'LineWidth', 2); hold on;
-end
-
-set(gca,'YScale','log');
-xlabel('Altitude [km]');
-ylabel('Disturbance');
-
-grid on; xlabel('Altitude [Km]'); ylabel('milli-Eotvos');
-title('Disturbance mean +- \sigma value');
+plot_disturbance(mu_h_xx, sigma_h_xx, altitudes, "m", "XX component")
+plot_disturbance(mu_h_yy, sigma_h_yy, altitudes, "m", "YY component")
+plot_disturbance(mu_h_zz, sigma_h_zz, altitudes, "m", "ZZ component")
 
 
 %% FUNCTIONS
@@ -206,4 +203,44 @@ function [deltaC, deltaS] = Max_solid_tide_monthly_var(n_max)
 
         deltaS(3, 2)      = sum(amplitudes(:,3)); % S21
         deltaS(3, 3)      = sum(amplitudes(:,5)); % S22
+end
+
+
+function [] = plot_disturbance(mu_h, sigma_h, h, cl, tt)
+    figure(); hold on; grid on;
+    
+    x = h./1e3;
+    sig = sigma_h(:);
+    
+    set(gca,'YScale','log')
+    
+    plot(x, abs(mu_h) + sig, 'Color', cl, 'LineWidth', 1.2);
+
+    xlabel('Altitude [km]');
+    ylabel('Disturbance');
+    title(tt)
+    
+    grid on; xlabel('Altitude [Km]'); ylabel('milli-Eotvos');
+    
+    y = 1;
+    yline(y,'LineWidth',1.5, 'Color', 'r');
+    text(mean(xlim), y, 'GOCE noise level', ...
+         'HorizontalAlignment','center', ...
+         'VerticalAlignment','bottom', ...
+         'FontSize',11);
+    
+    y = 0.01;
+    yline(y,'LineWidth',1.5, 'Color', 'g');
+    text(mean(xlim), y, 'QUANTUM noise level', ...
+         'HorizontalAlignment','center', ...
+         'VerticalAlignment','bottom', ...
+         'FontSize',11);
+    
+    % % y = 100;
+    % % yline(y,'LineWidth',1.5, 'Color', 'c');
+    % % text(mean(xlim), y, 'MEMS noise level', ...
+    % %      'HorizontalAlignment','center', ...
+    % %      'VerticalAlignment','bottom', ...
+    % %      'FontSize',11);
+
 end

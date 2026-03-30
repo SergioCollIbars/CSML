@@ -19,7 +19,7 @@ consider_cov = 0;
 tmin = 0;                           % [rad]
 tmax = 1*1.4968;                    % [rad]
 frec = 1/1;                         % [Hz]
-orientation = "Earth";              % Inertial / RTN / Earth / Sun
+orientation = "Sun";              % Inertial / RTN / Earth / Sun
 MC   = 10;
 
 % load universe
@@ -93,9 +93,21 @@ for j = 1:length(TIME)
     elseif(orientation == "Earth")
         BN_mat(minIndx:maxIndx, :) = EARTH_J2000;
     elseif(orientation == "Sun")
-        BN_mat(minIndx:maxIndx, :) = SUN_J2000;
+        BN_mat(minIndx:maxIndx, :) = EARTHSUN_J2000;
     end
 end
+
+% SC - MOON vector
+et = TIME./planetParams(3); % Convert UTC time to ephemeris time
+target = 'MOON';
+[stateM, ~] = cspice_spkezr(target, et, ref, abcorr, observer);
+posM = stateM(1:3, :)./planetParams(2) * 1E3;
+
+r_SC_MOON = state(:, 1:3)' - posM;
+figure()
+plot(TIME, vecnorm(r_SC_MOON), 'LineWidth', 2); grid on;
+title('S/C - MOON vector norm');
+
 
 % compute nominal angular velocity
 [angVel_vec] = angularVel_from_DCM(BN_mat, 1/frec);
@@ -115,7 +127,7 @@ date = humanReadableTime;
 
 % plot norm of angular velocity
 figure()
-plot(date, vecnorm(angVel_vec), 'LineWidth', 2)
+plot(date(2:end-2), vecnorm(angVel_vec(:, 2:end-2)), 'LineWidth', 2)
 grid on; ylabel('[rad / s]');
 
 % compute attitude error effects along NRHO
@@ -198,9 +210,9 @@ for k = 1:MC
                 'LineWidth', 2, 'Color','k');
         end
 
-        semilogy(date, abs(deltaE_angVel(j, :, k))./1E-9, 'LineWidth', 2, 'Color', 'b', ...
+        semilogy(date, abs(deltaE_angVel(j, :, k))./1E-12, 'LineWidth', 2, 'Color', 'b', ...
             'LineStyle','none', 'Marker', '.', 'MarkerSize', 2); 
-        semilogy(date, abs(deltaE_att(j, :, k))./1E-9, 'LineWidth', 2, 'Color', 'r', ...
+        semilogy(date, abs(deltaE_att(j, :, k))./1E-12, 'LineWidth', 2, 'Color', 'r', ...
             'LineStyle','none', 'Marker', '.', 'MarkerSize', 2);
 % %         semilogy(date, abs(dY(j, :, k))./1E-9, 'LineWidth', 2, 'Color', 'g', ...
 % %             'LineStyle','none', 'Marker', '.', 'MarkerSize', 2);
@@ -216,9 +228,9 @@ sgtitle('Observation error along NRHO orbit');
 % %     'gravity field errors','noise level');
 
 % compute statistics
-[AngVel_err_stats] = compute_stats(deltaE_angVel./1E-12);
-[AngAcc_err_stats] = compute_stats(deltaE_angAcc./1E-12);
-[Att_err_stats]    = compute_stats(deltaE_att./1E-12);
+[AngVel_err_stats] = compute_stats(deltaE_angVel(:, 3:end-2, :)./1E-12);
+[AngAcc_err_stats] = compute_stats(deltaE_angAcc(:, 3:end-2, :)./1E-12);
+[Att_err_stats]    = compute_stats(deltaE_att(:, 3:end-2, :)./1E-12);
 
 disp('Angular velocity errors stats')
 display_stats(AngVel_err_stats);
