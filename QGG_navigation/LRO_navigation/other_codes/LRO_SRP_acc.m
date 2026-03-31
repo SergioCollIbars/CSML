@@ -1,6 +1,7 @@
 clear; clc; close all;
 format long g;
-addpath('../../data/'); addpath(genpath('../../functions'));
+addpath('/Users/sergiocollibars/Desktop/CSML/QGG_navigation/LRO_navigation/data'); 
+addpath(genpath('/Users/sergiocollibars/Desktop/CSML/QGG_navigation/LRO_navigation/functions'));
 set(0,'defaultAxesFontSize',16);
 cspice_furnsh('/Users/sergiocollibars/Documents/MATLAB/kernels/kernels_LRO.tm')
 %%          SRP ACCELERATION LRO
@@ -22,9 +23,9 @@ file             = readmatrix(input_coeffuncrt);
 SH_uncrt         = file(4:end);
 
 %% LRO SPICE trajectory
-utc_start = '2025-03-19 04:30:00';
-utc_stop  = '2025-03-21 00:00:00';
-N         = 200;                         % number of samples
+utc_start = '2012-03-19 04:30:00';
+utc_stop  = '2012-03-19 06:00:00';
+N         = 20000;                         % number of samples
 [GM] = cspice_bodvrd('MOON', 'GM', 1);    % Get GM for the Moon [km^3/s^2]
 GM_moon = GM * 1E9;                       % [m^3/s^2]
 

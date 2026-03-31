@@ -19,7 +19,7 @@ consider_cov = 0;
 tmin = 0;                           % [rad]
 tmax = 1*1.4968;                    % [rad]
 frec = 1/1;                         % [Hz]
-orientation = "Sun";              % Inertial / RTN / Earth / Sun
+orientation = "Inertial";                % Inertial / RTN / Earth / Sun
 MC   = 10;
 
 % load universe
@@ -134,7 +134,8 @@ grid on; ylabel('[rad / s]');
 disp('Computing attitude error residuals ...')
 arcsec          = 1 * sqrt(frec);                      % [arcseconds]
 radians         = arcsec * pi / (180 * 3600);          % [rad]
-radians_per_sec = 0.002 * (pi/180) / sqrt(3600) / sqrt(1/frec);
+% radians_per_sec = 0.002 * (pi/180) / sqrt(3600) / sqrt(1/frec);
+radians_per_sec = 3E-8;
 
 [b] = compute_FOMP(TIME./planetParams(3), radians_per_sec);
 dt = 1/frec;                                           % seconds
@@ -218,7 +219,7 @@ for k = 1:MC
 % %             'LineStyle','none', 'Marker', '.', 'MarkerSize', 2);
         if(k ==  1)
             xlabel('date')
-            ylabel(lb(j) + '[E]')
+            ylabel(lb(j) + '[mE]')
             grid on;
         end
     end

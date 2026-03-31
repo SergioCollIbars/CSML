@@ -17,9 +17,7 @@ function [F] = shadow_function(R_sun, R_planet, r_sun, r_sc)
     theta_ps = acos(B);
     
     % Angles
-    CAF = acos((theta_s^2 + theta_ps^2 - theta_p^2)/(2*theta_s*theta_ps));
-    CBD = acos((theta_p^2 + theta_ps^2 - theta_s^2)/(2*theta_p*theta_ps));
-
+    
     % Areas
     SAFC = 0.5 * CAF * theta_s^2;
     SAEC = 0.5 * (theta_s * sin(CAF)) * (theta_s * cos(CAF));
@@ -40,7 +38,7 @@ function [F] = shadow_function(R_sun, R_planet, r_sun, r_sc)
         disp('No conditions fulfilled')
     end
     
-    % Shadow function
     F = 1 - S / (pi * theta_s^2);
+
 end
 
