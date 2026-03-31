@@ -23,9 +23,9 @@ file             = readmatrix(input_coeffuncrt);
 SH_uncrt         = file(4:end);
 
 %% LRO SPICE trajectory
-utc_start = '2025-03-20 04:30:00';
-utc_stop  = '2025-03-21 00:00:00';
-N         = 200;                         % number of samples
+utc_start = '2012-03-20 00:00:00';
+utc_stop  = '2012-03-21 00:00:00';
+N         = 1000;                         % number of samples
 [GM] = cspice_bodvrd('MOON', 'GM', 1);    % Get GM for the Moon [km^3/s^2]
 GM_moon = GM * 1E9;                       % [m^3/s^2]
 
@@ -69,15 +69,20 @@ end
 % compute angular velocity & error
 frec = 1;
 [angVel_vec] = angularVel_from_DCM(BODYSC_J2000_mat, dt);
-radians_per_sec = 0.00001 * (pi/180) / sqrt(3600) / sqrt(1/frec);
-radians_per_sec = 0.002 * (pi/180) / sqrt(3600) / sqrt(1/frec);
+radians_per_sec = 0.006 * (pi/180) / 3600 / sqrt(1/frec);
 
 % plot angular velocity
 figure();
-plot(tUTC(2:end-1), angVel_vec(:, 2:end-1), 'LineWidth', 2);
+semilogy(tUTC(2:end-1), abs(angVel_vec(:, 2:end-1)), 'LineWidth', 2);
 grid on; ylabel('[rad/s]');
 legend('\omega_R', '\omega_T', '\omega_N');
 title('Angular velocity in Body frame coordinates');
+
+% plot orbit altitude
+figure();
+plot(tUTC, (vecnorm(sc_SPICE(1:3, :)) - R_M)./1E3, 'LineWidth', 2);
+grid on; ylabel('[km]');
+title('Orbit altitude, R = ' + string(R_M./1E3) + ' Km');
 
 %% GG measurements (true + perturbed)
 Monte_Carlo = 100; % number of monte carlo realizations
