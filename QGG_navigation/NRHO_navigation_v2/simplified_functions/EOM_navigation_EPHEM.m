@@ -168,3 +168,4 @@ function [dx] = EOM_navigation_EPHEM(t, x, planetParams, C_mat, S_mat)
           dU(3);
           b_dot; reshape(PHI_dot, [Ns*Ns, 1])];
 end
+

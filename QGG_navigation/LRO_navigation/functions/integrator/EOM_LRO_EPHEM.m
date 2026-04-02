@@ -97,11 +97,11 @@ function [dx] = EOM_LRO_EPHEM(t, x, planetParams, C_mat, S_mat)
     ddU2 = J2000_MOON  * ddU2  * J2000_MOON';
     
     % Sun acceleration on the S/C. Point mass
-    dU3  = GM_S * (r3 / (vecnorm(r3)^3));    
+    dU3  = - GM_S * (r3 / (vecnorm(r3)^3));    
 
     % Tidial acceleration
     a_tidial_E = - J2000_EARTH  * dU1_T;
-    a_tidial_S = - GM_S * r_MS / (vecnorm(r_MS)^3);
+    a_tidial_S = GM_S * r_MS / (vecnorm(r_MS)^3);
     
     % total acceleration
     dU = dU2 + dU1 +  dU3 + a_tidial_E + a_tidial_S;

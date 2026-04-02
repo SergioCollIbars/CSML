@@ -1,4 +1,4 @@
-function [dx] = EOM_LRO_EPHEM(t, x, planetParams, C_mat, S_mat)
+function [dx] = EOM_LRO_EPHEM_v0(t, x, planetParams, C_mat, S_mat)
     %%                       EOM FUNCTION EPHEM
     % ------------------------------------------------------------------- %
     %   Author: Sergio Coll Ibars
@@ -22,6 +22,9 @@ function [dx] = EOM_LRO_EPHEM(t, x, planetParams, C_mat, S_mat)
     %       dx:  diferential equation matrix
     % --------------------------------------------------------------------%
     
+    A = 28;      % [m^2]
+    M = 220;     % [kg]
+
     % number of states
     Ns = 6;
 
@@ -44,6 +47,7 @@ function [dx] = EOM_LRO_EPHEM(t, x, planetParams, C_mat, S_mat)
     
     [GM3] = cspice_bodvrd('SUN', 'GM', 1);    % Get GM for the Sun [km^3/s^2]
     GM3 = GM3*1E9;
+    [R_Sun] = cspice_bodvrd('SUN', 'RADII', 3).*1E3;      % Get R for the Sun  [m]
 
 % %     GM3 = 132712440041.94 * 1E9;
 
@@ -99,19 +103,23 @@ function [dx] = EOM_LRO_EPHEM(t, x, planetParams, C_mat, S_mat)
 
     Cmat1 = C_mat{1};
     Smat1 = S_mat{1};
-    [~, dU1, ddU1] = potentialGradient_nm(Cmat1, Smat1, 5, ...
+    [~, dU1, ddU1] = potentialGradient_nm(Cmat1, Smat1, 0, ...
                                                 J2000_EARTH'*r1, Re1(1), GM1, ...
                                                 normalized);
 
-    [~, dU1_T, ~] = potentialGradient_nm(Cmat1, Smat1, 5, ...
+    [~, dU1_T, ~] = potentialGradient_nm(Cmat1, Smat1, 0, ...
                                                 J2000_EARTH'*r_ME, Re1(1), GM1, ...
                                                 normalized);
 
     Cmat2 = C_mat{2};
     Smat2 = S_mat{2};
-    [~, dU2, ddU2] = potentialGradient_nm(Cmat2, Smat2, 100, ...
+    [~, dU2, ddU2] = potentialGradient_nm(Cmat2, Smat2, 300, ...
                                                 J2000_MOON'*r2, Re2(1), GM2, ...
                                                 normalized);
+
+    % % F = shadow_function(R_Sun(1), Re2, Spos, r2);
+    F = 0;
+    [aSRP, ~, ~] = SRP(r3, 1, M, A);
 
     % rotate back to inertial. Earth-Moon (EM) plane
     dU1  = J2000_EARTH  * dU1;
@@ -121,17 +129,18 @@ function [dx] = EOM_LRO_EPHEM(t, x, planetParams, C_mat, S_mat)
     dU2  = J2000_MOON   * dU2;
     ddU2 = J2000_MOON   * ddU2  * J2000_MOON';
 
-    dU3  = GM3 * (r3 / (vecnorm(r3)^3));     % Sun acceleration. Point mass
+    dU3  = -GM3 * (r3 / (vecnorm(r3)^3));     % Sun acceleration. Point mass
 
-    dU4  = GM4 * (r4 / (vecnorm(r4)^3));     % Jupiter acceleration. Point mass
+    dU4  = -GM4 * (r4 / (vecnorm(r4)^3));     % Jupiter acceleration. Point mass
 
     % tidial acceleration
     a_tidial_E = - J2000_EARTH  * dU1_T;
-    a_tidial_S = - GM3 * r_MS / (vecnorm(r_MS)^3);
-    a_tidial_J = - GM4 * r_MJ / (vecnorm(r_MJ)^3);
+    a_tidial_S = GM3 * r_MS / (vecnorm(r_MS)^3);
+    a_tidial_J = GM4 * r_MJ / (vecnorm(r_MJ)^3);
     
     % total acceleration
-    dU = dU2 + dU1 +  dU3 + dU4 + a_tidial_E + a_tidial_S + a_tidial_J;
+    dU = dU2 + dU1 +  dU3 + dU4 + a_tidial_E + a_tidial_S + a_tidial_J + ...
+        F * aSRP;
 
     % compute gravity position partials
     T = ddU2 + ddU1;
@@ -152,4 +161,47 @@ function [dx] = EOM_LRO_EPHEM(t, x, planetParams, C_mat, S_mat)
           dU(2);
           dU(3);
           reshape(PHI_dot, [Ns*Ns, 1])];
+end
+
+function [aSRP, daSRP_dr, daSRP_dEta] = SRP(rs, eta, m, A)
+    %%                   SRP ACCELERATION FUNCTION
+    % ------------------------------------------------------------------- %
+    %   Author: Sergio Coll Ibars
+    %
+    %   Date: 01/20/2023
+    %
+    %   Description: This function computes the SRP acceleration at certain
+    %   time.
+    %
+    %   Input:
+    %       rs: SC position to sun inerital frame. ECI frame
+    %       eta: scale factor
+    %       A: S/C reference area [-]
+    %       m: S/C reference mass [kg]
+    %
+    %   Output: 
+    %       aSRP: SRP acceleration. ACI frame
+    %       daSRP_dr: partial respect to inertial position
+    %       daSRP_dEta: partial respect to eta
+    % --------------------------------------------------------------------%
+
+    % SRP parameters
+    Gamma = 5.67E-8;                % [Kg/K^4]
+    c     = 2.99792458E8;               % [m/s^2] 
+    Rs    = 6.96E8 ;                   % [m]
+    Ts    = 5778;                      % [K]
+    Cr    = 1;
+
+    % SRP acc
+    rsn = vecnorm(rs);
+    P = (Gamma * Rs^2 * Ts^4 )/ (c * m);
+
+    aSRP = eta * ( P * Cr * A) * rs / rsn^3;
+    
+    % SPR partial respect to inertial position
+    daSRP_dr = eta * Gamma * Ts^4 * Rs^2 * Cr * A / (m * c * rsn^3) * ...
+        (eye(3) - 3 * (rs * rs') / (rsn^2));
+
+    % SRP partial respect to eta
+    daSRP_dEta = ( P * Cr * A) * rs / rsn^3;
 end

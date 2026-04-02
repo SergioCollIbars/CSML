@@ -29,10 +29,10 @@ GM_moon  = 4.9028001224453001e+12;   % [m^3/ s^2]
 GM_sigma = 6.4536052689015518e-24;   % [m^3/ s^2]
 
 %% GG measurements (true + perturbed)
-Monte_Carlo = 200;  % number of monte carlo realizations
-NH          = 40;   % number of altitudes
-NS          = 1000;  % number of points in the sphere
-n_max       = 1200; [Nc, Ns, Ncs]    = count_num_coeff(1200);
+Monte_Carlo = 400;  % number of monte carlo realizations
+NH          = 2;   % number of altitudes
+NS          = 4;  % number of points in the sphere
+n_max       = 10; [Nc, Ns, Ncs]    = count_num_coeff(1200);
 altitudes   = linspace(1E3, 100E3, NH);
 
 
@@ -108,6 +108,10 @@ for h = 1:NH
     D_XX  = squeeze(disturbance_2(1, :, :));          % NS x MC
     D_YY  = squeeze(disturbance_2(2, :, :));          % NS x MC
     D_ZZ  = squeeze(disturbance_2(3, :, :));          % NS x MC
+
+    for k = 1:NS
+        histogram(D_XX(k, :)); hold on;
+    end
     
     D3_XX = squeeze(disturbance_3(1, :, :));
     D3_YY = squeeze(disturbance_3(2, :, :));

@@ -37,7 +37,7 @@ function [F] = shadow_function(R_sun, R_planet, r_sun, r_sc)
     elseif(J1 < theta_ps && theta_ps < J2)
         S = 2*(SAFC - SAEC) + 2*(SBDC - SBEC);
     else
-        disp('No conditions fulfilled')
+        disp('No conditions fulfilled');
     end
     
     % Shadow function

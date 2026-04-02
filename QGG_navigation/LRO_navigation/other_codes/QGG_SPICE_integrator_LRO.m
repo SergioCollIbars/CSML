@@ -5,13 +5,15 @@ format long g;
 set(0,'defaultAxesFontSize',16);
 addpath('../simplified_functions/');
 addpath('../data/');
+addpath(genpath("/Users/sergiocollibars/Desktop/CSML/QGG_navigation/LRO_navigation/data"))
+addpath(genpath("/Users/sergiocollibars/Desktop/CSML/QGG_navigation/LRO_navigation/functions"))
 
 cspice_furnsh('/Users/sergiocollibars/Documents/MATLAB/kernels/kernels_LRO.tm')
 
 
-utc_start = '2025-03-16 04:30:00';
-utc_stop  = '2025-03-17 00:00:00';
-N         = 2000;           % number of samples
+utc_start = '2012-03-04 00:00:00';
+utc_stop  = '2012-03-04 06:00:00';
+N         = 4000;           % number of samples
 [GM] = cspice_bodvrd('MOON', 'GM', 1);    % Get GM for the Moon [km^3/s^2]
 GM_moon = GM * 1E9;                       % [m^3/s^2]
 
@@ -98,14 +100,11 @@ end
 % initial conditions
 X0 = sc_SPICE(1:6, 1);  % [m] & [m/s]
 
-% orbital period (2BP)
-% % T = 1/ sqrt(GM / (vecnorm(X0(1:3))^3));
-
 % Integrator
 options  = odeset('RelTol',1E-13,'AbsTol',1E-13);
 STM0     = reshape(eye(6,6), [36, 1]);
 time_vec = [et(1), et(end)]; 
-[t, state] = ode113(@(t, x) EOM_LRO_EPHEM(t, x, planetParams, ...
+[t, state] = ode113(@(t, x) EOM_LRO_EPHEM_v0(t, x, planetParams, ...
     Cmat_true, Smat_true), time_vec, [X0; STM0], options);
 
 % interpolate results to SPICE time
