@@ -62,9 +62,9 @@ grid on
 
 %% plot PSD Noise
 figure(); lw = 1.2;
-semilogy(f, PSD_r, 'LineWidth', lw); hold on;
-semilogy(f, PSD_p, 'LineWidth', lw); 
-semilogy(f, PSD_y, 'LineWidth', lw); 
+loglog(f, PSD_r, 'LineWidth', lw); hold on;
+loglog(f, PSD_p, 'LineWidth', lw); 
+loglog(f, PSD_y, 'LineWidth', lw); 
 legend('roll', 'pitch', 'yaw'); grid on;
 title('Attitude error PSD'); xlabel('Hz'); ylabel('[rad^2 / Hz]')
 

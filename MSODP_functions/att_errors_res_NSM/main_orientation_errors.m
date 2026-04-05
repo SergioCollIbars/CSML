@@ -11,7 +11,7 @@ set(0,'defaultAxesFontSize',16);
 
 %%                Mesurement mask 
 %           xx xy xz yx yy yz zx zy zz
-mask     =  [1, 1, 1, 0, 1, 1, 0, 0, 1]';
+mask     =  [1, 0, 1, 0, 1, 0, 0, 0, 1]';
 
 %%             Read or compute attitude errors
 read = 1;
@@ -86,7 +86,7 @@ noise_mask       = noise(logical(mask), :);
 
 %% Apply NSM to eliminate 1st order orientation errors
 disp('  Computing NSM')
-idx        = [4 5 6];  
+idx        = [2 3];  
 Nm         = sum(logical(mask)) - length(idx);
 dY_NSM     = zeros(Nm, Nt); signal_NSM = dY_NSM; noise_NSM = dY_NSM;
 
