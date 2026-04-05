@@ -32,10 +32,6 @@ if(target_body == "Bennu")
     sigmaP = 0.1;             % orbit error         [m]
     sigmaAtt = 10 * pi / (180*3600); % Euler angle error    [rad]
     sigmaW = 1E-3;                    % attitude errors     [deg/sqrt(hr)]
-
-% %     sigmaAtt = 1E-30 * pi / (180*3600); % Euler angle error    [rad]
-% %     sigmaW = 1E-10;                    % attitude errors     [deg/sqrt(hr)]
-% %     sigmaP = 1E-20;
 elseif(target_body == "Eros")
     path = "HARMCOEFS_EROS_CD_1.txt";
     [Cnm, Snm, Re] = readCoeff(path);
@@ -107,14 +103,14 @@ for Mc = 1:mc_num
     disp('Mc run = ' + string(Mc))
     
     % attitude errors
-% %     deltaAtt = normrnd(0, sigmaAtt, [3, Nt]) + [1;6;10].*(pi/(180*3600));
-    deltaAtt = normrnd(0, sigmaAtt, [3, Nt]);
+    deltaAtt = normrnd(0, sigmaAtt, [3, Nt]) + [1;6;10].*(pi/(180*3600));
     sigmaW   = sigmaW / sqrt(At) * pi / (180*3600);   % [rad/s]
     deltaW   = normrnd(0, sigmaW, [3, Nt]);
 
+    deltaAtt = deltaAtt.*0;
+
     % position errors
-% %     deltaP  = normrnd(0, sigmaP, [3, Nt])   + [.01;.01;.01];
-    deltaP  = normrnd(0, sigmaP, [3, Nt]);
+    deltaP  = normrnd(0, sigmaP, [3, Nt])   + [.01;.01;.01];
 
     % % deltaP   = [.1;.1;.1].*ones(3, Nt);
     % % deltaAtt = [1;6;10].*(pi/(180*3600)).*ones(3, Nt);
@@ -436,7 +432,7 @@ function [X0_final, P0_final] = solver_LS(t, rn, vn, Cnm, Snm, asterParams, ...
 
             % prefit residuals
             dY = Y_true(:, j) - Y_ACI;
-            dy = dY(logical(mask));
+            dy = [dY(1:3);dY(5:6);dY(9)];
 
             % solve normal equations
             ax = Hc' * (R\Hc);
@@ -557,7 +553,7 @@ function [X_final, P_final] = solver_NSM(t, rn, vn, Cnm, Snm, asterParams, ...
 
             % prefit residuals
             dY = Y_true(:, j) - Y_ACI;
-            dy = C' * dY(logical(mask));
+            dy = C' * [dY(1:3);dY(5:6);dY(9)];
             
             % compute residuals
             mxc = (H'   * (r\res));
