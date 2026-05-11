@@ -66,17 +66,20 @@ set(gca, 'YTickLabel', yticklabels);
 %% COMPUTE STATS
 X = eigVals; 
 
-max_val  = max(X, [], 2);
-min_val  = min(X, [], 2);
-mean_val = mean(X, 2);
+max_val   = max(X, [], 2);
+min_val   = min(X, [], 2);
+mean_val  = mean(X, 2);
+SumS_val   = sqrt(sum(X.^2, 2));
+N = length(GG_obs);
 
 T = table((1:Nm)', max_val, min_val, mean_val, ...
-    'VariableNames', {'Index','Max','Min','Mean'});
+    'VariableNames', {'Index','Max','Min','RMS'});
 disp("Eigenvalues statistics: ")
 disp(T)
 
-sigma_m = 4E-15;    % [s^-2]
-T = table((1:Nm)', (3*sigma_m)./max_val, (3*sigma_m)./mean_val, ...
+sigma_m = 1E-14;    % [s^-2]
+sigma_m =  3.15E-15;
+T = table((1:Nm)', (3*sigma_m)./max_val, (sigma_m)./(max_val * sqrt(3)), ...
     'VariableNames', {'Index','Max Peak','Mean'});
 disp("Atittude error requirements for 3 sigma = " + string(3*sigma_m) + "s^-2")
 disp(T)

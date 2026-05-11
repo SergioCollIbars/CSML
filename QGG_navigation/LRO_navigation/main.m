@@ -40,9 +40,11 @@ for fld = 1:length(mtd.folder)
     options = odeset('RelTol',1e-13,'AbsTol',1e-13); Nx = 6;
     PHI0    = reshape(eye(Nx,Nx), [Nx*Nx, 1]);
     X0      = state0;
+    tic;
     [time, state] = ode113(@(t, x) EOM_LRO_EPHEM(t, x, planetParams, ...
         Cnm_list, Snm_list), t, [X0;PHI0], ...
         options);
+    toc;
     
     disp('  DONE ...')
     

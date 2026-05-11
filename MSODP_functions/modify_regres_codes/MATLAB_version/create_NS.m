@@ -17,6 +17,7 @@ output_file = "NS_MATLAB_2008_08_01.txt";
 GG_obs_file = "/Users/sergiocollibars/Documents/GG_observations/120by120/" + ...
     "goce_eggreg_2008-08-01_RL5061_RL05surpv6.980.001.ggr";
 
+mask = [1, 1, 1, 1, 1, 1];
 % Read observation data
 G = read_GG_obs(GG_obs_file);
 
@@ -29,10 +30,13 @@ for k = 1:Nt
     [Hrot] = compute_rotPartials_analy(g_T, eye(3));
 
     h = [Hrot(1:3, :);Hrot(5:6, :);Hrot(9, :)];
+    h = h(logical(mask), :);
 
     [s,v,d] = svd(h');
 
     V = d(:, 4:end);
+
+    P = eye(sum(mask)) - h * ((h'*h) \ h');
 
     maxInd = 6 * k; minInd = maxInd - 5;
     NS_val(minInd:maxInd, :) = V;

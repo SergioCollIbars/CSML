@@ -76,6 +76,7 @@ Iner = [580, 0, 0;...
 
 % compute eigenvalues
 eigenVal = ones(6, Nt) * NaN;
+delta_n  = ones(3, 1);
 for j = 1:Nt
     % ACAF to ACI rotation matrix
     Wt = W0 + W * t(j);
@@ -111,10 +112,16 @@ for j = 1:Nt
     % nuisance parameter partials (3 cases)
     scale = 1E-9;                                                      % to Eotvos
     Hn = [Hrot_grad, (Hrot_omega_dyad+H_omegaDot_dyad).*At]./(scale);  % (ill-conditioned)
+% %     Hn = Hrot_grad./scale;
 
     % SVD decomposition
     [S, V, D] = svd(Hn');
     eigenVal(:, j) = diag(V);
+% %     F = sum(V)';
+% % 
+% %     % bound
+% %     a = abs(D' * Hn * delta_n);
+% %     b = F.*vecnorm(delta_n);
 end
 
 figure()

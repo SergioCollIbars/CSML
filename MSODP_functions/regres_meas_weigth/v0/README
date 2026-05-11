@@ -1,0 +1,16 @@
+################################################
+#      	Modify regres files with weight        #    	
+################################################
+#
+# Author: 	Sergio Coll-Ibars
+#
+# Date:   	04/06/2026
+#
+# Version: v0
+#
+# Description:  Modify the measurement weight
+#		in the regres files with the 
+#		specified value. Apply to all
+#		files in the input folder
+# 
+

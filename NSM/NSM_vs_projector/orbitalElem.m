@@ -55,16 +55,21 @@ function [alpha] = orbitalElem(r, v, mu)
     s_Omega = dot(n_omega, J);
     
     Omega = atan2(s_Omega, c_Omega);        % Asc node angle [rad]
-
-    c_omega = dot(e_u, n_omega);
-    s_omega = dot(e_u, n_omegap);
-
-    omega = atan2(s_omega, c_omega);        % Arg of periapsis [rad]
-
-    c_f = dot(r_u, e_u);
-    s_f = dot(r_u, e_up);
-
-    f = atan2(s_f, c_f);                    % true anaomaly [rad]
+    
+    if(vecnorm(e) < 1E-15)
+            omega = nan;
+            f     = nan; 
+    else
+        c_omega = dot(e_u, n_omega);
+        s_omega = dot(e_u, n_omegap);
+    
+        omega = atan2(s_omega, c_omega);        % Arg of periapsis [rad]
+    
+        c_f = dot(r_u, e_u);
+        s_f = dot(r_u, e_up);
+    
+        f = atan2(s_f, c_f);                    % true anaomaly [rad]
+    end
 
     alpha = [vecnorm(e), vecnorm(h), a, rho, f, i, Omega, omega];
 end

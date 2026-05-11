@@ -20,6 +20,10 @@ SH_coeff         = file(4:end);
 
 normalized = file(3);
 
+%% mask
+%       xx xy xz yy yz zz
+mask = [1, 1, 1, 1, 1, 1];
+
 
 %% Ephemerides (SPICE)
 utc_start = '2025-03-16 00:00:00';
@@ -72,16 +76,28 @@ stateMask = [traj;att;bias];
 n_max     = 150;
 SF        = ones(6, 1); 
 
-sigma_GG  = 0.1;                     % [milli-Eotvos]
-sigma_att = 1 * pi / (180 * 3600);  % [rad]
+sigma_GG  = 1;                       % [milli-Eotvos]
+sigma_att = 1 * pi / (180 * 3600);   % [rad]
 W_GG      = eye(6) * ((1/sigma_GG)^2);
+W_GGM     = eye(sum(mask)) * ((1/sigma_GG)^2);
 W_att     = eye(3) * ((1/sigma_att)^2);
 
-W         = diag([diag(W_GG); diag(W_att)]);
+W         = diag([diag(W_GGM); diag(W_att)]);
 % % W         = W_GG; 
 
 Ax_min     = zeros(6,6); Ax_max = Ax_min;
 states_std = nan(6, N);
+figure(); labels = {'R','T','N','\simga_1','\sigma_2', '\sigma_3'}; % example names
+h =  imagesc(zeros(6));          % Plot matrix as image
+colorbar;            % Show color scale
+axis equal tight;    % Keep square aspect
+colormap(jet);       % Choose colormap (optional)
+
+xticks(1:length(labels));
+yticks(1:length(labels));
+
+xticklabels(labels);
+yticklabels(labels);
 for k = 1:N
     maxInd = 3 * k; minInd = maxInd - 2;
     BODYMOON_J2000 = BN_MOON_mat(minInd:maxInd, :);
@@ -122,7 +138,8 @@ for k = 1:N
     minCorr = min(min(abs(cosA)));
 
 % %     H       = [Hp, Hr];
-    H       = [Hp, Hr;zeros(3), eye(3)];
+    H       = [Hp(logical(mask), :), Hr(logical(mask), :);...
+               zeros(3), eye(3)];
 
     Ax_min = Ax_max; 
     Ax_max = Ax_min + H' * W * H; 
@@ -134,7 +151,12 @@ for k = 1:N
         corr_mat = corr(P);
         cosA_filt = corr_mat(1:3, 4:6);
         disp(max(max(abs(cosA_filt))));
+    else
+        corr_mat = zeros(6);
     end
+    % Update plot data
+    set(h, 'CData', abs(corr_mat));
+    drawnow;  % Force update
 end
 
 

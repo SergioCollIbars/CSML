@@ -33,9 +33,9 @@ if(target_body == "Bennu")
     sigmaAtt = 10 * pi / (180*3600); % Euler angle error    [rad]
     sigmaW = 1E-3;                    % attitude errors     [deg/sqrt(hr)]
 
-% %     sigmaAtt = 1E-30 * pi / (180*3600); % Euler angle error    [rad]
-% %     sigmaW = 1E-10;                    % attitude errors     [deg/sqrt(hr)]
-% %     sigmaP = 1E-20;
+    sigmaAtt = 10 * pi / (180*3600); % Euler angle error    [rad]
+    sigmaW = 1E-10;                    % attitude errors     [deg/sqrt(hr)]
+    sigmaP = 1E-20;
 elseif(target_body == "Eros")
     path = "HARMCOEFS_EROS_CD_1.txt";
     [Cnm, Snm, Re] = readCoeff(path);
@@ -368,6 +368,10 @@ elseif(Solver == "LS_NSM" || Solver == "LS_BNSM_ANSM" )
     else
         ylim([1E-8 1E-1]);
     end
+
+    figure();
+    semilogy(xvals, sigma1_ord./sigma3_ord, 'Color', 'r', 'LineWidth', 2);
+    title('\sigma ratio NSM / LS');
 end
 
 %% FUNCTIONS

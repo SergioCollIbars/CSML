@@ -11,13 +11,13 @@ set(0,'defaultAxesFontSize',16);
 
 %%                Mesurement mask 
 %           xx xy xz yx yy yz zx zy zz
-mask     =  [1, 1, 1, 0, 1, 1, 0, 0, 1]';
+mask     =  [1, 0, 0, 0, 1, 0, 0, 0, 1]';
 
 %%             Read or compute attitude errors
 read = 1;
 
 %% Extract GG observations
-folderPath = "/Users/sergiocollibars/Documents/GG_observations/120by120";
+folderPath = "/Users/sergiocollibars/Documents/GG_observations/120by120/410km";
 [GG_obs]   = parser_GG_obs_MSODP(folderPath);
 
 %% plot GG
@@ -25,7 +25,7 @@ t0         = datetime(2000,1,1,12,0,0,'TimeZone','UTC');
 t_dateTime = t0 + seconds(GG_obs(:, 1));
 t          = GG_obs(:, 1); Nt = length(t);
 
-yylbl = ['XX', 'XY', 'XZ', 'YY', 'YZ', 'ZZ'];
+yylbl = ["XX", "XY", "XZ", "YY", "YZ", "ZZ"];
 figure();
 for k = 1:6
     subplot(2, 3, k);
@@ -50,12 +50,12 @@ if(read == 0)
 else
     disp('  Reading state errors ...')
     path = '/Users/sergiocollibars/Documents/att_residuals/';
-    file = 'attitude_residuals_xx400.txt';
+    file = 'attitude_residuals_xx400_500km.txt';
     data = readmatrix(strcat(path,file));
     
-    At1 = data(:, 1); % yaw error
-    At2 = data(:, 2); % pitch error
-    At3 = data(:, 3); % roll error
+    At1 = data(1:Nt, 1); % yaw error
+    At2 = data(1:Nt, 2); % pitch error
+    At3 = data(1:Nt, 3); % roll error
     
     att_Err = [At1,At2,At3]';
 end
@@ -67,28 +67,28 @@ for j = 1:3
     title(tt(j)); ylabel('[rad]');
 end
 
-figure()
-scale = 3600 * 180 / pi;
+figure(); scale = 3600 * 180 / pi;
 semilogy(t_dateTime, vecnorm(att_Err) * scale, '.', 'LineStyle', 'none'); grid on;
 title("Attitude error magnitude"); ylabel('[arcseconds]');
 
 %% Add angular errors
-[GG_rot, GG_nom] = rotate_GG_obs(GG_obs,att_Err);
+[GG_rot, GG_nom]           = rotate_GG_obs(GG_obs,att_Err);
+
 prefit           = GG_rot(:, 2:end) - GG_nom(:, 2:end);
 
 dY               = prefit(:, logical(mask))'; % mask x Nt
 signal           = GG_nom(:, 2:end);
 signal_mask      = signal(:, logical(mask))';
 
-%% Instrument noise
-GG_sigma         = 2^(-1/2) * 1E-14;   % [s^-2 / sqrt(Hz)]
-
 %% Apply NSM to eliminate 1st order orientation errors
 disp('  Computing NSM')
 dY_NSM     = nan(1, Nt, sum(mask)); signal_NSM = dY_NSM; 
 for j = 1:Nt 
-    [Hrot_grad] = compute_rotPartials_analy(GG_nom(j, 2:end)', eye(3));
-    [S, V, D]   = svd(Hrot_grad(logical(mask), :)');
+    [Hrot_1st]      = compute_rotPartials_analy(GG_nom(j, 2:end)', eye(3));
+    H              = Hrot_1st;
+    [S1, V1, D1]   = svd(H(logical(mask), :)');
+
+    D = D1;
     for i = 1:sum(mask)
         V_rot               = D(:, i);
         P_rot               = V_rot * V_rot';
@@ -98,7 +98,7 @@ for j = 1:Nt
     end
 end
 
-%% Power Spectral Density of measurement residuals
+%% Power Spectral Density of NSM measurement residuals
 figure(); hold on;
 
 colors = lines(sum(mask));
@@ -122,6 +122,24 @@ set(gca, 'XScale', 'log', 'YScale', 'log');   % force log axes
 grid on; ylabel('Eotvos'); xlabel('Hz');
 title('NSM signal for different modes');
 
+%% Power Spectral Density of original measurement residuals
+figure(); hold on;
+tensor_signal = GG_nom(:, 2:end)';
+tt            = tensor_signal(logical(mask), :);
+for k = 1:sum(mask)
+    signal1    = squeeze(dY(k, :)) ./ 1E-9;
+    [Pxx1, f1] = compute_PSD(signal1, fs);
+    signal2    = squeeze(tt(k, :)) ./ 1E-9;
+    [Pxx2, f2] = compute_PSD(signal2, fs);
+
+    c = colors(k,:);
+
+    h(k) = loglog(f2, sqrt(Pxx2), 'Color', c, 'LineWidth', 1.5); % legend handle
+    loglog(f1, sqrt(Pxx1), '--', 'Color', c, 'LineWidth', 1.5);
+end
+set(gca, 'XScale', 'log', 'YScale', 'log');   % force log axes
+grid on; ylabel('Eotvos'); xlabel('Hz');
+title('Original signal for different components');
 
 %% AUXILIARY FUNCTIONS
 function [Pxx, f] = compute_PSD(X, Fs, window, noverlap, nfft)
@@ -186,7 +204,7 @@ function [Pxx, f] = compute_PSD(X, Fs, window, noverlap, nfft)
         end
 
         % Remove mean (helps with DC dominating)
-        xi = xi - mean(xi, 'omitnan');
+        %xi = xi - mean(xi, 'omitnan');
 
         % Replace NaNs/Infs (pwelch can't handle NaNs)
         bad = ~isfinite(xi);

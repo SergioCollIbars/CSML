@@ -1,0 +1,12 @@
+# Simulation configuration for lro_ephem_spice_config.cpp
+# Lines starting with # are ignored. Use key = value.
+
+# Trajectory file
+trajectory_file = LRO_MAR25_2015_24HOURS_f_1e-1Hz_SH1200.txt
+
+# Output measurement file
+output_file = MEAS_MAR25_2015_24HOURS_f_1e-1Hz_SH1200.txt
+
+# Gravity model truncation degree/order
+n_maxM = 1200         # Moon spherical-harmonic degree/order
+n_maxE = 0            # Earth SH degree/order. Keep 0 unless Earth C/S files are added.

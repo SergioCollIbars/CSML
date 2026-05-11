@@ -1,0 +1,20 @@
+#!/bin/bash
+
+set -e
+
+SRC="compute_true_measurements_from_traj.cpp"
+OUT="compute_true_measurements"
+
+SPICE_DIR="/Users/sergiocollibars/Documents/SPICE_C/cspice"
+CXX="/opt/homebrew/opt/llvm/bin/clang++"
+
+echo "Compiling $SRC ..."
+
+$CXX -std=c++11 -O3 -g -fopenmp \
+  "$SRC" \
+  -I"$SPICE_DIR/include" \
+  "$SPICE_DIR/lib/cspice.a" \
+  -lm \
+  -o "$OUT"
+
+echo "Done. Executable created: $OUT"

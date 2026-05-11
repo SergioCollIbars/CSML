@@ -1,0 +1,22 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "build lro_ephem_spice",
+      "type": "shell",
+      "command": "g++",
+      "args": [
+        "-std=c++11",
+        "-g",
+        "lro_ephem_spice.cpp",
+        "-I/Users/sergiocollibars/Documents/SPICE_C/cspice/include",
+        "/Users/sergiocollibars/Documents/SPICE_C/cspice/lib/cspice.a",
+        "-lm",
+        "-o",
+        "lro_ephem_spice"
+      ],
+      "group": "build",
+      "problemMatcher": ["$gcc"]
+    }
+  ]
+}

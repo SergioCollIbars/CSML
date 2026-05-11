@@ -110,10 +110,7 @@ def read_reg(
 
             rec = np.frombuffer(buf, dtype=dt)
             residual = rec[3]
-            sigma    = rec[4]
-            partials = rec[5:len(rec)]
-            values   = np.append(partials, [residual, sigma])
-            records.append(values)
+            records.append(residual)
 
         records = np.vstack(records)
 

@@ -30,8 +30,8 @@ GM_sigma = 6.4536052689015518e-24;   % [m^3/ s^2]
 
 %% GG measurements (true + perturbed)
 Monte_Carlo = 400;  % number of monte carlo realizations
-NH          = 2;   % number of altitudes
-NS          = 4;  % number of points in the sphere
+NH          = 5;    % number of altitudes
+NS          = 400;  % number of points in the sphere
 n_max       = 10; [Nc, Ns, Ncs]    = count_num_coeff(1200);
 altitudes   = linspace(1E3, 100E3, NH);
 
@@ -108,10 +108,6 @@ for h = 1:NH
     D_XX  = squeeze(disturbance_2(1, :, :));          % NS x MC
     D_YY  = squeeze(disturbance_2(2, :, :));          % NS x MC
     D_ZZ  = squeeze(disturbance_2(3, :, :));          % NS x MC
-
-    for k = 1:NS
-        histogram(D_XX(k, :)); hold on;
-    end
     
     D3_XX = squeeze(disturbance_3(1, :, :));
     D3_YY = squeeze(disturbance_3(2, :, :));
@@ -178,6 +174,16 @@ for h = 1:NH
     sigma_h_xx(h, 2) = SO_D3_XX;
     sigma_h_yy(h, 2) = SO_D3_YY;
     sigma_h_zz(h, 2) = SO_D3_ZZ;
+
+% %     figure()
+% %     for fg = 1:NS
+% %         histogram(D_ZZ(fg, :)); hold on;
+% %     end
+% %     hold on;
+% %     xline(+3*SO_D_ZZ + MO_D_ZZ, 'Color', 'r', 'LineWidth', 2, 'LineStyle', '--');
+% %     xline(-3*SO_D_ZZ + MO_D_ZZ, 'Color', 'r', 'LineWidth', 2, 'LineStyle', '--');
+% %     xline(MO_D_ZZ, 'Color', 'k', 'LineWidth', 1.5);
+% %     title('Altitude ' + string(altitudes(h)./1E3) + ' Km');
 end
 
 % plot SH XX, YY, ZZ disturbances

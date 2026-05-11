@@ -25,7 +25,7 @@ SH_uncrt         = file(4:end);
 %% LRO SPICE trajectory
 utc_start = '2012-03-20 00:00:00';
 utc_stop  = '2012-03-21 00:00:00';
-N         = 1000;                         % number of samples
+N         = 10000000;                         % number of samples
 [GM] = cspice_bodvrd('MOON', 'GM', 1);    % Get GM for the Moon [km^3/s^2]
 GM_moon = GM * 1E9;                       % [m^3/s^2]
 
@@ -71,12 +71,20 @@ frec = 1;
 [angVel_vec] = angularVel_from_DCM(BODYSC_J2000_mat, dt);
 radians_per_sec = 0.006 * (pi/180) / 3600 / sqrt(1/frec);
 
+[angAcc_vec] = get_angAcc(angVel_vec, et);
+
 % plot angular velocity
 figure();
 semilogy(tUTC(2:end-1), abs(angVel_vec(:, 2:end-1)), 'LineWidth', 2);
 grid on; ylabel('[rad/s]');
 legend('\omega_R', '\omega_T', '\omega_N');
 title('Angular velocity in Body frame coordinates');
+
+figure();
+semilogy(tUTC(2:end-1), abs(angAcc_vec(:, 2:end-1)), 'LineWidth', 2);
+grid on; ylabel('[rad/s^2]');
+legend('\omega_R', '\omega_T', '\omega_N');
+title('Angular acceleration in Body frame coordinates');
 
 % plot orbit altitude
 figure();
@@ -122,3 +130,63 @@ function [M] = dyad_operator(x)
         x(3), 0, -x(1);...
         -x(2), x(1), 0];
 end
+
+function [angVel_vec] = angularVel_from_DCM(BN_mat, dt)
+    % Givent the BN rotation matrix sequence with dimensions: 3 * Nt x 3,
+    % obtain the angular velocity vector.
+    % dt: time interval in seconds.
+
+    Nt         = length(BN_mat(:, 1)) / 3;
+    angVel_vec = zeros(3, Nt);
+    for k = 2:Nt-1
+        % current DCM
+        maxInd = 3 * k; minInd = maxInd - 2;
+        BN = BN_mat(minInd:maxInd, :);
+        
+        % time series DCM
+        i = k - 1;
+        maxInd = 3 * i; minInd = maxInd - 2;
+        BN_prev = BN_mat(minInd:maxInd, :);
+
+        j = k + 1;
+        maxInd = 3 * j; minInd = maxInd - 2;
+        BN_next = BN_mat(minInd:maxInd, :);
+
+        BN_dot = (BN_next - BN_prev)./(2*dt);
+        
+        % compute angular velocity
+        omega_dyad = - BN_dot * BN';
+        angVel_vec(:, k) = [omega_dyad(3, 2);omega_dyad(1,3);...
+            omega_dyad(2, 1)];
+    end
+end
+
+function [angAcc_vec] = get_angAcc(angVel_vec, time)
+    % compute angular acceleration using 3rd order 
+    % differenciation scheme
+
+    angAcc_vec = angVel_vec.*nan;
+    dt = time(2) - time(1);
+% %     for k = 1:length(time) - 3
+% %         for j = 1:3
+% %             x0 = angVel_vec(j, k);
+% %             x1 = angVel_vec(j, k + 1);
+% %             x2 = angVel_vec(j, k + 2);
+% %             x3 = angVel_vec(j, k + 3);
+% % 
+% %             y0 = (-11*x0 + 18*x1 -9*x2 +2*x3) / (6*dt);
+% %             angAcc_vec(j, k) = y0;
+% %         end
+% %     end 
+
+    for k = 2:length(time) - 1
+        for j = 1:3
+            x0 = angVel_vec(j, k - 1);
+            x1 = angVel_vec(j, k + 1);
+
+            y0 = (x1 - x0) / (2*dt);
+            angAcc_vec(j, k) = y0;
+        end
+    end 
+end
+

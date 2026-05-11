@@ -1,0 +1,20 @@
+#!/bin/bash
+
+set -e
+
+SRC="lro_ephem_spice_config.cpp"
+OUT="lro_ephem_spice_moon_parallel"
+
+SPICE_DIR="/Users/sergiocollibars/Documents/SPICE_C/cspice"
+CXX="/opt/homebrew/opt/llvm/bin/clang++"
+
+echo "Compiling $SRC ..."
+
+$CXX -std=c++11 -O3 -g -fopenmp \
+  "$SRC" \
+  -I"$SPICE_DIR/include" \
+  "$SPICE_DIR/lib/cspice.a" \
+  -lm \
+  -o "$OUT"
+
+echo "Done. Executable created: $OUT"

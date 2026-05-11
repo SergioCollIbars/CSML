@@ -35,7 +35,7 @@ love_numb_list      = [k20, k21, k22, k30];
 love_numb_list_unct = [s_k20, s_k21, s_k22, s_k30];
 
 %% GG measurements (true + perturbed)
-Monte_Carlo = 200;  % number of monte carlo realizations % 200
+Monte_Carlo = 400;  % number of monte carlo realizations % 200
 NH          = 40;   % number of altitudes   % 40
 NS          = 1000;  % number of points in the sphere % 1000
 n_sim       = 4; [Nc, Ns, Ncs]    = count_num_coeff(1200);
@@ -101,39 +101,19 @@ for h = 1:NH
     D_XX  = squeeze(disturbance_2(1, :, :));          % NS x MC
     D_YY  = squeeze(disturbance_2(2, :, :));          % NS x MC
     D_ZZ  = squeeze(disturbance_2(3, :, :));          % NS x MC
-    
-    M_D_XX = nan(1, NS); S_D_XX = nan(1, NS);
-    M_D_YY = nan(1, NS); S_D_YY = nan(1, NS);
-    M_D_ZZ = nan(1, NS); S_D_ZZ = nan(1, NS);
 
-    % mean and std for MC distribution per point.
-    for i = 1:NS
-        M_D_XX(i) = mean(D_XX(i, :));
-        M_D_YY(i) = mean(D_YY(i, :));
-        M_D_ZZ(i) = mean(D_ZZ(i, :));
+    % Disturbance 2
+    [M_D_XX, Q3_XX] = compute_med_Q3(D_XX);
+    mu_h_xx(h, 1) = M_D_XX;
+    sigma_h_xx(h, 1) = Q3_XX;
 
-        S_D_XX(i) = std(D_XX(i, :));
-        S_D_YY(i) = std(D_YY(i, :));
-        S_D_ZZ(i) = std(D_ZZ(i, :));
-    end
+    [M_D_ZZ, Q3_ZZ] = compute_med_Q3(D_ZZ);
+    mu_h_zz(h, 1) = M_D_ZZ;
+    sigma_h_zz(h, 1) = Q3_ZZ;
 
-    % overall mean (equally weight)
-    MO_D_XX = mean(M_D_XX);
-    MO_D_YY = mean(M_D_YY);
-    MO_D_ZZ = mean(M_D_ZZ);
-
-    % Total total variance law
-    SO_D_XX = sqrt( mean(S_D_XX.^2) + mean((M_D_XX - MO_D_XX).^2) );
-    SO_D_YY = sqrt( mean(S_D_YY.^2) + mean((M_D_YY - MO_D_YY).^2) );
-    SO_D_ZZ = sqrt( mean(S_D_ZZ.^2) + mean((M_D_ZZ - MO_D_ZZ).^2) );
-
-    mu_h_xx(h) = MO_D_XX;
-    mu_h_yy(h) = MO_D_YY;
-    mu_h_zz(h) = MO_D_ZZ;
-
-    sigma_h_xx(h) = SO_D_XX;
-    sigma_h_yy(h) = SO_D_YY;
-    sigma_h_zz(h) = SO_D_ZZ;
+    [M_D_YY, Q3_YY] = compute_med_Q3(D_YY);
+    mu_h_yy(h, 1) = M_D_YY;
+    sigma_h_yy(h, 1) = Q3_YY;
 end
 
 plot_disturbance(mu_h_xx, sigma_h_xx, altitudes, "m", "XX component")
@@ -142,6 +122,14 @@ plot_disturbance(mu_h_zz, sigma_h_zz, altitudes, "m", "ZZ component")
 
 
 %% FUNCTIONS
+function [MEDIAN, Q3] = compute_med_Q3(data)
+    % flaten data
+    x = abs(data(:));
+
+    MEDIAN = median(x);
+    Q3     = prctile(x, 95);
+end
+
 function [deltaC, deltaS] = Max_solid_tidial_var(n_max,n_sim, love_numb, ...
     R_M, GM_M, GM_E, GM_S, r_E, r_S)
     
@@ -205,7 +193,6 @@ function [deltaC, deltaS] = Max_solid_tide_monthly_var(n_max)
         deltaS(3, 3)      = sum(amplitudes(:,5)); % S22
 end
 
-
 function [] = plot_disturbance(mu_h, sigma_h, h, cl, tt)
     figure(); hold on; grid on;
     
@@ -214,7 +201,7 @@ function [] = plot_disturbance(mu_h, sigma_h, h, cl, tt)
     
     set(gca,'YScale','log')
     
-    plot(x, abs(mu_h) + sig, 'Color', cl, 'LineWidth', 1.2);
+    plot(x,  sig, 'Color', cl, 'LineWidth', 1.2);
 
     xlabel('Altitude [km]');
     ylabel('Disturbance');

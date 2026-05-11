@@ -34,8 +34,8 @@ A = 2.8;      % [m^2]
 M = 220;      % [kg]
 
 %% LRO SPICE trajectory
-utc_start = '2012-03-04 00:00:00';
-utc_stop  = '2012-03-06 00:00:00';
+utc_start = '2015-03-20 00:00:00';
+utc_stop  = '2015-03-20 12:00:00';
 N         = 20000;                           % number of samples
 [R_Sun] = cspice_bodvrd('SUN', 'RADII', 3).*1E3;      % Get R for the Sun  [m]
 

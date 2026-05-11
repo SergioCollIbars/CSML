@@ -20,66 +20,62 @@ def main():
     folder_obs = Path(args.input_obs_folder).resolve()
     folder_reg = Path(args.input_regress_folder).resolve()
 
-    # Define the regression suffixes we are looking for
+    # Possible regression suffixes
     suffixes = ['XX', 'XY', 'XZ', 'YY', 'YZ', 'ZZ']
 
+    # Store residuals by component
+    residuals_by_comp = {s: [] for s in suffixes}
+
     # Iterate through OBS files
-    blocks = []
-    for obs_file in sorted(folder_obs.glob("*.ggr")):  # Adjust extension if needed
-        
-        # Extract date from filename (e.g., 2008-08-01)
-        # This regex looks for 4 digits-2 digits-2 digits
+    for obs_file in sorted(folder_obs.glob("*.ggr")):
+
         date_match = re.search(r'(\d{4}-\d{2}-\d{2})', obs_file.name)
+
         if date_match:
             current_date = date_match.group(1)
-            day_reg_paths = []
             print("Processing: " + str(current_date))
-            
-            # Look for the 6 specific reg files for this date
-            found_all = True
+
+            # Look for any available reg files for this date
             for s in suffixes:
-                # Pattern matches: goce_XX_eggreg_2008-08-01...
                 pattern = f"goce_{s}_eggreg_{current_date}_*.reg"
                 matches = list(folder_reg.glob(pattern))
-                
+
                 if matches:
-                    # Convert Path object to a string and append to list
-                    day_reg_paths.append(str(matches[0].absolute()))
+                    reg_path = str(matches[0].absolute())
+
+                    # Read regression file
+                    H = read_reg(reg_path)
+
+                    # Store residual column
+                    residuals_by_comp[s].append(H[:, -2])
                 else:
                     print(f"Missing component {s} for date {current_date}")
-                    found_all = False
-                    break
-            
-            # Process only if we have the full set of 6
-            if found_all:
-                # compute residuals
-                H_XX = read_reg(day_reg_paths[0])
-                H_XY = read_reg(day_reg_paths[1])
-                H_XZ = read_reg(day_reg_paths[2])
-                H_YY = read_reg(day_reg_paths[3])
-                H_YZ = read_reg(day_reg_paths[4])
-                H_ZZ = read_reg(day_reg_paths[5])
 
-                r = np.array([H_XX[:,-2],H_XY[:, -2],H_XZ[:, -2],\
-                    H_YY[:, -2],H_YZ[:, -2],H_ZZ[:, -2] ])
-                
-                blocks.append(r)
-                
-    if len(blocks) == 0:
-        print("No complete set of regression files was found.")
+    # Check if anything was found
+    if all(len(v) == 0 for v in residuals_by_comp.values()):
+        print("No regression files were found.")
         return
 
-    # stack all days into one big array of shape (6, Ntotal)
-    big_array = np.hstack(blocks)
-    print(f"Number of obs. processed: {len(big_array.T)}")
-
-    # compute RMS value for each of the 6 observation channels
-    rms = np.sqrt(np.mean(big_array**2, axis=1))
-
-    # print results
     print("\nRMS values:")
-    for comp, val in zip(suffixes, rms):
-        print(f"{comp}: {val:.6e}")
+
+    total_obs = 0
+
+    for s in suffixes:
+        if len(residuals_by_comp[s]) > 0:
+            # Concatenate all days for this component
+            comp_residuals = np.concatenate(residuals_by_comp[s])
+
+            # Compute RMS for this component
+            rms = np.sqrt(np.mean(comp_residuals**2))
+
+            total_obs += len(comp_residuals)
+
+            print(f"{s}: {rms:.6e}")
+        else:
+            print(f"{s}: not available")
+
+    print(f"\nTotal scalar observations processed: {total_obs}")
+
 
 if __name__ == "__main__":
     main()

@@ -26,19 +26,19 @@ W0 = 0;                   % Initial asteroid longitude
 RA = deg2rad(86.6388);    % Right Ascension     [rad]
 DEC = deg2rad(-65.1086);  % Declination         [rad]
 
-% % % Earth parameters
-% % savedData = 0;                % use saved data. 1 = yes / 0 = no
-% % path = "HARMCOEFS_EARTH_1.txt";
-% % [Cnm, Snm, Re] = readCoeff(path);
-% % path = "SIGMACOEFS_EARTH_1.txt";
-% % [sigma_Cnm, sigma_Snm, ~] = readCoeff(path);
-% % GM = 3.986004418E14;
-% % n_max  = 20;
-% % normalized = 1;
-% % W = 2 * pi / (24*3600);     % Rotation ang. vel   [rad/s]
-% % W0 = 0;                     % Initial asteroid longitude
-% % RA = -pi/2;                 % Right Ascension     [rad]
-% % DEC = pi/2;                 % Declination         [rad]
+% Earth parameters
+savedData = 0;                % use saved data. 1 = yes / 0 = no
+path = "HARMCOEFS_EARTH_1.txt";
+[Cnm, Snm, Re] = readCoeff(path);
+path = "SIGMACOEFS_EARTH_1.txt";
+[sigma_Cnm, sigma_Snm, ~] = readCoeff(path);
+GM = 3.986004418E14;
+n_max  = 20;
+normalized = 1;
+W = 2 * pi / (24*3600);     % Rotation ang. vel   [rad/s]
+W0 = 0;                     % Initial asteroid longitude
+RA = -pi/2;                 % Right Ascension     [rad]
+DEC = pi/2;                 % Declination         [rad]
 
 poleParams = [W, W0, RA, DEC];
 asterParams = [GM, Re, n_max, normalized];

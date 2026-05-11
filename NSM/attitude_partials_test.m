@@ -28,11 +28,11 @@ T_ACI = [Ytrue(1), Ytrue(2), Ytrue(3);...
     Ytrue(7), Ytrue(8), Ytrue(9)];
 
 % body frame rotation
-thy = pi/4; thp = pi/6; thr = pi/3; 
+thy = 0; thp = 0; thr = 0; 
 BN = rotationMatrix(thy, thp, thr, [3, 2, 1]);
 
 % compute atittude error
-yaw_err = .1E-6; pitch_err = .2E-6; roll_err = .3E-6;
+yaw_err = .1E-8; pitch_err = .2E-8; roll_err = .3E-8;
 RB = rotationMatrix(yaw_err, pitch_err, roll_err, [3, 2, 1]);
 
 T_R = (RB*BN) * T_ACI * (RB*BN)';
@@ -43,7 +43,31 @@ dT = reshape(T_R - T_B, [9, 1]);
 
 % compute 1st order partials
 [Hrot] = compute_rotPartials_analy(Ytrue, BN);
+[H] = rotation_partials_v2(T_ACI);
 d      = Hrot * [yaw_err;pitch_err;roll_err];
 
 % compute relative error
 rel_err = abs(dT - d)./dT;
+
+
+
+%% FUNCTIONS
+function [H] = rotation_partials_v2(T)
+    S1 = [0,0,0;0,0,1;0,-1,0];
+    S2 = [0,0,-1;0,0,0;1,0,0];
+    S3 = [0,1,0;-1,0,0;0,0,0];
+
+    dT_d1 = S1 * T + (S1 * T)';
+    dT_d2 = S2 * T + (S2 * T)';
+    dT_d3 = S3 * T + (S3 * T)';
+
+    h_d1 = [dT_d1(1,1);dT_d1(1,2);dT_d1(1,3);dT_d1(2,1);...
+        dT_d1(2,2);dT_d1(2,3);dT_d1(3,1);dT_d1(3,2);dT_d1(3,3)];
+    h_d2 = [dT_d2(1,1);dT_d2(1,2);dT_d2(1,3);dT_d2(2,1);...
+        dT_d2(2,2);dT_d2(2,3);dT_d2(3,1);dT_d2(3,2);dT_d2(3,3)];
+    h_d3 = [dT_d3(1,1);dT_d3(1,2);dT_d3(1,3);dT_d3(2,1);...
+        dT_d3(2,2);dT_d3(2,3);dT_d3(3,1);dT_d3(3,2);dT_d3(3,3)];
+
+    H = [h_d3, h_d2, h_d1];
+   
+end

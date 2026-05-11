@@ -1,0 +1,24 @@
+#!/bin/bash
+#SBATCH -J weigth_regres
+#SBATCH -p grace   #normal                 # grace-serial      #  normal
+#SBATCH -N 1
+#SBATCH -n 1
+#SBATCH -t 02:00:00
+#SBATCH --mem=96G
+#SBATCH -o logs/%x_%j.out
+#SBATCH -e logs/%x_%j.err
+
+mkdir -p logs
+
+# load modules:
+module load python3
+
+# Define paths & weight
+REGRESS_PATH="/scratch/11342/sergiocollibars1294/regress_reg/"
+WEIGHT=1E-3
+
+echo "Starting the weigth writting process..."
+
+python3 -u main.py "$REGRESS_PATH" "$WEIGHT"
+
+echo "Process completed successfully."

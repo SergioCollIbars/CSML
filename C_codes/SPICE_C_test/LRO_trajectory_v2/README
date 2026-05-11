@@ -1,0 +1,17 @@
+*******************************************
+	   LRO TRAJECTORY INTEGRATOR
+*******************************************
+
+Author: Sergio Coll-Ibars
+Date: 04/01/2026
+
+Description: Integrate the LRO trajectory using 
+	initial conditions from the SPICE ephem.
+	Uses the GRGM1200 Lunar gravity model 
+	and SRP model using shadow functions.
+
+Input: simulation_config.txt
+Output: specified in input files. Saves trajectory
+	ephemerides
+
+Launch: ./lro_ephem_spice_moon_parallel simulation_config.txt  

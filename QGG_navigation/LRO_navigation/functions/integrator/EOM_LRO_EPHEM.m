@@ -85,9 +85,13 @@ function [dx] = EOM_LRO_EPHEM(t, x, planetParams, C_mat, S_mat)
 
     Cmat_M = C_mat{2};
     Smat_M = S_mat{2};
-    [~, dU2, ddU2] = potentialGradient_nm(Cmat_M, Smat_M, n_max, ...
-                                                J2000_MOON'*r2, R_M, GM_M, ...
-                                                normalized);
+
+    % % [~, dU2, ddU2] = potentialGradient_nm(Cmat_M, Smat_M, n_max, ...
+    % %                                             J2000_MOON'*r2, R_M, GM_M, ...
+    % %                                             normalized);
+
+    [~, dU2, ddU2] = potentialGradient_nm_mex_mxGetPr(Cmat_M, Smat_M, n_max, ...
+                            J2000_MOON'*r2, R_M, GM_M, normalized);
 
     % rotate back to inertial. Earth-Moon (EM) plane
     dU1  = J2000_EARTH  * dU1;

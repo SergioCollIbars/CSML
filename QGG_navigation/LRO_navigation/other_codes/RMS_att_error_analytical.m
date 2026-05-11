@@ -5,10 +5,10 @@ close all;
 %% COMPUTE RMS OF ERROR IN TIME DOMAIN FROM PSD VALUE
 
 % sampling frequency [Hz]
-fs = 1;   
+fs = 1/5;   
 
 % frequency range [Hz]
-N = 1E-4;
+N = 1E-6;
 f = 1E-5:N:fs/2;
 
 % Instrument PSD [units^2 / Hz]
@@ -18,7 +18,7 @@ S_MICRO = (1E-10.*sqrt(0.4 + 0.001.*(f.^-1) + 2400.*(f.^4))).^2;  % [rad^2/s^2/H
 S_ASTRIX = (3E-8 * sqrt(1+4.6E-8 * (f.^-2))).^2;     % [rad^2/s^2/Hz]
 
 % Select the sensor PSD
-S = S_ASTRIX;
+S = S_ASC;
 
 % plot 
 figure()
@@ -27,4 +27,4 @@ title('Instrument sqrt(PSD)');
 
 % numerical integration
 var   = trapz(f, S);   % numerical integration
-sigma = sqrt(var);       % RMS noise
+sigma = sqrt(var);     % RMS noise

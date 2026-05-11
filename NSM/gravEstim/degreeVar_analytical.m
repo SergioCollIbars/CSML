@@ -40,7 +40,7 @@ else
     normalized = 1;
 end
 asterParams = [GM, Re, n_max, normalized];
-n_max_K     = 10; % kaula max degree
+n_max_K     = 240; % kaula max degree
 
 % % % SH harmonics
 [Nc, Ns, ~] = count_num_coeff(n_max_K); 
@@ -95,7 +95,7 @@ else
     X_RMS(1:length(RMS_vals)) = RMS_vals;
 
     % orbit radius
-    r      = 255E3 + Re; 
+    r      = 350E3 + Re; 
 end
 
 % time vector
@@ -106,13 +106,13 @@ f = 1/1;
 Nt = rev*T * f;
 
 % specify number of meas assuming f = 1Hz
-Nt = 9 * 86400;
+Nt = 31 * 86400 / 5;
 
 % scale factor 
 S = 1E6;
 
 % weight matrix
-sigmaM  = 10E-12;
+sigmaM  = 3.3E-15;
 sigmaR  = 1 / S;
 
 % select measurement set
