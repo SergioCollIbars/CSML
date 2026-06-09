@@ -11,13 +11,13 @@ set(0,'defaultAxesFontSize',16);
 
 %%                Mesurement mask 
 %           xx xy xz yx yy yz zx zy zz
-mask     =  [1, 0, 0, 0, 1, 0, 0, 0, 1]';
+mask     =  [1, 0, 1, 0, 1, 1, 0, 0, 1]';
 
 %%             Read or compute attitude errors
 read = 1;
 
 %% Extract GG observations
-folderPath = "/Users/sergiocollibars/Documents/GG_observations/120by120/410km";
+folderPath = "/Users/sergiocollibars/Documents/GG_observations/120by120/500km";
 [GG_obs]   = parser_GG_obs_MSODP(folderPath);
 
 %% plot GG

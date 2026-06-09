@@ -11,8 +11,8 @@ set(0,'defaultAxesFontSize',16);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % NOTE: The values include the Scale Factor. (Amplitude scaled to 1E6)
-Input_GEO_1 = "/Users/sergiocollibars/Documents/Aesop_sol/410km/GEO.XX_XZ_YY_ZZ_215000";
-Input_GEO_2 = "/Users/sergiocollibars/Documents/Aesop_sol/410km/GEO.101101_0110_215400";
+Input_GEO_1 = "/Users/sergiocollibars/Documents/Aesop_sol/350km/GEO.XX_XZ_YY_ZZ_215400";
+Input_GEO_2 = "/Users/sergiocollibars/Documents/Aesop_sol/500km/GEO.101101_0110_215400";
 
 Input_true  = "/Users/sergiocollibars/Documents/Aesop_sol/GIF48.2007.GEO";
 
@@ -22,8 +22,6 @@ n_max = 120;
 [C_1, S_1, sigma1_C, sigma1_S] = read_GEO_file(Input_GEO_1, n_max);
 [C_2, S_2, sigma2_C, sigma2_S] = read_GEO_file(Input_GEO_2, n_max);
 [C, S, sigma_C, sigma_S]       = read_true_GEO_file(Input_true, 360);
-
-% % sigma2_C = (0.9).*sigma2_C; sigma2_S = (0.9).*sigma2_S;
 
 % Compute coeff. error
 C_err1 = C(1:n_max+1, 1:n_max+1) - C_1; S_err1 = S(1:n_max+1, 1:n_max+1) - S_1;
@@ -35,6 +33,10 @@ rms_deg_true = rms_per_degree(C(1:n_max+1, 1:n_max+1), ...
 rms_cov_true = rms_per_degree(sigma_C(1:n_max+1, 1:n_max+1), ...
     sigma_S(1:n_max+1, 1:n_max+1));
 
+% Hydrology level (mm)
+H_lvl    = [4E-1,1.1E-1,5E-2,3E-2,2E-2,1.6E-2, 1E-2];
+H_degree = [0,20,40,60,80,100,120];
+
 % compute RMS (Standard)
 rms_cov_err1  = rms_per_degree(sigma1_C, sigma1_S);
 rms_deg_err1  = rms_per_degree(C_err1, S_err1);
@@ -43,10 +45,27 @@ rms_deg_err1  = rms_per_degree(C_err1, S_err1);
 rms_deg_err2  = rms_per_degree(C_err2, S_err2);
 rms_cov_err2  = rms_per_degree(sigma2_C, sigma2_S);
 
-% plot
+% compute Geoid error (Estimated coefficients)
+[degree_error_mm,degree_sigma_mm] = compute_geoid_error(n_max,...
+    C_1, S_1, C(1:n_max+1, 1:n_max+1), S(1:n_max+1, 1:n_max+1), ...
+    sigma2_C, sigma2_S, 6378136.3);
+
+%% Plots
+% Plot Geoid error
+figure();
+semilogy(0:n_max, degree_error_mm, 'LineWidth', 1.5)
+hold on;
+semilogy(0:n_max, degree_sigma_mm, '--', 'LineWidth', 1.5)
+semilogy(H_degree, H_lvl, 'Color','k', 'LineWidth', 1.5, 'LineStyle','--');
+grid on;
+xlabel('Spherical harmonic degree')
+ylabel('Geoid error [mm]')
+legend('Error w.r.t. reference', 'Formal uncertainty', 'Hydrology & Ice')
+
+% Plot RMS error
 figure();
 xvals = (1:n_max+1) - 1; grayC = [0.5 0.5 0.5];
-semilogy(xvals, rms_deg_true, 'LineWidth', 2, 'Color', 'k'); hold all;
+semilogy(xvals, rms_deg_true, 'LineWidth', 2, 'Color', 'k'); hold on;
 semilogy(xvals, rms_cov_true, 'LineWidth', 1.2, 'Color', grayC);
 semilogy(xvals, rms_deg_err1, 'LineWidth', 1.5, 'Color', 'g', ...
     'Marker', '.', 'LineStyle','none'); grid on;
@@ -57,9 +76,8 @@ semilogy(xvals, 3.*rms_cov_err2, 'LineWidth', 1.5, 'Color', 'b');
 title('RMS value AESOP solution');
 legend('GIF48 GEO', '1\sigma ref. GEO', '', '', '3\sigma Standard LS', ...
     '3\sigma NSM LS');
-% % legend('GIF48 GEO', '1\sigma ref. GEO', '', '', '2\sigma Att. error free', ...
-% %     '2\sigma NSM LS');
 
+% Plot pyramid graphs
 figure();
 semilogy(xvals, rms_cov_err1./rms_cov_err2, 'LineWidth', 1.5, 'Color', ...
     'r', 'LineStyle','none', 'Marker','square'); grid on;
@@ -74,11 +92,11 @@ plot_SH_coeffs(C_err1./C_err2,S_err1./S_err2, n_max,...
 plot_SH_coeffs(sigma1_C./sigma2_C,sigma1_S./sigma2_S, n_max,...
     "\sigma ratio Standard/NSM", [], 'linear');
 
-% stats
-disp('C coefficients STATS: ');
-compute_stats(abs(C_err1./C_err2), "C_{nm} coefficients");
-disp('S coefficients STATS: ');
-compute_stats(abs(S_err1./S_err2), "S_{nm coefficients}");
+%% Stats
+% % disp('C coefficients STATS: ');
+% % compute_stats(abs(C_err1./C_err2), "C_{nm} coefficients");
+% % disp('S coefficients STATS: ');
+% % compute_stats(abs(S_err1./S_err2), "S_{nm coefficients}");
 
 % % disp('C coefficients STATS: ');
 % % compute_stats(abs(sigma1_C./sigma2_C), "C_{nm} coefficients");

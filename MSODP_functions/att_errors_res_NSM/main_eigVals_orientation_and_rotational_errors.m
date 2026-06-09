@@ -11,13 +11,13 @@ set(0,'defaultAxesFontSize',16);
 
 %%                Mesurement mask 
 %           xx xy xz yx yy yz zx zy zz
-mask     =  [1, 1, 1, 0, 1, 1, 0, 0, 1]';
+mask     =  [1, 0, 1, 0, 1, 1, 0, 0, 1]';
 
 %%             Read or compute attitude errors
 read = 1;
 
 %% Extract GG observations
-folderPath = "/Users/sergiocollibars/Documents/GG_observations/120by120/410km";
+folderPath = "/Users/sergiocollibars/Documents/GG_observations/120by120/350km";
 [GG_obs]   = parser_GG_obs_MSODP(folderPath);
 
 %% plot GG
@@ -72,14 +72,14 @@ semilogy(t_dateTime, vecnorm(att_Err) * scale, '.', 'LineStyle', 'none'); grid o
 title("Attitude error magnitude"); ylabel('[arcseconds]');
 
 % angular Velocity error
-load("nominal_angVel_500km.mat");
+load("nominal_angVel_350km.mat");
 
 sigmaAngVel = 1E-8; % [rad/s];
 deltaAngVel = normrnd(0, sigmaAngVel,    [3, Nt]);
 
 % compute Angular acceleration
-I = [152,-23.4,5.5;-23.4,2690.8,0.9;-5.5,0.9,2652.6];
-[M] = compute_ExternalTorque(angVel(:, 1:Nt), I, 5);
+I            = [152,-23.4,5.5;-23.4,2690.8,0.9;-5.5,0.9,2652.6];
+[M]          = compute_ExternalTorque(angVel(:, 1:Nt), I, 5);
 [angAcc_nom] = compute_angAcc(angVel(:, 1:Nt),I, M);
 [angAcc]     = compute_angAcc(angVel(:, 1:Nt)+deltaAngVel,I, M);
 

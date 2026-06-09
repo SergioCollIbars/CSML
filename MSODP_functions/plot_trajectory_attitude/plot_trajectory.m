@@ -11,7 +11,7 @@ set(0,'defaultAxesFontSize',16);
 % Date: 04/01/2026
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-folder = "/Users/sergiocollibars/Documents/SC_trajectory/450km/";
+folder = "/Users/sergiocollibars/Documents/SC_trajectory/350km/";
 
 % Constants
 R_E = 6378e3; % Earth equatorial radius [m]

@@ -9,12 +9,12 @@ addpath('functions/');
 % Date: 03/13/2026
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-FOLDER = "/Users/sergiocollibars/Documents/att_files/410km";
+FOLDER = "/Users/sergiocollibars/Documents/att_files/350km";
 files  = dir(FOLDER);
 nfiles = length(files);
 
 % save angular velocity, options: 1 or 0
-save_angVel = 1;
+save_angVel = 0;
 
 quaternions = nan(1e8, 4); idx = 1;
 for k = 1:length(files)
@@ -93,5 +93,5 @@ legend('\Omega_1', '\Omega_2', '\Omega_3');
 
 if (save_angVel == 1)
     disp('saving angular velocity');
-    save("nominal_angVel_410km.mat", 'angVel');
+    save("nominal_angVel_350km.mat", 'angVel');
 end

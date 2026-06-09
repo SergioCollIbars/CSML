@@ -19,7 +19,7 @@ folder = "/Users/sergiocollibars/OneDrive - UCB-O365/Kepler_codes/results/LRO_Ma
 
 % set 4
 % file = "orbit_LRO_ZZ_fc_1e-3_1mE_dataOut.mat";
-file = "orbit_LRO_SIM2_dataOut.mat";
+file = "orbit_LRO_SIM4_dataOut.mat";
 
 % load files
 load(folder+file);
@@ -38,7 +38,7 @@ for mc  = 1:MC
 
     % get rotation matrices
     BN_mat = compute_orientation_SC(time, data.Xf(1:6,:)', ...
-        I_ALIG, NB_MOON_mat);
+        data.I_ALIG, NB_MOON_mat);
 
     % compute state error and covariance
     [errorP, errorV, sigmaP, sigmaV] = ...

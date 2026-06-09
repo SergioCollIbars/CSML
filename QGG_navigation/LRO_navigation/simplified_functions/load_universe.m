@@ -5,19 +5,21 @@ function [planetParams, Cmat_true, Smat_true] = load_universe()
     % Author: Sergio Coll Ibars
     % Date: 03/27/2024
 
-    planetParams = zeros(1, 9);
-
-    R_earth = cspice_bodvrd('EARTH', 'RADII', 3); % [Km]
-    R_moon  = cspice_bodvrd('MOON', 'RADII', 3);  % [Km]
+    R      = cspice_bodvrd('EARTH', 'RADII', 3); % [Km]
+    R_E    = R(1)*1e3; % [m]
+    R_M    = 1738*1E3; % [m]
 
     GM_earth = cspice_bodvrd('EARTH', 'GM', 1);   % [km^3/s^2]
-    GM_moon  = cspice_bodvrd('MOON', 'GM', 1);    % [km^3/s^2]
 
-    GM1 = GM_earth * 1E9;    % [m^3/s^2]
-    GM2 = GM_moon  * 1E9;    % [m^3/s^2]
+    GM_E   = GM_earth * 1E9;    % [m^3/s^2]
+    GM_M   = 4.9028001224453001E12;
+
+    [GM_S] = cspice_bodvrd('SUN', 'GM', 1)*1E9; 
+    [R]    = cspice_bodvrd('SUN', 'RADII', 3).*1E3;
+    R_S    = R(1);
     
     path1 = "HARMCOEFS_EARTH_1.txt";
-    path2 = "HARMCOEFS_MOON_1_v2.txt";
+    path2 = "HARMCOEFS_MOON_GRGM1200.txt";
 
     [Cmat1, Smat1, ~] = readCoeff(path1); % grav. field primary
     [Cmat2, Smat2, ~] = readCoeff(path2); % grav. field secondary
@@ -26,24 +28,10 @@ function [planetParams, Cmat_true, Smat_true] = load_universe()
     Smat_true = {Smat1, Smat2};
 
     normalized = 1;
-    n_max = 8; 
+    n_maxE = 0; 
+    n_maxM = 400; 
 
-    % system paramters. Earth & Moon
-    D = 384399e3;  % [m]
-    planetParams(1) = GM2 / (GM1 + GM2); % mass ratio
-    planetParams(2) = D;                 % primaries distance
-
-    % define time dimensionalization
-    n = sqrt((GM1 + GM2) / D^3); % mean motion circular orbit [1/s]
-    planetParams(3) = n;
-    planetParams(4) = R_earth(1) * 1E3;       % reference radius primary   
-    planetParams(5) = R_moon(1)  * 1E3;       % reference radius secondary
-    planetParams(6) = n_max;                  % max SH zonal
-    planetParams(7) = normalized;             % normalized grav. coeff. option  
-    planetParams(8) = GM_earth * 1E9;         % primary point mass parameter [m^3/s^2]
-    planetParams(9) = GM_moon  * 1E9;         % secondary point mass parameter [m^3/s^2]
-    planetParams(10) = 1.3;                   % SRP scaling factor
-    planetParams(11) = 1000;                  % S/C mass [Kg]
-    planetParams(12) = 50 / (D^2);            % S/C area [-]
+    planetParams = [GM_E, GM_M, R_E, R_M, n_maxM, normalized,...
+        GM_S,n_maxE,R_S];
 end
 

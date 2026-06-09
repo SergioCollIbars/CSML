@@ -14,7 +14,7 @@ set(0,'defaultAxesFontSize',16);
 mask     =  [1, 0, 0, 0, 1, 0, 0, 0, 1]';
 
 %% Extract GG observations
-folderPath = "/Users/sergiocollibars/Documents/GG_observations/120by120/410km";
+folderPath = "/Users/sergiocollibars/Documents/GG_observations/120by120/500km";
 [GG_obs]   = parser_GG_obs_MSODP(folderPath);
 
 %% plot GG
@@ -37,7 +37,7 @@ sgtitle('GG Observations from ' + string(t_dateTime(1)) + ' to ' + ...
 fs = 1 / (t(2) -t(1)); % Hz
 
 % angular Velocity error
-load("nominal_angVel_410km.mat");
+load("nominal_angVel_500km.mat");
 sigmaAngVel = 1E-8; % [rad/s];
 deltaAngVel = normrnd(0, sigmaAngVel,    [3, Nt]);
 

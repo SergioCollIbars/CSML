@@ -1,0 +1,46 @@
+function [F] = shadow_function(R_sun, R_planet, r_sun, r_sc)
+% Returns F in [0,1]: 1 = Sun fully visible, 0 = fully occulted
+% r_sun: planet->Sun (J2000), r_sc: planet->SC (J2000)
+
+    % --- distances
+    d_sc  = norm(r_sc);                 % planet->SC
+    d_sun = norm(r_sun - r_sc);         % SC->Sun
+    
+    % apparent radius (planet)
+    theta_p = asin(R_planet / d_sc);
+
+    % apparent radius (Sun)
+    theta_s = asin(R_sun / d_sun);
+
+    % apparent radius (Planet & Sun)
+    B = (-r_sc' * (r_sun - r_sc))/(d_sc*d_sun);
+    theta_ps = acos(B);
+    
+    % Angles
+    CAF = acos((theta_s^2 + theta_ps^2 - theta_p^2)/(2*theta_s*theta_ps));
+    CBD = acos((theta_p^2 + theta_ps^2 - theta_s^2)/(2*theta_p*theta_ps));
+
+    % Areas
+    SAFC = 0.5 * CAF * theta_s^2;
+    SAEC = 0.5 * (theta_s * sin(CAF)) * (theta_s * cos(CAF));
+    SBDC = 0.5 * CBD * theta_p^2;
+    SBEC = 0.5 * (theta_p * sin(CBD)) * (theta_p * cos(CBD));
+    
+    J1 = abs(theta_p - theta_s);
+    J2 = theta_p + theta_s;
+    if(theta_p + theta_s <= theta_ps)
+        S = 0;  % No occultation
+    elseif(theta_p - theta_s > theta_ps)
+        S = pi * theta_s^2;
+    elseif(theta_s - theta_p > theta_ps)
+        S = pi * theta_p^2;
+    elseif(J1 < theta_ps && theta_ps < J2)
+        S = 2*(SAFC - SAEC) + 2*(SBDC - SBEC);
+    else
+        disp('No conditions fulfilled');
+    end
+    
+    % Shadow function
+    F = 1 - S / (pi * theta_s^2);
+end
+

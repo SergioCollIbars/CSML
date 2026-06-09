@@ -13,11 +13,15 @@ cspice_furnsh('/Users/sergiocollibars/Documents/MATLAB/kernels/kernels_LRO.tm');
 
 % Data location. Use the same structure as plot_state.m
 folder = "/Users/sergiocollibars/OneDrive - UCB-O365/Kepler_codes/results/LRO_March_20_2015_12H/";
-file   = "orbit_LRO_SIM2_dataOut.mat";
+file   = "orbit_LRO_SIM4_dataOut.mat";
+
+folder = "/Users/sergiocollibars/Desktop/Lunar_orbit_simulator/data/";
+file   = "orbit_LRO_1mE_fc_1e-4_dataOut.mat";
 
 % Load output file. Expected variables include:
 %   time, mC_struct, I_ALIG, NB_MOON_mat
 load(folder + file);
+I_ALIG = mC_struct.sim1.I_ALIG;
 
 % Select only the first Monte Carlo simulation
 fields = fieldnames(mC_struct);
