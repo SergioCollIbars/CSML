@@ -13,11 +13,11 @@ set(0,'defaultAxesFontSize',16);
 
 %%                Mesurement mask 
 %           xx xy xz yx yy yz zx zy zz
-mask     =  [1, 0, 1, 0, 1, 0, 0, 0, 1]';
+mask     =  [1, 1, 1, 0, 1, 1, 0, 0, 1]';
 dir      =  [2 3]; Ndir = length(dir);
 names    = ["xx", "xy", "xz", "yx", "yy", "yz", "zx", "zy", "zz"];
 %% Extract GG observations
-folderPath = "/Users/sergiocollibars/Documents/GG_observations/120by120/450km/";
+folderPath = "/Users/sergiocollibars/Documents/GG_observations/120by120/500km/";
 [GG_obs]   = parser_GG_obs_MSODP(folderPath); Nt = length(GG_obs(:, 1));
 
 %% Attitude error magnitudes (arcseconds)

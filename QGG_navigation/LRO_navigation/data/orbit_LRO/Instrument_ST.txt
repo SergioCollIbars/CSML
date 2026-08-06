@@ -1,6 +1,6 @@
 # measurement noise: [arcseconds * sqrt(Hz)]
 ###########################################
-	sigma = 1
+	sigma = 0
 
 # measurement bias [arcseconds]
 ###########################################

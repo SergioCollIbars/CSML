@@ -3,7 +3,7 @@ function [X_EKF, P_EKF, posfit] = EKF_process(time, planetParams, Y_N, ...
     orientation, NB_EARTH, NB_MOON, Cnm_list, Snm_list, Q0, Qb, R0, mask)
     
     % state mask (pos, vel & bias)
-    mask_state = [ones(6, 1);mask;mask];
+    mask_state = [ones(6, 1);mask];
 
     % Number of total states
     Nx = length(X0_N);
@@ -13,7 +13,7 @@ function [X_EKF, P_EKF, posfit] = EKF_process(time, planetParams, Y_N, ...
 
     % initiate filter
     PHI0 = reshape(eye(Ns,Ns), [Ns*Ns,1]);
-    options = odeset('RelTol',1e-12,'AbsTol',1e-12);
+    options = odeset('RelTol',1e-13,'AbsTol',1e-13);
 
     if(orientation == "Inertial")
         BN0 = eye(3);
@@ -54,10 +54,10 @@ function [X_EKF, P_EKF, posfit] = EKF_process(time, planetParams, Y_N, ...
         
         % Compute dynamics. ODE 113 (Inertial frame)
         [~, STATE] = ode113(@(t, x) EOM_LRO_EPHEM(t, x, planetParams, ...
-            Cnm_list, Snm_list), t_span, [X0_N(1:Ns);PHI0], options);
-        
-        state_N   = STATE(end, 1:Ns);
-        PHI_N     = reshape(STATE(end, Ns+1:end), [Ns, Ns]);
+            Cnm_list, Snm_list), t_span, [X0_N(1:Ns)./1E6;PHI0], options);
+        S = diag([1E6 1E6 1E6 1E6 1E6 1E6]);
+        state_N   = STATE(end, 1:Ns)*1E6;
+        PHI_N     = S*reshape(STATE(end, Ns+1:end), [Ns, Ns])*inv(S);
         
         % compute S/C orientation 
         [BN_mat] = compute_orientation_SC(t_span, ...
@@ -84,7 +84,7 @@ function [X_EKF, P_EKF, posfit] = EKF_process(time, planetParams, Y_N, ...
         PHI_tot   = [PHI, zeros(6,12);zeros(12,6), eye(12)];
 
         % nominal bias and SF
-        bias_nom = X0_N(Ns+1:12); SF_nom = X0_N(13:end);
+        bias_nom = X0_N(Ns+1:12); SF_nom = SF(:, k);
         
         % actual RTN frame
         [Yc, Hi, Hrot_i] = compute_measurements_filter(planetParams, time(k), ...
@@ -124,7 +124,7 @@ function [X_EKF, P_EKF, posfit] = EKF_process(time, planetParams, Y_N, ...
         P_old(logical(mask_state), logical(mask_state))  = P_new;
                 
         % update nominal & save states (Inertial frame)
-        A       = blkdiag(BN', BN', eye(6), eye(6));
+        A       = blkdiag(BN', BN', eye(6));
         XB      = state + X_hat(1:Ns);
         XB_bias = X0_N(Ns+1:end) + X_hat(Ns+1:end);
 
@@ -143,7 +143,7 @@ function [X_EKF, P_EKF, posfit] = EKF_process(time, planetParams, Y_N, ...
         [BN_mat] = compute_orientation_SC(t_span, ...
             X_EKF(1:Ns, k-1:k)', orientation, NB_MOON);
         BN     = BN_mat(4:6, :); 
-        A      = blkdiag(BN, BN, eye(6), eye(6));
+        A      = blkdiag(BN, BN, eye(6));
         P_old  = A * P_N * A.'; 
     end
     fprintf('\n');

@@ -29,7 +29,8 @@ function [X_EKF, P_EKF, posfit,I_ALIG] = filter_measurements(metaData_file,...
     state0_new = state0;
 
     % run EKF
-    X0 = state0_new; P0 = P0_new;
+    % % X0 = state0_new; P0 = P0_new;
+    X0 = state0_new(1:12); P0 = P0_new(1:12, 1:12);
 
     [X_EKF, P_EKF, posfit] = EKF_process(time, planetParams_filter, ...
         Y_true, signal_err, SF, noise_att, offset_att, sigma_att, X0, P0, ...

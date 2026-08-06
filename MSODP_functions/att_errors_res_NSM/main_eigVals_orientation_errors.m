@@ -11,7 +11,7 @@ set(0,'defaultAxesFontSize',16);
 
 %%                Mesurement mask 
 %           xx xy xz yx yy yz zx zy zz
-mask     =  [1, 0, 1, 0, 1, 1, 0, 0, 1]';
+mask     =  [1, 0, 1, 0, 1, 0, 0, 0, 1]';
 
 %%             Read or compute attitude errors
 read = 1;
@@ -72,7 +72,7 @@ semilogy(t_dateTime, vecnorm(att_Err) * scale, '.', 'LineStyle', 'none'); grid o
 title("Attitude error magnitude"); ylabel('[arcseconds]');
 
 %% Add angular errors
-[GG_rot, GG_nom]           = rotate_GG_obs(GG_obs,att_Err);
+[GG_rot, GG_nom] = rotate_GG_obs(GG_obs,att_Err);
 
 prefit           = GG_rot(:, 2:end) - GG_nom(:, 2:end);
 
@@ -84,11 +84,12 @@ signal_mask      = signal(:, logical(mask))';
 disp('  Computing NSM')
 dY_NSM     = nan(1, Nt, sum(mask)); signal_NSM = dY_NSM; 
 for j = 1:Nt 
-    [Hrot_1st]      = compute_rotPartials_analy(GG_nom(j, 2:end)', eye(3));
+    [Hrot_1st]     = compute_rotPartials_analy(GG_nom(j, 2:end)', eye(3));
     H              = Hrot_1st;
     [S1, V1, D1]   = svd(H(logical(mask), :)');
 
     D = D1;
+    % % D(2, 2:3) = [0, 0];
     for i = 1:sum(mask)
         V_rot               = D(:, i);
         P_rot               = V_rot * V_rot';
@@ -98,48 +99,165 @@ for j = 1:Nt
     end
 end
 
+%% Plot NSM residuals time series
+sigma_noise = sqrt(1E-10 * fs); % [Eotvos] 
+noise       = normrnd(0, sigma_noise, [1, Nt]);
+a           = squeeze(dY_NSM(1, :, :));
+plot_residuals(t_dateTime, a, noise, sigma_noise);
+
+plot_residuals(t_dateTime, dY', noise.*0, sigma_noise);
+
 %% Power Spectral Density of NSM measurement residuals
-figure(); hold on;
 
-colors = lines(sum(mask));
-h      = gobjects(sum(mask),1);   % store handles for legend
+figure();
 
-for k = 1:sum(mask)
+mask = logical(mask(:).');      % force mask to be a row logical vector
+n_modes = sum(mask);
+
+colors = lines(n_modes);
+
+%% Labels for original tensor components
+if numel(mask) == 6
+    lg = ["XX", "XY", "XZ", "YY", "YZ", "ZZ"];
+elseif numel(mask) == 9
+    lg = ["XX", "XY", "XZ", ...
+          "YX", "YY", "YZ", ...
+          "ZX", "ZY", "ZZ"];
+else
+    error('mask must have either 6 or 9 elements. Current length is %d.', numel(mask));
+end
+
+lg_active = lg(mask);
+
+
+%% Power Spectral Density of NSM measurement residuals
+
+figure();
+
+mask = logical(mask(:).');
+n_modes = sum(mask);
+
+colors = lines(n_modes);
+
+%% Labels for original tensor components
+if numel(mask) == 6
+    lg = ["XX", "XY", "XZ", "YY", "YZ", "ZZ"];
+elseif numel(mask) == 9
+    lg = ["XX", "XY", "XZ", ...
+          "YX", "YY", "YZ", ...
+          "ZX", "ZY", "ZZ"];
+else
+    error('mask must have either 6 or 9 elements. Current length is %d.', numel(mask));
+end
+
+lg_active = lg(mask);
+
+
+%% ------------------------------------------------------------------------
+%  NSM measurement residual PSDs
+% -------------------------------------------------------------------------
+
+subplot(1, 2, 2);
+hold on;
+
+h1 = gobjects(n_modes, 1);
+
+for k = 1:n_modes
+
     signal1    = squeeze(dY_NSM(:, :, k)) ./ 1E-9;
     [Pxx1, f1] = compute_PSD(signal1, fs);
+
     signal2    = squeeze(signal_NSM(:, :, k)) ./ 1E-9;
     [Pxx2, f2] = compute_PSD(signal2, fs);
 
-    c = colors(k,:);
+    c = colors(k, :);
 
-    h(k) = loglog(f2, sqrt(Pxx2), 'Color', c, 'LineWidth', 1.5); % legend handle
-    loglog(f1, sqrt(Pxx1), '--', 'Color', c, 'LineWidth', 1.5);
+    % Solid line included in legend
+    h1(k) = loglog(f2, sqrt(Pxx2), ...
+        'Color', c, 'LineWidth', 1.5);
+
+    % Dashed line not included separately in legend
+    loglog(f1, sqrt(Pxx1), '--', ...
+        'Color', c, 'LineWidth', 1.5, ...
+        'HandleVisibility', 'off');
 end
 
-legend(h, arrayfun(@(k) sprintf('\\lambda_{%d}', k),...
-    1:sum(mask), 'UniformOutput', false));
-set(gca, 'XScale', 'log', 'YScale', 'log');   % force log axes
-grid on; ylabel('Eotvos'); xlabel('Hz');
-title('NSM signal for different modes');
+lambda_labels = arrayfun(@(k) sprintf('$s_{%d}$', k), ...
+    1:n_modes, 'UniformOutput', false);
 
-%% Power Spectral Density of original measurement residuals
-figure(); hold on;
+legend(h1, lambda_labels, ...
+    'Interpreter', 'latex', ...
+    'AutoUpdate', 'off');
+
+set(gca, 'XScale', 'log', 'YScale', 'log');
+grid on; ylim([1E-8 1E6]);
+
+ylabel('$E / \sqrt{\mathrm{Hz}}$', 'Interpreter', 'latex');
+xlabel('Hz');
+title('NSM signal');
+
+yline(1E-5, 'LineWidth', 1, 'Color', 'k', ...
+    'HandleVisibility', 'off');
+
+yline(1E-4, 'LineWidth', 1, 'Color', 'k', ...
+    'HandleVisibility', 'off');
+
+
+%% ------------------------------------------------------------------------
+%  Original measurement residual PSDs
+% -------------------------------------------------------------------------
+
+subplot(1, 2, 1);
+hold on;
+
+h2 = gobjects(n_modes, 1);
+
 tensor_signal = GG_nom(:, 2:end)';
-tt            = tensor_signal(logical(mask), :);
-for k = 1:sum(mask)
+
+if size(tensor_signal, 1) ~= numel(mask)
+    error(['The number of tensor components in GG_nom does not match mask length. ', ...
+           'size(tensor_signal,1) = %d, numel(mask) = %d.'], ...
+           size(tensor_signal, 1), numel(mask));
+end
+
+tt = tensor_signal(mask, :);
+
+for k = 1:n_modes
+
     signal1    = squeeze(dY(k, :)) ./ 1E-9;
     [Pxx1, f1] = compute_PSD(signal1, fs);
+
     signal2    = squeeze(tt(k, :)) ./ 1E-9;
     [Pxx2, f2] = compute_PSD(signal2, fs);
 
-    c = colors(k,:);
+    c = colors(k, :);
 
-    h(k) = loglog(f2, sqrt(Pxx2), 'Color', c, 'LineWidth', 1.5); % legend handle
-    loglog(f1, sqrt(Pxx1), '--', 'Color', c, 'LineWidth', 1.5);
+    % Solid line included in legend
+    h2(k) = loglog(f2, sqrt(Pxx2), ...
+        'Color', c, 'LineWidth', 1.5);
+
+    % Dashed line not included separately in legend
+    loglog(f1, sqrt(Pxx1), '--', ...
+        'Color', c, 'LineWidth', 1.5, ...
+        'HandleVisibility', 'off');
 end
-set(gca, 'XScale', 'log', 'YScale', 'log');   % force log axes
-grid on; ylabel('Eotvos'); xlabel('Hz');
-title('Original signal for different components');
+
+legend(h2, lg_active, ...
+    'Interpreter', 'latex', ...
+    'AutoUpdate', 'off');
+
+set(gca, 'XScale', 'log', 'YScale', 'log');
+grid on; ylim([1E-8 1E6]);
+
+ylabel('$E / \sqrt{\mathrm{Hz}}$', 'Interpreter', 'latex');
+xlabel('Hz');
+title('Original signal');
+
+yline(1E-5, 'LineWidth', 1, 'Color', 'k', ...
+    'HandleVisibility', 'off');
+
+yline(1E-4, 'LineWidth', 1, 'Color', 'k', ...
+    'HandleVisibility', 'off');
 
 %% AUXILIARY FUNCTIONS
 function [Pxx, f] = compute_PSD(X, Fs, window, noverlap, nfft)
@@ -220,5 +338,105 @@ function [Pxx, f] = compute_PSD(X, Fs, window, noverlap, nfft)
         end
 
         [Pxx, f] = pwelch(xi, window, noverlap, nfft, Fs, 'onesided');
+    end
+end
+
+function [] = plot_residuals(t_dateTime,dY_NSM, noise, sigma_noise)
+    n  = length(dY_NSM(1, :));
+    Nt = length(noise);
+
+    % define subplot dimensions
+    [p,~]= numSubplots(n);
+    rows = p(1); columns = p(2);
+    figure();
+    for k = 1:n
+        subplot(rows, columns, k); 
+        dataPlot = dY_NSM(:, k)./1E-9 + noise';
+        plot(t_dateTime, dataPlot, 'LineStyle','none', 'Marker','*');
+        grid on; hold on;
+        yline(3*sigma_noise); yline(-3*sigma_noise);
+        
+        % stats
+        Z = dataPlot./sigma_noise; P_outlier = sum(abs(Z)>3)./ Nt * 100;
+        RMS_val = rms(dataPlot);
+
+        % Add text box inside subplot
+        txt = sprintf('RMS = %.3e\nP_{out} = %.2f%%', ...
+        RMS_val, P_outlier);
+
+        text(0.02, 0.95, txt, ...
+        'Units', 'normalized', ...
+        'VerticalAlignment', 'top', ...
+        'HorizontalAlignment', 'left', ...
+        'BackgroundColor', 'w', ...
+        'EdgeColor', 'k', ...
+        'Margin', 5, ...
+        'FontSize', 10);
+
+        xlabel('Time');
+        ylabel('Residual [E]');
+        title(sprintf('Component %d', k));
+    end
+    sgtitle('NSM residuals and 3\sigma bounds')
+end
+
+function [p,n]=numSubplots(n)
+    % function [p,n]=numSubplots(n)
+    %
+    % Purpose
+    % Calculate how many rows and columns of sub-plots are needed to
+    % neatly display n subplots. 
+    %
+    % Inputs
+    % n - the desired number of subplots.     
+    %  
+    % Outputs
+    % p - a vector length 2 defining the number of rows and number of
+    %     columns required to show n plots.     
+    % [ n - the current number of subplots. This output is used only by
+    %       this function for a recursive call.]
+    %
+    %
+    %
+    % Example: neatly lay out 13 sub-plots
+    % >> p=numSubplots(13)
+    % p = 
+    %     3   5
+    % for i=1:13; subplot(p(1),p(2),i), pcolor(rand(10)), end 
+    %
+    %
+    % Rob Campbell - January 2010
+    
+    
+    while isprime(n) & n>4, 
+        n=n+1;
+    end
+    
+    p=factor(n);
+    
+    if length(p)==1
+        p=[1,p];
+        return
+    end
+    
+    
+    while length(p)>2
+        if length(p)>=4
+            p(1)=p(1)*p(end-1);
+            p(2)=p(2)*p(end);
+            p(end-1:end)=[];
+        else
+            p(1)=p(1)*p(2);
+            p(2)=[];
+        end    
+        p=sort(p);
+    end
+    
+    
+    %Reformat if the column/row ratio is too large: we want a roughly
+    %square design 
+    while p(2)/p(1)>2.5
+        N=n+1;
+        [p,n]=numSubplots(N); %Recursive!
     end
 end

@@ -11,7 +11,7 @@ set(0,'defaultAxesFontSize',16);
 
 %%                Mesurement mask 
 %           xx xy xz yx yy yz zx zy zz
-mask     =  [1, 0, 0, 0, 1, 0, 0, 0, 1]';
+mask     =  [1, 0, 1, 0, 1, 0, 0, 0, 1]';
 
 %% Extract GG observations
 folderPath = "/Users/sergiocollibars/Documents/GG_observations/120by120/500km";
@@ -38,7 +38,7 @@ fs = 1 / (t(2) -t(1)); % Hz
 
 % angular Velocity error
 load("nominal_angVel_500km.mat");
-sigmaAngVel = 1E-8; % [rad/s];
+sigmaAngVel = 2E-8; % [rad/s];
 deltaAngVel = normrnd(0, sigmaAngVel,    [3, Nt]);
 
 % compute Angular acceleration
@@ -80,6 +80,11 @@ for j = 1:Nt
         signal_NSM(1, j, i) = V_rot' * signal_mask(:, j);
     end
 end
+
+%% Plot NSM residuals time series
+sigma_noise = sqrt(1E-10 * fs); % [Eotvos] 
+noise       = normrnd(0, sigma_noise, [1, Nt]);
+plot_residuals(t_dateTime, dY_NSM, noise, sigma_noise);
 
 %% Power Spectral Density of NSM measurement residuals
 figure(); hold on;
@@ -204,4 +209,104 @@ function [Pxx, f] = compute_PSD(X, Fs, window, noverlap, nfft)
 
         [Pxx, f] = pwelch(xi, window, noverlap, nfft, Fs, 'onesided');
     end
+end
+
+function [] = plot_residuals(t_dateTime,dY_NSM, noise, sigma_noise)
+n  = length(dY_NSM(1, 1, :));
+Nt = length(noise);
+
+% define subplot dimensions
+[p,~]= numSubplots(n);
+rows = p(1); columns = p(2);
+figure();
+for k = 1:n
+    subplot(rows, columns, k); 
+    dataPlot = squeeze(dY_NSM(1, :, k))./1E-9 + noise;
+    plot(t_dateTime, dataPlot, 'LineStyle','none', 'Marker','*');
+    grid on; hold on;
+    yline(3*sigma_noise); yline(-3*sigma_noise);
+
+    % stats
+    Z = dataPlot./sigma_noise; P_outlier = sum(abs(Z)>3)./ Nt * 100;
+    RMS_val = rms(dataPlot);
+
+    % Add text box inside subplot
+    txt = sprintf('RMS = %.3e\nP_{out} = %.2f%%', ...
+        RMS_val, P_outlier);
+
+    text(0.02, 0.95, txt, ...
+        'Units', 'normalized', ...
+        'VerticalAlignment', 'top', ...
+        'HorizontalAlignment', 'left', ...
+        'BackgroundColor', 'w', ...
+        'EdgeColor', 'k', ...
+        'Margin', 5, ...
+        'FontSize', 10);
+
+    xlabel('Time');
+    ylabel('Residual [E]');
+    title(sprintf('Component %d', k));
+end
+sgtitle('NSM residuals and 3\sigma bounds')
+end
+
+function [p,n]=numSubplots(n)
+% function [p,n]=numSubplots(n)
+%
+% Purpose
+% Calculate how many rows and columns of sub-plots are needed to
+% neatly display n subplots. 
+%
+% Inputs
+% n - the desired number of subplots.     
+%  
+% Outputs
+% p - a vector length 2 defining the number of rows and number of
+%     columns required to show n plots.     
+% [ n - the current number of subplots. This output is used only by
+%       this function for a recursive call.]
+%
+%
+%
+% Example: neatly lay out 13 sub-plots
+% >> p=numSubplots(13)
+% p = 
+%     3   5
+% for i=1:13; subplot(p(1),p(2),i), pcolor(rand(10)), end 
+%
+%
+% Rob Campbell - January 2010
+
+
+while isprime(n) & n>4, 
+    n=n+1;
+end
+
+p=factor(n);
+
+if length(p)==1
+    p=[1,p];
+    return
+end
+
+
+while length(p)>2
+    if length(p)>=4
+        p(1)=p(1)*p(end-1);
+        p(2)=p(2)*p(end);
+        p(end-1:end)=[];
+    else
+        p(1)=p(1)*p(2);
+        p(2)=[];
+    end    
+    p=sort(p);
+end
+
+
+%Reformat if the column/row ratio is too large: we want a roughly
+%square design 
+while p(2)/p(1)>2.5
+    N=n+1;
+    [p,n]=numSubplots(N); %Recursive!
+end
 end

@@ -1,6 +1,6 @@
  # Gravity field degree & order
 ###########################################
-    n_max = 100
+    n_max = 10
 
  # measurement weight: [mE * sqrt(Hz)]
 ###########################################
@@ -20,7 +20,7 @@
     
 # bias RW: [mE]
 ########################################
-	sigma_RW = 0.0251326998870365
+	sigma_RW = 0
 
 
 # attitude uncertainty: [arcseconds]

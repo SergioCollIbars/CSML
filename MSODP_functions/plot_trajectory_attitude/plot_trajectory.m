@@ -11,7 +11,7 @@ set(0,'defaultAxesFontSize',16);
 % Date: 04/01/2026
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-folder = "/Users/sergiocollibars/Documents/SC_trajectory/350km/";
+folder = "/Users/sergiocollibars/Documents/SC_trajectory/500km/";
 
 % Constants
 R_E = 6378e3; % Earth equatorial radius [m]
@@ -62,6 +62,9 @@ posA = posA(idx, :);
 velA = velA(idx, :);
 posB = posB(idx, :);
 velB = velB(idx, :);
+
+data = [t, posA, velA];
+save('postion_velocity_A.mat',  "data");
 
 % Optional: altitude above Earth surface
 altA = vecnorm(posA, 2, 2) - R_E;

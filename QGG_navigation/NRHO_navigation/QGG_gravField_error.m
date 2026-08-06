@@ -19,7 +19,7 @@ consider_cov = 0;
 tmin = 0;                           % [rad]
 tmax = 1*1.4968;                    % [rad]
 frec = 1/30;                        % [Hz]
-Mc   = 10;                           % Mc runs
+Mc   = 100;                           % Mc runs
 
 % load universe
 [planetParams, poleParams, Cmat_true, Smat_true, TIME, DOM] = ...
@@ -64,40 +64,35 @@ date = humanReadableTime;
 
 % Load gravity field uncertainties
 path_sc1 = "SIGMACOEFS_EARTH_1.txt";
-path_sc2 = "SIGMACOEFS_MOON_1.txt";
+path_sc2 = "SIGMACOEFS_MOON_GRGM010PRIM.txt";
 sc1 = readmatrix(path_sc1);
 sc2 = readmatrix(path_sc2);
 
 n_max = planetParams(6);
 n_data = n_max;
 [Nc, Ns] = countCoeff(n_max);
-[Nc_data, Ns_data] = countCoeff(n_data);
+[Nc_data_E, Ns_data_E] = countCoeff(120);
+[Nc_data_M, Ns_data_M] = countCoeff(10);
 
 % output data
 disp('Computing residuals ....')
 dY = zeros(6, length(TIME), Mc);
 for k = 1:Mc
     disp('  MC run = ' + string(k))
-    sc1 = sc1(4:end);
-    sc2 = sc2(4:end);
-    [X1] = mat2list(Cmat_true{1}, Smat_true{1}, Nc_data, Ns_data);
-    [X2] = mat2list(Cmat_true{2}, Smat_true{2}, Nc_data, Ns_data);
-    X1  = [X1(1:Nc); X1(Nc_data+1:Ns+Nc_data)];
-    X2  = [X2(1:Nc); X2(Nc_data+1:Ns+Nc_data)];
+    [X1] = mat2list(Cmat_true{1}, Smat_true{1}, Nc_data_E, Ns_data_E);
+    [X2] = mat2list(Cmat_true{2}, Smat_true{2}, Nc_data_M, Ns_data_M);
     
     % generate nominal estimation coeffiecients
-    sigma1  = [sc1(1:Nc); sc1(Nc_data+1:Ns+Nc_data)];
-    sigma2  = [sc2(1:Nc); sc2(Nc_data+1:Ns+Nc_data)];
-    s1_rand = normrnd(0, sigma1(2:end));
-    s2_rand = normrnd(0, sigma2(2:end));
+    s1_rand = normrnd(0, sc1(5:end));
+    s2_rand = normrnd(0, sc2(5:end));
     
     X1c = X1;
     X2c = X2;
     X1c(2:end) = X1(2:end) + s1_rand;
     X2c(2:end) = X2(2:end) + s2_rand;
     
-    [Cmat1, Smat1] = list2mat(X1c, n_max);
-    [Cmat2, Smat2] = list2mat(X2c, n_max);
+    [Cmat1, Smat1] = list2mat(X1c, 120);
+    [Cmat2, Smat2] = list2mat(X2c, 10);
     Cmat_nominal = {Cmat1, Cmat2};
     Smat_nominal = {Smat1, Smat2};
     
@@ -139,7 +134,7 @@ for k = 1:Mc
         subplot(2, 3, idx(j))
         semilogy(date, ones(1, length(date)) * 3E-3 * sqrt(frec), ...
             'LineWidth', 3, 'Color','k')
-        hold all;
+        hold on;
         semilogy(date, abs(data(j, :))./1E-9, 'Marker','.', 'Color', 'g', ...
             'MarkerSize', 2);
         xlabel('date')
@@ -149,6 +144,44 @@ for k = 1:Mc
 end
 legend('noise level', 'Coefficient errors');
 sgtitle('Observation error along NRHO orbit');
+
+figure()
+for k = 1:Mc
+    data = squeeze(dY(:, :, k));
+    for j = 1:6
+        subplot(2, 3, idx(j))
+        hold on;
+        plot(date, (data(j, :))./1E-12, 'LineStyle', 'none', 'Marker','.',...
+            'Color', 'g', 'MarkerSize', 2);
+        ylabel(lb(j) + '[mE]')
+        grid on;
+    end
+end
+
+figure();
+Y_mag = squeeze(vecnorm(dY, 2, 1));
+for k = 1:Mc
+    plot(date, Y_mag(:, k)./1E-15,...
+        'Color', 'g', 'MarkerSize', 2);
+    hold on;
+end
+ylabel('micro-Eotvos')
+grid on;
+t_event = datetime(2020,1,15,09,09,32);   % example date/time
+xline(t_event, '--', 'Color', 'r', 'LineWidth', 2);
+
+t_start = datetime(2020,1,15,8,0,0);
+t_end   = datetime(2020,1,15,10,0,0);
+xlim([t_start t_end]);
+
+% COMPUTE RMS VALUE PERILUNE 
+idx = date >= t_event - seconds(60) & date <= t_event + seconds(60);
+RMS_perilune = sqrt(mean(Y_mag(idx,:).^2, 'all'))./1E-15; % micro-Eotvos
+
+% COMPUTE RMS VALUE APOLUNE 
+t_event = datetime(2020, 1, 12, 04,27,00);
+idx = date >= t_event - seconds(60) & date <= t_event + seconds(60);
+RMS_apolune= sqrt(mean(Y_mag(idx,:).^2, 'all'))./1E-15; % micro-Eotvos
 
 %% FUNCTIONS
 function [dUE, dUM, dUS, dUJ, dUEM, dUSRP, ddU] = compute_sc_acceleration(t, x, planetParams, C_mat, S_mat)

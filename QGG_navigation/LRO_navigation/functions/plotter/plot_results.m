@@ -27,7 +27,7 @@ function plot_results(time, state_true, bias_true, SF_true, X_EKF, P_EKF, ...
         minInd = maxInd - 2;
         BN = BN_mat(minInd:maxInd, :);
 
-        A   = blkdiag(BN, BN, eye(6), eye(6));
+        A   = blkdiag(BN, BN, eye(6));
         P_B = A * p * A';
         sigma(:,k) = sqrt(diag(P_B));
 
@@ -36,7 +36,7 @@ function plot_results(time, state_true, bias_true, SF_true, X_EKF, P_EKF, ...
     end
 
     errB  = bias_true - X_EKF(7:12,:);
-    errSF = SF_true   - X_EKF(13:end,:);
+    errSF = SF_true.*0;
 
     %% --- UI figure + tabs
     fig_title = folder_name + '/Filter Results';

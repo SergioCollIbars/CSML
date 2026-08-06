@@ -19,8 +19,8 @@ consider_cov = 0;
 tmin = 0;                           % [rad]
 tmax = 1*1.4968;                    % [rad]
 frec = 1/1;                         % [Hz]
-orientation = "Inertial";                % Inertial / RTN / Earth / Sun
-MC   = 10;
+orientation = "RTN";           % Inertial / RTN / Earth / Sun
+MC   = 2;
 
 % load universe
 [planetParams, poleParams, Cmat_true, Smat_true, TIME, DOM] = ...
@@ -241,6 +241,112 @@ display_stats(AngAcc_err_stats);
 
 disp('Attitude errors stats')
 display_stats(Att_err_stats);
+
+figure(); titles= ["XX", "XY", "XZ", "YY", "YZ", "ZZ"];
+colors = [
+    0.0000  0.4470  0.7410   % blue
+    0.8500  0.3250  0.0980   % orange
+    0.9290  0.6940  0.1250   % yellow
+    0.4940  0.1840  0.5560   % purple
+    0.4660  0.6740  0.1880   % green
+    0.3010  0.7450  0.9330   % cyan
+    ];
+for comp = 1:6
+    subplot(6, 1, comp);
+    for mc = 1:MC
+        plot(date, squeeze(deltaE_att(comp, :, mc))./1E-12, ...
+            'LineStyle', 'none', 'Marker','.', 'color', colors(comp, :));
+        ylabel(titles(comp)); grid on; hold on;
+    end
+end
+sgtitle('Atittude error induced residuals');
+figure();
+for comp = 1:6
+    subplot(6, 1, comp);
+    for mc = 1:MC
+        plot(date, squeeze(deltaE_angVel(comp, :, mc))./1E-12, ...
+            'LineStyle', 'none', 'Marker','.', 'color', colors(comp, :));
+        ylabel(titles(comp)); grid on; hold on;
+    end
+end
+sgtitle('Angular velocity error induced residuals');
+
+figure();
+Y_mag = squeeze(vecnorm(deltaE_att, 2, 1));
+for k = 1:MC
+    plot(date, Y_mag(:, k)./1E-12,...
+        'Color', 'g', 'LineStyle', 'none', 'Marker', '.', 'MarkerSize', 10);
+    hold on;
+end
+ylabel('milli-Eotvos')
+grid on;
+t_event = datetime(2020,1,15,09,09,32);   % example date/time
+xline(t_event, '--', 'Color', 'r', 'LineWidth', 2);
+
+t_start = datetime(2020,1,15,8,0,0);
+t_end   = datetime(2020,1,15,10,0,0);
+xlim([t_start t_end]);
+title('Atittude errors impact on the gradiometer residuals');
+
+figure();
+Y_mag = squeeze(vecnorm(deltaE_angVel, 2, 1));
+for k = 1:MC
+    plot(date, Y_mag(:, k)./1E-12,...
+        'Color', 'b', 'LineStyle', 'none', 'Marker', '.', 'MarkerSize', 10);
+    hold on;
+end
+ylabel('milli-Eotvos')
+grid on;
+t_event = datetime(2020,1,15,09,09,32);   % example date/time
+xline(t_event, '--', 'Color', 'r', 'LineWidth', 2);
+
+t_start = datetime(2020,1,15,8,0,0);
+t_end   = datetime(2020,1,15,10,0,0);
+xlim([t_start t_end]);
+title('Angular velocity errors impact on the gradiometer residuals');
+
+%% COMPUTE RMS AT PERILUNE PER COMPONENT
+comp_lbl = ["XX", "XY", "XZ", "YY", "YZ", "ZZ"];
+
+% Attitude errors
+disp('RMS PERILUNE. Attitude errors');
+t_event = datetime(2020,1,15,09,09,32);   % perilune date
+idx = date >= t_event - seconds(15*60) & date <= t_event + seconds(15*60);
+for comp = 1:6
+    data = squeeze(deltaE_att(comp, :, 1))./1E-12; % milli-Eotvos
+    RMS_perilune = sqrt(mean(data(idx).^2, 'all'));
+    disp(comp_lbl(comp) + ' ' + string(RMS_perilune))
+end
+
+% Angular velocity errors
+disp('RMS PERILUNE. Angular velocity errors');
+idx = date >= t_event - seconds(10*60) & date <= t_event + seconds(10*60);
+for comp = 1:6
+    data = squeeze(deltaE_angVel(comp, :, :))./1E-12; % milli-Eotvos
+    RMS_perilune = sqrt(mean(data(idx,:).^2, 'all'));
+    disp(comp_lbl(comp) + ' ' + string(RMS_perilune))
+end
+
+%% COMPUTE RMS AT APOLUNE PER COMPONENT
+
+% Attitude errors
+disp('RMS APOLUNE. Attitude errors');
+t_event = datetime(2020, 1, 12, 04,27,00); % apolune date
+idx = date >= t_event - seconds(60) & date <= t_event + seconds(60);
+for comp = 1:6
+    data = squeeze(deltaE_att(comp, :, :))./1E-12; % milli-Eotvos
+    RMS_perilune = sqrt(mean(data(idx,:).^2, 'all'));
+    disp(comp_lbl(comp) + ' ' + string(RMS_perilune))
+end
+
+% Angular velocity errors
+disp('RMS APOLUNE. Angular velocity errors');
+idx = date >= t_event - seconds(60) & date <= t_event + seconds(60);
+for comp = 1:6
+    data = squeeze(deltaE_angVel(comp, :, :))./1E-12; % milli-Eotvos
+    RMS_perilune = sqrt(mean(data(idx,:).^2, 'all'));
+    disp(comp_lbl(comp) + ' ' + string(RMS_perilune))
+end
 
 %% FUNCTIONS
 function [] = display_stats(A)

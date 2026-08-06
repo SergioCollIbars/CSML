@@ -26,11 +26,11 @@ function [dx] = EOM_LRO_EPHEM(t, x, planetParams, C_mat, S_mat)
     Nx = 6;
     
     % Planet constants
-    GM_E = planetParams(1); GM_M = planetParams(2);
-    R_E  = planetParams(3); R_M  = planetParams(4);
+    GM_E = planetParams(1)./1E18; GM_M = planetParams(2)./1E18;
+    R_E  = planetParams(3)./1E6; R_M  = planetParams(4)./1E6;
     
     % Get GM for the Sun [m^3/s^2]
-    [GM_S] = cspice_bodvrd('SUN', 'GM', 1)*1E9;    
+    [GM_S] = cspice_bodvrd('SUN', 'GM', 1)/1E9;    
 
     % gravity computation params
     normalized = planetParams(6);
@@ -90,7 +90,7 @@ function [dx] = EOM_LRO_EPHEM(t, x, planetParams, C_mat, S_mat)
     % %                                             J2000_MOON'*r2, R_M, GM_M, ...
     % %                                             normalized);
 
-    [~, dU2, ddU2] = potentialGradient_nm_mex_mxGetPr(Cmat_M, Smat_M, n_max, ...
+    [~, dU2, ddU2] = potentialGradient_nm_mex(Cmat_M, Smat_M, n_max, ...
                             J2000_MOON'*r2, R_M, GM_M, normalized);
 
     % rotate back to inertial. Earth-Moon (EM) plane

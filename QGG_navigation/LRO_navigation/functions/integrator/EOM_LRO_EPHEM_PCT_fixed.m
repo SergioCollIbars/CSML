@@ -27,8 +27,8 @@ function [dx] = EOM_LRO_EPHEM_PCT_fixed(t, x, planetParams, C_mat, S_mat, n_maxM
 
     M   = 220;      % spacecraft mass [kg]
     A   = 2.8;      % effective area [m^2]
-    eta = 1.75;      % SRP coefficient used by SRP()
-    % % eta = 0;
+    % % eta = 1.75;      % SRP coefficient used by SRP()
+    eta = 0;
 
     r_sc_M = x(1:3);    % Moon -> spacecraft, J2000 [m]
     v_sc_M = x(4:6);    % spacecraft wrt Moon, J2000 [m/s]

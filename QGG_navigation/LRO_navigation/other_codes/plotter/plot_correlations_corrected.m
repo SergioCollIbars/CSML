@@ -16,7 +16,7 @@ folder = "/Users/sergiocollibars/OneDrive - UCB-O365/Kepler_codes/results/LRO_Ma
 file   = "orbit_LRO_SIM4_dataOut.mat";
 
 folder = "/Users/sergiocollibars/Desktop/Lunar_orbit_simulator/data/";
-file   = "orbit_LRO_1mE_fc_1e-4_dataOut.mat";
+file   = "orbit_LRO_ideal_dataOut.mat";
 
 % Load output file. Expected variables include:
 %   time, mC_struct, I_ALIG, NB_MOON_mat

@@ -8,20 +8,20 @@ addpath('../data/');
 addpath(genpath("/Users/sergiocollibars/Desktop/CSML/QGG_navigation/LRO_navigation/data"))
 addpath(genpath("/Users/sergiocollibars/Desktop/CSML/QGG_navigation/LRO_navigation/functions"))
 
-cspice_furnsh('/Users/sergiocollibars/Documents/MATLAB/kernels/kernels_GRAIL.tm')
+cspice_furnsh('/Users/sergiocollibars/Documents/MATLAB/kernels/kernels_LRO.tm')
 
 
-utc_start = '2012-03-04 00:00:00';
-utc_stop  = '2012-03-04 06:00:00';
-N         = 4000;           % number of samples
+utc_start = '2025-03-20 00:00:00';
+utc_stop  = '2025-03-22 00:00:00';
+N         = 1000;           % number of samples
 GM_moon   = 4.9028001224453001E12;                       % [m^3/s^2]
 
 et0 = cspice_str2et(utc_start);
 et1 = cspice_str2et(utc_stop);
 et  = linspace(et0, et1, N);
 
-% % tgt       = 'LUNAR RECONNAISSANCE ORBITER';
-tgt       = 'GRAIL-B';
+tgt       = 'LUNAR RECONNAISSANCE ORBITER';
+% % tgt       = 'GRAIL-B';
 observer  = 'MOON';
 ref_frame = 'J2000'; % options: J2000 / IAU_MOON
 [sc_SPICE, ~] = cspice_spkezr(tgt, et, ref_frame, 'NONE', observer);
@@ -164,6 +164,9 @@ for j = 1:3
     title(tt(j)); ylabel('[m/s^2]'); grid on;
 end
 sgtitle('Acceleration error in RTN frame');
+
+
+figure()
 
 
 % close SPICE

@@ -35,7 +35,7 @@ function [Y, H, Hr] = compute_measurements_filter(planetParams, ...
     [Hpos] = compute_posPartials(n_max, normalized, Cnm{2}, Snm{2}, R_M, GM_M, ...
                 r_ACI, BODYMOON_J2000, BODYMOON_BODY);
     Hp     = SF.*[Hpos(1:3, :); Hpos(5:6, :);Hpos(9, :)]./1E-12;
-    H      = [Hp, zeros(6, 3), eye(6), diag(Y(:, k))];
+    H      = [Hp, zeros(6, 3), eye(6)];
 
 
     %% compute attitude partials
