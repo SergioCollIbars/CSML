@@ -11,7 +11,7 @@ set(0,'defaultAxesFontSize',16);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % NOTE: The values include the Scale Factor. (Amplitude scaled to 1E6)
-Input_GEO_1 = "/Users/sergiocollibars/Documents/Aesop_sol/500km/GEO.YY_215400";
+Input_GEO_1 = "/Users/sergiocollibars/Documents/Aesop_sol/500km/GEO.XX_YY_ZZ_215400";
 Input_GEO_2 = "/Users/sergiocollibars/Documents/Aesop_sol/500km/GEO.XX_XZ_YY_ZZ_215400";
 
 Input_true  = "/Users/sergiocollibars/Documents/Aesop_sol/GIF48.2007.GEO";

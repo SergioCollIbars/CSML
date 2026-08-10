@@ -13,6 +13,7 @@ set(0,'defaultAxesFontSize',16);
 %           xx xy xz yx yy yz zx zy zz
 mask     =  [1, 0, 1, 0, 1, 0, 0, 0, 1]';
 
+
 %%             Read or compute attitude errors
 read = 1;
 
